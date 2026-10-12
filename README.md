@@ -1,13 +1,14 @@
-# zte-f670l-fix
+# zte-f670l-toolkit
 
 Tools and findings for a store-bought router labelled **ZTE F670L** that is actually a
 **YYKF clone** (real board: ZTE **F628S**, MediaTek **MT7663** dual-band). Its 5 GHz Wi-Fi
 works but **cannot be edited from the web UI** — every 5 GHz save fails with
 `Web set failed (OBJ_WLANCONFIG_ID identity: IGD.LD1.WLAN5 iRet: -258)`.
 
-**TL;DR:** the web 5 GHz page is broken by a firmware bug (see below). You *can* change 5 GHz
-reliably with the `zte670` toolkit here, which edits the config directly and bypasses the broken
-page. Fixing the web page itself needs firmware-level work — see [RE handoff](docs/RE-SESSION-PROMPT.md).
+**TL;DR:** the stock 5 GHz page is broken by a firmware bug (see below). This repo has two
+fixes. **[adminui](adminui/README.md)** is a replacement admin UI that runs on the router itself
+(port 8088), covers all the stock pages and changes 5 GHz live. The `zte670` CLI toolkit edits
+the config directly.
 
 ## Device
 

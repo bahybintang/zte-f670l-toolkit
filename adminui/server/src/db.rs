@@ -14,6 +14,14 @@ use std::time::{Duration, Instant};
 const SIDBG: &str = "sidbg";
 const CACHE_TTL: Duration = Duration::from_secs(2);
 const T: Duration = Duration::from_secs(20);
+const SAVE_WAIT: Duration = Duration::from_secs(10);
+pub const USER_CFG: &str = "/userconfig/cfg/db_user_cfg.xml";
+
+/// FNV-1a over the file; None if unreadable.
+async fn file_hash(path: &str) -> Option<u64> {
+    let b = tokio::fs::read(path).await.ok()?;
+    Some(b.iter().fold(0xcbf29ce484222325u64, |h, x| (h ^ *x as u64).wrapping_mul(0x100000001b3)))
+}
 
 #[derive(Debug, Clone, Serialize)]
 pub struct Row {
@@ -160,13 +168,27 @@ impl Db {
         }
     }
 
-    /// Caller must hold `exec.db_guard()`.
+    /// Caller must hold `exec.db_guard()`. `sidbg save` returns before the
+    /// file is written (measured: ~1 s later), so wait for the file to change
+    /// and sync; a reboot right after an unflushed save silently loses it.
     pub async fn save(&self) -> Result<(), String> {
+        let before = file_hash(USER_CFG).await;
         let o = self.sidbg(&["save"]).await?;
         if o.stdout.to_ascii_lowercase().contains("fail") {
             return Err(format!("save failed: {}", o.stdout.trim()));
         }
-        Ok(())
+        let start = Instant::now();
+        while start.elapsed() < SAVE_WAIT {
+            tokio::time::sleep(Duration::from_millis(250)).await;
+            if file_hash(USER_CFG).await != before {
+                // db_backup_cfg.xml is written right after the user file.
+                tokio::time::sleep(Duration::from_millis(700)).await;
+                let _ = crate::exec::run_raw("sync", &[], Duration::from_secs(15)).await;
+                return Ok(());
+            }
+        }
+        let _ = crate::exec::run_raw("sync", &[], Duration::from_secs(15)).await;
+        Err("the router did not write its configuration file in time; the change is active but may not survive a restart".into())
     }
 
     /// Caller must hold `exec.db_guard()`. Returns the new row number.

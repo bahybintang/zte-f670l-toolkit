@@ -59,3 +59,10 @@ pub async fn run_raw(prog: &str, args: &[&str], timeout: Duration) -> ExecResult
         Err(_) => Err(format!("{prog}: timed out after {}s", timeout.as_secs())),
     }
 }
+
+/// Flush flash writes, then reboot. Never call `reboot` directly.
+pub async fn safe_reboot() {
+    let _ = run_raw("sync", &[], Duration::from_secs(15)).await;
+    tokio::time::sleep(Duration::from_secs(1)).await;
+    let _ = run_raw("reboot", &[], Duration::from_secs(10)).await;
+}

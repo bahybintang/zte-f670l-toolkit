@@ -24,6 +24,15 @@ export function History() {
       toast.error((err as Error).message)
     }
   }
+  const restore = async (e: Entry) => {
+    if (window.prompt(`Restore the configuration from before “${e.title}”? Every later change is lost and the router restarts. Type RESTORE to continue.`) !== 'RESTORE') return
+    try {
+      const r = await api.post<{ message: string }>(`/history/${e.id}/restore`, { confirm: 'RESTORE' })
+      toast.success(r.message)
+    } catch (err) {
+      toast.error((err as Error).message)
+    }
+  }
   return (
     <article>
       <header className="mb-7 flex flex-wrap items-end justify-between gap-4">
@@ -48,9 +57,14 @@ export function History() {
                 {e.undone && <span className="ml-3 rounded bg-muted px-1.5 py-0.5 text-[12px] text-muted-foreground">undone</span>}
                 {e.pendingConfirm && <span className="ml-3 rounded bg-fiber/25 px-1.5 py-0.5 text-[12px]">waiting to be kept</span>}
               </div>
-              {!e.undone && !e.structural && e.changes.length > 0 && (
-                <Button variant="outline" size="sm" onClick={() => undo(e)}>Undo</Button>
-              )}
+              <div className="flex gap-2">
+                {e.snapshot && (
+                  <Button variant="ghost" size="sm" onClick={() => restore(e)}>Restore backup</Button>
+                )}
+                {!e.undone && !e.structural && e.changes.length > 0 && (
+                  <Button variant="outline" size="sm" onClick={() => undo(e)}>Undo</Button>
+                )}
+              </div>
             </div>
             {e.changes.length > 0 && (
               <ul className="num mt-2 space-y-0.5 text-[13px] text-muted-foreground">
@@ -62,7 +76,7 @@ export function History() {
                 {e.changes.length > 8 && <li>and {e.changes.length - 8} more</li>}
               </ul>
             )}
-            {e.structural && <p className="mt-1 text-[13px] text-muted-foreground">Rows were added or removed. Undo by restoring its backup.</p>}
+            {e.structural && <p className="mt-1 text-[13px] text-muted-foreground">Rows were added or removed, so this can only be undone by restoring the backup taken before it.</p>}
           </li>
         ))}
       </ol>

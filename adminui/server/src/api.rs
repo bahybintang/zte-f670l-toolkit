@@ -47,8 +47,10 @@ pub fn router(app: Arc<App>) -> Router {
         .route("/page/{id}", get(page_read))
         .route("/page/{id}/apply", post(page_apply))
         .route("/confirm/{token}", post(confirm))
+        .route("/pending", get(pending_list))
         .route("/history", get(history))
         .route("/history/{id}/undo", post(undo))
+        .route("/history/{id}/restore", post(restore))
         .route("/status/system", get(status_system))
         .route("/status/traffic", get(status_traffic))
         .route("/status/leds", get(status_leds))
@@ -104,7 +106,8 @@ async fn session(State(app): S, h: HeaderMap) -> Json<Value> {
     let cfg = app.cfg.lock().unwrap().clone();
     match token_of(&h).and_then(|t| app.auth.touch(&t)) {
         Some(s) => Json(json!({ "authenticated": true, "user": cfg.user, "csrf": s.csrf,
-            "defaultPassword": cfg.default_password, "version": env!("CARGO_PKG_VERSION") })),
+            "defaultPassword": cfg.default_password, "version": env!("CARGO_PKG_VERSION"),
+            "restartPending": app.restart_pending.lock().unwrap().clone() })),
         None => Json(json!({ "authenticated": false })),
     }
 }
@@ -242,9 +245,13 @@ async fn confirm(State(app): S, Path(t): Path<String>) -> R {
     }
 }
 
+async fn pending_list(State(app): S) -> Json<Value> {
+    Json(json!({ "ok": true, "pending": apply::pending_info(&app).await }))
+}
+
 async fn history(State(app): S) -> Json<Value> {
     let h = app.history.lock().await;
-    let pending: Vec<u64> = app.pending.lock().await.values().copied().collect();
+    let pending: Vec<u64> = app.pending.lock().await.values().map(|v| v.0).collect();
     let mut v: Vec<Value> = h.entries.iter().rev().map(|e| {
         let mut j = serde_json::to_value(e).unwrap();
         j["pendingConfirm"] = json!(pending.contains(&e.id));
@@ -256,9 +263,18 @@ async fn history(State(app): S) -> Json<Value> {
 
 async fn undo(State(app): S, Path(id): Path<u64>) -> R {
     // Undoing a pending commit-confirm entry also cancels its timer.
-    app.pending.lock().await.retain(|_, e| *e != id);
+    app.pending.lock().await.retain(|_, e| e.0 != id);
     let new = apply::undo(&app, id).await?;
     Ok(Json(json!({ "ok": true, "entry": new })))
+}
+
+async fn restore(State(app): S, Path(id): Path<u64>, Json(c): Json<serde_json::Value>) -> R {
+    if c["confirm"] != "RESTORE" {
+        return Err("type RESTORE to confirm".into());
+    }
+    let snap = app.history.lock().await.get(id).and_then(|e| e.snapshot.clone()).ok_or("this change has no backup any more")?;
+    apply::restore_snapshot(&app, &snap).await?;
+    Ok(Json(json!({ "ok": true, "message": "backup restored; the router is restarting" })))
 }
 
 async fn status_system(State(app): S) -> Json<Value> {

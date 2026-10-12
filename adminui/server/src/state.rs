@@ -14,7 +14,9 @@ pub struct App {
     pub cfg: std::sync::Mutex<Config>,
     pub history: Mutex<History>,
     /// commit-confirm token -> history entry
-    pub pending: Mutex<HashMap<String, u64>>,
+    pub pending: Mutex<HashMap<String, (u64, std::time::Instant)>>,
     pub schema: Arc<Schema>,
     pub stats: crate::status::Sampler,
+    /// Titles of applied changes that only take effect after a restart.
+    pub restart_pending: std::sync::Mutex<Vec<String>>,
 }

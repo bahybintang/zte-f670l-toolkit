@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
-pub const USER_CFG: &str = "/userconfig/cfg/db_user_cfg.xml";
+pub use crate::db::USER_CFG;
 const HISTORY_MAX: usize = 20;
 const SNAPSHOTS_MAX: usize = 5;
 pub const CONFIRM_WINDOW: Duration = Duration::from_secs(180);
@@ -364,16 +364,31 @@ pub async fn apply(app: Arc<App>, schema: &Schema, page_id: &str, req: ApplyReq)
         undo_of: None,
     };
     let id = app.history.lock().await.push(entry);
+    // Only the Wi-Fi hook applies live today; everything else is read by the
+    // firmware at boot (raw DB writes send no change notification).
+    let live = page.hook.is_some() && planned.iter().all(|p| p.field.live_key.is_some() || p.field.dm == "Enable");
+    let apply_mode = if live { "live" } else { "reboot" };
+    if !live {
+        let mut rp = app.restart_pending.lock().unwrap();
+        if !rp.contains(&page.title) {
+            rp.push(page.title.clone());
+        }
+    }
 
-    let confirm = if page.danger.as_deref() == Some("commit-confirm") && !structural {
-        Some(start_confirm(app.clone(), id).await)
+    let confirm = if page.danger.as_deref() == Some("commit-confirm") && !structural && !live {
+        // Not active until the next boot: arm the keep-or-revert window then.
+        arm_on_boot(&app, id);
+        warnings.push("This change takes effect after a restart. When the router comes back you have 3 minutes to keep it, or it is undone and the router restarts again.".into());
+        None
+    } else if page.danger.as_deref() == Some("commit-confirm") && !structural {
+        Some(start_confirm(app.clone(), id, false).await)
     } else {
         if page.danger.as_deref() == Some("commit-confirm") {
             warnings.push("rows were added/removed: no automatic revert; use History → restore snapshot if needed".into());
         }
         None
     };
-    Ok(ApplyResult { ok: true, entry: Some(id), warnings, confirm, apply: page.apply.clone() })
+    Ok(ApplyResult { ok: true, entry: Some(id), warnings, confirm, apply: Some(apply_mode.into()) })
 }
 
 pub async fn undo(app: &App, id: u64) -> Result<u64, String> {
@@ -414,17 +429,73 @@ pub async fn undo(app: &App, id: u64) -> Result<u64, String> {
     }))
 }
 
-async fn start_confirm(app: Arc<App>, entry: u64) -> ConfirmInfo {
+fn boot_file(app: &App) -> PathBuf {
+    app.dir.join("confirm_on_boot.json")
+}
+
+fn arm_on_boot(app: &App, entry: u64) {
+    let p = boot_file(app);
+    let mut v: Vec<u64> = std::fs::read_to_string(&p).ok().and_then(|s| serde_json::from_str(&s).ok()).unwrap_or_default();
+    if !v.contains(&entry) {
+        v.push(entry);
+    }
+    let _ = std::fs::write(p, serde_json::to_string(&v).unwrap());
+}
+
+/// At startup: open the keep-or-revert window for changes applied before the reboot.
+pub async fn resume_on_boot(app: Arc<App>) {
+    let p = boot_file(&app);
+    let Some(v) = std::fs::read_to_string(&p).ok().and_then(|s| serde_json::from_str::<Vec<u64>>(&s).ok()) else { return };
+    let _ = std::fs::remove_file(&p);
+    for entry in v {
+        eprintln!("boot: commit-confirm window opened for history entry {entry}");
+        start_confirm(app.clone(), entry, true).await;
+    }
+}
+
+pub async fn pending_info(app: &App) -> Vec<serde_json::Value> {
+    let p = app.pending.lock().await;
+    let h = app.history.lock().await;
+    p.iter()
+        .map(|(tok, (entry, deadline))| {
+            serde_json::json!({
+                "token": tok, "entry": entry,
+                "title": h.get(*entry).map(|e| e.title.clone()).unwrap_or_default(),
+                "secondsLeft": deadline.saturating_duration_since(std::time::Instant::now()).as_secs(),
+            })
+        })
+        .collect()
+}
+
+async fn start_confirm(app: Arc<App>, entry: u64, reboot_on_revert: bool) -> ConfirmInfo {
     let token = crate::auth::random_hex(12);
-    app.pending.lock().await.insert(token.clone(), entry);
+    let deadline = std::time::Instant::now() + CONFIRM_WINDOW;
+    app.pending.lock().await.insert(token.clone(), (entry, deadline));
     let t = token.clone();
     tokio::spawn(async move {
         tokio::time::sleep(CONFIRM_WINDOW).await;
         let still = app.pending.lock().await.remove(&t).is_some();
         if still {
             eprintln!("commit-confirm {t} expired: reverting history entry {entry}");
-            if let Err(e) = undo(&app, entry).await {
-                eprintln!("auto-revert failed: {e}");
+            match undo(&app, entry).await {
+                Ok(_) if reboot_on_revert => {
+                    eprintln!("reverted; restarting so the boot-applied setting is undone too");
+                    crate::exec::safe_reboot().await;
+                }
+                Ok(_) => {}
+                Err(e) if reboot_on_revert => {
+                    eprintln!("auto-revert by value failed ({e}); restoring the pre-change backup");
+                    let snap = app.history.lock().await.get(entry).and_then(|e| e.snapshot.clone());
+                    match snap {
+                        Some(s) => {
+                            if let Err(e) = restore_snapshot(&app, &s).await {
+                                eprintln!("restore failed: {e}");
+                            }
+                        }
+                        None => eprintln!("no backup for entry {entry}; change stays"),
+                    }
+                }
+                Err(e) => eprintln!("auto-revert failed: {e}"),
             }
         }
     });
@@ -433,4 +504,30 @@ async fn start_confirm(app: Arc<App>, entry: u64) -> ConfirmInfo {
 
 pub async fn confirm(app: &App, token: &str) -> bool {
     app.pending.lock().await.remove(token).is_some()
+}
+
+/// Put a snapshot back as both the active and backup config, then reboot.
+/// No `sidbg save` afterwards: that would overwrite the files from the running DB.
+pub async fn restore_snapshot(app: &App, name: &str) -> Result<(), String> {
+    if name.contains('/') || !name.ends_with(".xml") {
+        return Err("bad backup name".into());
+    }
+    let src = app.dir.join("backups").join(name);
+    let meta = tokio::fs::metadata(&src).await.map_err(|_| "backup file not found".to_string())?;
+    if meta.len() < 1024 {
+        return Err("backup file looks truncated".into());
+    }
+    let _g = app.db.exec.db_guard().await;
+    for dst in [USER_CFG, "/userconfig/cfg/db_backup_cfg.xml"] {
+        let tmp = format!("{dst}.adminui");
+        tokio::fs::copy(&src, &tmp).await.map_err(|e| format!("copy: {e}"))?;
+        tokio::fs::rename(&tmp, dst).await.map_err(|e| format!("rename: {e}"))?;
+    }
+    let _ = crate::exec::run_raw("sync", &[], Duration::from_secs(10)).await;
+    eprintln!("restored {name}; rebooting");
+    tokio::spawn(async {
+        tokio::time::sleep(Duration::from_secs(1)).await;
+        crate::exec::safe_reboot().await;
+    });
+    Ok(())
 }

@@ -96,9 +96,11 @@ fn serve(args: Args) {
         pending: Default::default(),
         schema,
         stats: Default::default(),
+        restart_pending: Default::default(),
     });
     let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
     rt.block_on(async move {
+        apply::resume_on_boot(app.clone()).await;
         let s = app.clone();
         tokio::spawn(async move {
             let mut iv = tokio::time::interval(status::SAMPLE_EVERY);

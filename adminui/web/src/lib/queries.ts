@@ -8,6 +8,7 @@ export interface Session {
   csrf?: string
   defaultPassword?: boolean
   version?: string
+  restartPending?: string[]
 }
 
 export function useSession() {

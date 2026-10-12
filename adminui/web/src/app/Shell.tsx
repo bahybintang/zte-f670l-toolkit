@@ -10,6 +10,9 @@ import { getTheme, setTheme, type Theme } from '@/lib/theme'
 import { GROUP_ICON } from '@/components/icons'
 import { LedStrip } from '@/components/LedStrip'
 import { ConfirmBanner } from '@/components/ConfirmBanner'
+import { RestartBanner } from '@/components/RestartBanner'
+import { useEffect } from 'react'
+import { pending } from '@/lib/pending'
 import { Login } from '@/pages/Login'
 import { Button } from '@/components/ui/button'
 
@@ -17,7 +20,11 @@ export function Shell({ children }: { children: ReactNode }) {
   const session = useSession()
   if (session.isPending) return <Splash />
   if (!session.data?.authenticated) return <Login />
-  return <Authed defaultPassword={!!session.data.defaultPassword}>{children}</Authed>
+  return (
+    <Authed defaultPassword={!!session.data.defaultPassword} restartPending={session.data.restartPending ?? []}>
+      {children}
+    </Authed>
+  )
 }
 
 function Splash() {
@@ -38,8 +45,14 @@ const TOOLS = [
   { to: '/db', label: 'Config database', icon: Table2 },
 ] as const
 
-function Authed({ children, defaultPassword }: { children: ReactNode; defaultPassword: boolean }) {
+function Authed({ children, defaultPassword, restartPending }: { children: ReactNode; defaultPassword: boolean; restartPending: string[] }) {
   const [open, setOpen] = useState(false)
+  // Re-open keep-or-revert countdowns after a reload or a reboot.
+  useEffect(() => {
+    api.get<{ pending: { token: string; entry: number; title: string; secondsLeft: number }[] }>('/pending')
+      .then((r) => r.pending.forEach((p) => pending.add({ token: p.token, entry: p.entry, title: p.title, deadline: Date.now() + p.secondsLeft * 1000 })))
+      .catch(() => {})
+  }, [])
   const path = useRouterState({ select: (s) => s.location.pathname })
   return (
     <div className="min-h-dvh lg:grid lg:grid-cols-[264px_1fr]">
@@ -71,6 +84,7 @@ function Authed({ children, defaultPassword }: { children: ReactNode; defaultPas
             </Link>
           </div>
         )}
+        <RestartBanner titles={restartPending} />
         <ConfirmBanner />
         <main className="mx-auto w-full max-w-[1120px] px-4 pt-6 pb-32 sm:px-8 sm:pt-9">{children}</main>
       </div>

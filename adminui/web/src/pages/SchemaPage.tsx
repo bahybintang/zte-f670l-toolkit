@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { AlertTriangle, Info } from 'lucide-react'
 import { toast } from 'sonner'
 import { api } from '@/lib/api'
@@ -40,6 +41,7 @@ function PageBody({ page }: { page: Page }) {
   const sel = page.selector ? (search.sel !== undefined ? String(search.sel) : optValue(page.selector.options[0])) : undefined
   const data = usePageData(page.id, sel)
   const invalidate = useInvalidatePages()
+  const qc = useQueryClient()
   const [edits, setEdits] = useState<Edits>(EMPTY)
   const [busy, setBusy] = useState(false)
   const [showAdvanced, setShowAdvanced] = useState(false)
@@ -84,7 +86,7 @@ function PageBody({ page }: { page: Page }) {
   }, [staged])
 
   const send = async (body: object, title = page.title) => {
-    const r = await api.post<{ entry: number; warnings: string[]; confirm?: { token: string; deadlineSecs: number } }>(
+    const r = await api.post<{ entry: number; apply?: string; warnings: string[]; confirm?: { token: string; deadlineSecs: number } }>(
       `/page/${page.id}/apply`,
       { sel, ...body },
     )
@@ -98,7 +100,7 @@ function PageBody({ page }: { page: Page }) {
   const apply = async (acknowledge: string[] = []) => {
     setBusy(true)
     try {
-      await send({
+      const sendResult = send({
         acknowledge,
         changes: Object.entries(edits.changes).map(([k, value]) => {
           const [section, row, dm] = k.split('|')
@@ -108,9 +110,11 @@ function PageBody({ page }: { page: Page }) {
         adds: edits.adds,
         deletes: edits.deletes,
       })
-      toast.success(APPLIED[page.apply ?? 'unknown'])
+      const r = await sendResult
+      toast.success(APPLIED[r.apply ?? 'unknown'])
       setEdits(EMPTY)
       await invalidate()
+      qc.invalidateQueries({ queryKey: ['session'] })
     } catch (e) {
       const msg = (e as Error).message
       const m = /^LOCKOUT:([\w-]+): (.*)$/.exec(msg)
@@ -130,6 +134,7 @@ function PageBody({ page }: { page: Page }) {
       await send({ changes: [{ section: section.id, dm, value, row: section.mode === 'list' ? row : undefined }] })
       toast.success('Applied.')
       await invalidate()
+      qc.invalidateQueries({ queryKey: ['session'] })
     } catch (e) {
       toast.error((e as Error).message)
       await invalidate()
@@ -237,7 +242,7 @@ function PageBody({ page }: { page: Page }) {
 const APPLIED: Record<string, string> = {
   live: 'Applied. The change is active now.',
   save: 'Saved. The router applies it right away.',
-  reboot: 'Saved. It takes effect after the router restarts.',
+  reboot: 'Saved. It takes effect when the router restarts.',
   unknown: 'Saved.',
 }
 

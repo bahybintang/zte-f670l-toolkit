@@ -50,7 +50,7 @@ async fn reboot(State(app): S, Json(c): Json<Confirm>) -> R {
     }
     tokio::spawn(async {
         tokio::time::sleep(Duration::from_secs(1)).await;
-        let _ = crate::exec::run_raw("reboot", &[], Duration::from_secs(10)).await;
+        crate::exec::safe_reboot().await;
     });
     Ok(Json(json!({ "ok": true, "message": "rebooting; back in about 90 seconds" })))
 }
