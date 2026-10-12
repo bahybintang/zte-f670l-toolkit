@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F670L Wi-Fi</title>
+<style>
+  :root{
+    --bg:#0b0f17; --panel:#121825; --panel2:#0e141f; --line:#1f2a3c;
+    --ink:#e6edf7; --mut:#8595ad; --accent:#3ddc97; --accent2:#4aa8ff;
+    --warn:#ffb020; --bad:#ff5d6c; --r:14px;
+    --f: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Inter,sans-serif;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:
+      radial-gradient(1200px 600px at 80% -10%, #15233a 0%, transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, #122018 0%, transparent 55%), var(--bg);
+    color:var(--ink);font-family:var(--f);-webkit-font-smoothing:antialiased;min-height:100vh}
+  header{max-width:980px;margin:0 auto;padding:34px 20px 10px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+  h1{font-size:26px;margin:0;letter-spacing:-.02em}
+  .sub{color:var(--mut);font-size:13.5px}
+  .pill{margin-left:auto;font-size:12px;color:var(--accent);border:1px solid #214a3a;
+    background:#0f1f19;padding:5px 11px;border-radius:999px;font-weight:600}
+  main{max-width:980px;margin:0 auto;padding:12px 20px 60px}
+  .bandlbl{display:flex;align-items:center;gap:10px;margin:26px 2px 12px;color:var(--mut);
+    font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase}
+  .bandlbl::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--line),transparent)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+  .card{background:linear-gradient(180deg,var(--panel),var(--panel2));border:1px solid var(--line);
+    border-radius:var(--r);padding:16px 16px 14px;position:relative;overflow:hidden}
+  .card.g5::before,.card.g2::before{content:"";position:absolute;inset:0 0 auto 0;height:3px}
+  .card.g5::before{background:linear-gradient(90deg,var(--accent2),#8e7bff)}
+  .card.g2::before{background:linear-gradient(90deg,var(--accent),#bfe96a)}
+  .crow{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .wname{font-size:12px;color:var(--mut);font-weight:600}
+  .wname b{color:var(--ink);font-size:15px;font-weight:700;letter-spacing:-.01em}
+  label{display:block;font-size:11.5px;color:var(--mut);margin:11px 0 5px;font-weight:600}
+  input[type=text],input[type=password]{width:100%;background:#0a0f18;border:1px solid var(--line);
+    color:var(--ink);border-radius:9px;padding:10px 11px;font-size:14px;font-family:var(--f);outline:none}
+  input:focus{border-color:var(--accent2);box-shadow:0 0 0 3px #1a3350}
+  .toggles{display:flex;gap:18px;margin-top:12px}
+  .tog{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink);cursor:pointer;user-select:none}
+  .sw{width:38px;height:22px;border-radius:999px;background:#26324a;position:relative;transition:.18s;flex:none}
+  .sw::after{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.18s}
+  .tog.on .sw{background:var(--accent)}
+  .tog.on .sw::after{left:19px}
+  .apply{margin-top:14px;width:100%;border:0;border-radius:10px;padding:11px;font-size:14px;font-weight:700;
+    color:#06211a;background:linear-gradient(90deg,var(--accent),#7ce9b0);cursor:pointer;transition:.15s}
+  .apply:hover{filter:brightness(1.07)}
+  .apply:disabled{opacity:.55;cursor:default}
+  .msg{margin-top:9px;font-size:12.5px;min-height:16px}
+  .msg.ok{color:var(--accent)} .msg.err{color:var(--bad)} .msg.work{color:var(--mut)}
+  .foot{max-width:980px;margin:30px auto 0;padding:0 22px;color:var(--mut);font-size:12px;line-height:1.6}
+  .foot code{color:#cdd8ea;background:#0e141f;padding:1px 6px;border-radius:5px}
+  .skel{height:220px;border-radius:var(--r);background:linear-gradient(100deg,#111826,#192234,#111826);
+    background-size:200% 100%;animation:sh 1.3s infinite}
+  @keyframes sh{to{background-position:-200% 0}}
+</style>
+</head>
+<body>
+<header>
+  <h1>F670L&nbsp;Wi-Fi</h1>
+  <span class="sub">live control panel · 5&nbsp;GHz fixed</span>
+  <span class="pill">● applies with no restart</span>
+</header>
+<main id="app"><div class="grid"><div class="skel"></div><div class="skel"></div></div></main>
+<div class="foot">
+  Changes apply to the radio instantly (<code>iwpriv</code>) and persist across reboots
+  (<code>sidbg DB save</code>) — the same thing the stock firmware's missing 5&nbsp;GHz handler
+  should have done. Leave password blank to keep it unchanged.
+</div>
+<script>
+const app = document.getElementById('app');
+const esc = s => (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+async function load(){
+  let d;
+  try{ d = await (await fetch('/api/wifi')).json(); }
+  catch(e){ app.innerHTML = err("Can't reach the panel backend."); return; }
+  if(!d.ok){ app.innerHTML = err("Router read failed: "+esc(d.error||'?')); return; }
+  render(d.wlans);
+}
+function err(m){ return `<div class="bandlbl" style="color:var(--bad)">${m}</div>`; }
+
+function render(wlans){
+  const by = b => wlans.filter(w=>w.band===b);
+  const sec = (title, list, cls) => !list.length ? '' :
+    `<div class="bandlbl">${title}</div><div class="grid">${list.map(w=>card(w,cls)).join('')}</div>`;
+  app.innerHTML = sec("2.4 GHz", by("2.4 GHz"), "g2") + sec("5 GHz", by("5 GHz"), "g5");
+  wlans.forEach(w=>wire(w.row));
+}
+function card(w,cls){
+  return `<div class="card ${cls}" data-row="${w.row}">
+    <div class="crow"><div class="wname">WLAN${w.instance} · <b>${esc(w.alias||('Radio '+w.instance))}</b></div>
+      <div class="wname">${w.iface}</div></div>
+    <label>Network name (SSID)</label>
+    <input type="text" class="ssid" maxlength="32" value="${esc(w.ssid)}">
+    <label>New password <span style="color:#5a6980">(blank = unchanged)</span></label>
+    <input type="password" class="pwd" placeholder="8–63 characters" autocomplete="new-password">
+    <div class="toggles">
+      <div class="tog ${w.enable?'on':''}" data-k="enable"><div class="sw"></div>Enabled</div>
+      <div class="tog ${w.hide?'on':''}" data-k="hide"><div class="sw"></div>Hidden</div>
+    </div>
+    <button class="apply">Apply</button>
+    <div class="msg"></div>
+  </div>`;
+}
+function wire(row){
+  const c = app.querySelector(`.card[data-row="${row}"]`);
+  c.querySelectorAll('.tog').forEach(t=>t.onclick=()=>t.classList.toggle('on'));
+  const btn=c.querySelector('.apply'), msg=c.querySelector('.msg');
+  btn.onclick=async()=>{
+    const body={row,
+      ssid:c.querySelector('.ssid').value,
+      password:c.querySelector('.pwd').value,
+      enable:c.querySelector('.tog[data-k=enable]').classList.contains('on'),
+      hide:c.querySelector('.tog[data-k=hide]').classList.contains('on')};
+    btn.disabled=true; msg.className='msg work'; msg.textContent='Applying…';
+    try{
+      const r=await (await fetch('/api/apply',{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(body)})).json();
+      if(r.ok){ msg.className='msg ok'; msg.textContent='✓ Applied (live + saved): '+(r.steps||[]).join(', ');
+        c.querySelector('.pwd').value=''; }
+      else{ msg.className='msg err'; msg.textContent='✗ '+(r.error||r.detail||'failed'); }
+    }catch(e){ msg.className='msg err'; msg.textContent='✗ '+e; }
+    btn.disabled=false;
+  };
+}
+load();
+</script>
+</body>
+</html>

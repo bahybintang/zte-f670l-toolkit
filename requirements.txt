@@ -1,0 +1,4 @@
+# Runtime deps for the zte670 toolkit
+pycryptodomex
+# ctce8 / ZTE DB decode-encode (the config format this device uses)
+zte-cfgs @ git+https://github.com/OpticalNetworkTerminal/zte-cfgs.git
