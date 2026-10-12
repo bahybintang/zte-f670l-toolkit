@@ -1,7 +1,7 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { History, LayoutDashboard, LogOut, Menu, Monitor, Moon, Search, Sun, Table2, Users, Wrench, X } from 'lucide-react'
+import { HardDrive, History, LayoutDashboard, LogOut, Menu, Monitor, Moon, Search, Sun, Table2, Users, Wrench, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 import { useSchema, useSession } from '@/lib/queries'
@@ -43,6 +43,7 @@ const TOOLS = [
   { to: '/tools', label: 'Network tools', icon: Wrench },
   { to: '/history', label: 'Change history', icon: History },
   { to: '/db', label: 'Config database', icon: Table2 },
+  { to: '/flash', label: 'Flash and firmware', icon: HardDrive },
 ] as const
 
 function Authed({ children, defaultPassword, restartPending }: { children: ReactNode; defaultPassword: boolean; restartPending: string[] }) {

@@ -5,7 +5,7 @@
 use crate::api::{ApiError, R, S};
 use crate::apply::USER_CFG;
 use axum::body::Body;
-use axum::extract::{Query, State};
+use axum::extract::{Path, Query, State};
 use axum::http::{header, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
@@ -25,6 +25,8 @@ pub fn routes() -> Router<Arc<crate::state::App>> {
         .route("/wifi/survey", get(wifi_survey))
         .route("/clients", get(clients))
         .route("/backup/download", get(backup_download))
+        .route("/flash/partitions", get(flash_partitions))
+        .route("/flash/dump/{n}", get(flash_dump))
 }
 
 /// Hostname or IP literal; never starts with '-' (would be an option).
@@ -184,9 +186,58 @@ async fn backup_download(State(_app): S) -> Result<Response, ApiError> {
         .into_response())
 }
 
+pub fn parse_mtd(s: &str) -> Vec<(u32, u64, String)> {
+    s.lines()
+        .skip(1)
+        .filter_map(|l| {
+            let (dev, rest) = l.split_once(':')?;
+            let n = dev.trim().strip_prefix("mtd")?.parse().ok()?;
+            let mut c = rest.split_whitespace();
+            let size = u64::from_str_radix(c.next()?, 16).ok()?;
+            let name = rest.split('"').nth(1).unwrap_or("").to_string();
+            Some((n, size, name))
+        })
+        .collect()
+}
+
+async fn flash_partitions() -> R {
+    let mtd = parse_mtd(&std::fs::read_to_string("/proc/mtd").unwrap_or_default());
+    let cmdline = std::fs::read_to_string("/proc/cmdline").unwrap_or_default();
+    let root = cmdline.split_whitespace().find_map(|w| w.strip_prefix("root=/dev/mtdblock")).and_then(|n| n.parse::<u32>().ok());
+    let parts: Vec<Value> = mtd
+        .iter()
+        .map(|(n, size, name)| json!({ "index": n, "size": size, "name": name, "booted": Some(*n) == root }))
+        .collect();
+    Ok(Json(json!({ "ok": true, "partitions": parts, "rootPartition": root, "cmdline": cmdline.trim() })))
+}
+
+/// Read-only image of one partition (mtd0 is the whole 256 MiB flash).
+async fn flash_dump(Path(n): Path<u32>) -> Result<Response, ApiError> {
+    let mtd = parse_mtd(&std::fs::read_to_string("/proc/mtd").unwrap_or_default());
+    let (_, size, name) = mtd.into_iter().find(|(i, _, _)| *i == n).ok_or(ApiError(StatusCode::NOT_FOUND, "no such partition".into()))?;
+    let f = tokio::fs::File::open(format!("/dev/mtd{n}")).await.map_err(|e| ApiError(StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let stream = tokio_util::io::ReaderStream::with_capacity(tokio::io::AsyncReadExt::take(f, size), 64 * 1024);
+    let fname = format!("mtd{n}-{}.bin", name.replace(|c: char| !c.is_ascii_alphanumeric(), "_"));
+    Ok((
+        [
+            (header::CONTENT_TYPE, "application/octet-stream".to_string()),
+            (header::CONTENT_LENGTH, size.to_string()),
+            (header::CONTENT_DISPOSITION, format!("attachment; filename=\"{fname}\"")),
+        ],
+        Body::from_stream(stream),
+    )
+        .into_response())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mtd() {
+        let s = "dev:    size   erasesize  name\nmtd0: 10000000 00020000 \"whole flash\"\nmtd8: 02000000 00020000 \"rootfs0\"\n";
+        assert_eq!(parse_mtd(s), vec![(0, 0x10000000, "whole flash".into()), (8, 0x2000000, "rootfs0".into())]);
+    }
 
     #[test]
     fn hosts() {
