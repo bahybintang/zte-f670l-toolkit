@@ -44,7 +44,17 @@ pub struct ApplyReq {
     pub adds: Vec<AddReq>,
     #[serde(default)]
     pub deletes: Vec<DelReq>,
+    /// Lockout guards the caller explicitly accepted (see LOCKOUT_GUARDS).
+    #[serde(default)]
+    pub acknowledge: Vec<String>,
 }
+
+/// Writes that remove a recovery path survive reboots (unlike the stock UI,
+/// which never persists them), so they need an explicit acknowledgement.
+const LOCKOUT_GUARDS: &[(&str, &str, &str, &str)] = &[
+    ("TelnetCfg", "TS_Enable", "0", "telnet-off"),
+    ("TelnetCfg", "Lan_Enable", "0", "telnet-off"),
+];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Applied {
@@ -217,6 +227,11 @@ fn plan<'a>(page: &'a Page, req: &ApplyReq) -> Result<Vec<Planned<'a>>, String> 
             "readonly" => return Err(format!("section {} is read-only", sec.id)),
             _ => sec.resolve_row(req.sel.as_deref()).ok_or("cannot resolve row for this selection")?,
         };
+        for (t, dm, val, id) in LOCKOUT_GUARDS {
+            if sec.table == *t && field.dm == *dm && c.value == *val && !req.acknowledge.iter().any(|a| a == id) {
+                return Err(format!("LOCKOUT:{id}: this turns off LAN telnet permanently, which is the recovery path if the web UI ever fails. Confirm to continue."));
+            }
+        }
         v.push(Planned { sec, field, row, value: c.value.clone() });
     }
     Ok(v)

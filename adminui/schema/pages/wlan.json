@@ -1,0 +1,2497 @@
+{
+  "pages": [
+    {
+      "id": "wlan-radio",
+      "title": "Wi-Fi radio",
+      "group": "wlan",
+      "order": 10,
+      "icon": "radio-tower",
+      "description": "Radio on/off, wireless mode, country, channel, width, transmit power and QoS per band.",
+      "stock": {
+        "menu": "ssmWLANBasic",
+        "page": "net_11n_conf_t.gch",
+        "handler": [
+          "wlan_config_pri.gch",
+          "wlan_config_gch.gch",
+          "net_11n_conf_js.gch"
+        ]
+      },
+      "applicable": true,
+      "apply": "live",
+      "danger": "confirm",
+      "hook": "wifi",
+      "selector": {
+        "label": "Radio",
+        "options": [
+          {
+            "value": "0",
+            "label": "2.4 GHz"
+          },
+          {
+            "value": "1",
+            "label": "5 GHz"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "radio24",
+          "title": "2.4 GHz radio",
+          "table": "WLANBase",
+          "mode": "single",
+          "row": "$sel",
+          "rowMap": {
+            "0": 0
+          },
+          "fields": [
+            {
+              "dm": "RadioStatus",
+              "label": "Wireless radio",
+              "type": "bool",
+              "liveKey": "RadioOn",
+              "help": "Turns the whole radio on or off (all SSIDs on this band)."
+            },
+            {
+              "dm": "11nMode",
+              "label": "802.11n",
+              "type": "bool",
+              "help": "Set automatically by the wireless mode."
+            },
+            {
+              "dm": "GreenField",
+              "label": "802.11n only (Greenfield)",
+              "type": "bool",
+              "advanced": true,
+              "showIf": {
+                "dm": "11nMode",
+                "in": [
+                  "1"
+                ]
+              },
+              "help": "Used only in 802.11n-only mode."
+            },
+            {
+              "dm": "BasicDataRates",
+              "label": "Basic rate set",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "1, 2 Mbps"
+                },
+                {
+                  "value": "1",
+                  "label": "1, 2, 5.5, 11 Mbps"
+                },
+                {
+                  "value": "2",
+                  "label": "1-11 + 6, 9, 12, 18, 24 Mbps"
+                },
+                {
+                  "value": "3",
+                  "label": "All b/g rates (1-54 Mbps)"
+                },
+                {
+                  "value": "4",
+                  "label": "OFDM only (6-54 Mbps)"
+                }
+              ],
+              "advanced": true,
+              "help": "Set to match the wireless mode."
+            },
+            {
+              "dm": "OpDataRates",
+              "label": "Operational rate set",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "1, 2 Mbps"
+                },
+                {
+                  "value": "1",
+                  "label": "1, 2, 5.5, 11 Mbps"
+                },
+                {
+                  "value": "2",
+                  "label": "1-11 + 6, 9, 12, 18, 24 Mbps"
+                },
+                {
+                  "value": "3",
+                  "label": "All b/g rates (1-54 Mbps)"
+                },
+                {
+                  "value": "4",
+                  "label": "OFDM only (6-54 Mbps)"
+                }
+              ],
+              "advanced": true,
+              "help": "Set to match the wireless mode."
+            },
+            {
+              "dm": "11axMode",
+              "label": "802.11ax",
+              "type": "bool",
+              "readonly": true,
+              "advanced": true,
+              "help": "Not supported by this radio; leave off."
+            },
+            {
+              "dm": "CountryCode",
+              "label": "Country / region",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "14",
+                  "label": "Default setting"
+                },
+                {
+                  "value": "0",
+                  "label": "China"
+                },
+                {
+                  "value": "1",
+                  "label": "Australia"
+                },
+                {
+                  "value": "2",
+                  "label": "Brazil"
+                },
+                {
+                  "value": "3",
+                  "label": "Canada"
+                },
+                {
+                  "value": "4",
+                  "label": "Egypt"
+                },
+                {
+                  "value": "5",
+                  "label": "France"
+                },
+                {
+                  "value": "6",
+                  "label": "Germany"
+                },
+                {
+                  "value": "7",
+                  "label": "Greece"
+                },
+                {
+                  "value": "8",
+                  "label": "Hong Kong"
+                },
+                {
+                  "value": "9",
+                  "label": "Italy"
+                },
+                {
+                  "value": "10",
+                  "label": "South Korea"
+                },
+                {
+                  "value": "11",
+                  "label": "Spain"
+                },
+                {
+                  "value": "12",
+                  "label": "United Kingdom"
+                },
+                {
+                  "value": "13",
+                  "label": "United States"
+                }
+              ],
+              "help": "Sets which channels are allowed."
+            },
+            {
+              "dm": "BandWidth",
+              "label": "Channel width",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "20 MHz"
+                },
+                {
+                  "value": "1",
+                  "label": "40 MHz"
+                },
+                {
+                  "value": "2",
+                  "label": "20/40 MHz auto"
+                }
+              ],
+              "showIf": {
+                "dm": "11nMode",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "AutoChannelEnabled",
+              "label": "Automatic channel",
+              "type": "bool"
+            },
+            {
+              "dm": "Channel",
+              "label": "Channel",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Auto (0)"
+                },
+                {
+                  "value": "1",
+                  "label": "1"
+                },
+                {
+                  "value": "2",
+                  "label": "2"
+                },
+                {
+                  "value": "3",
+                  "label": "3"
+                },
+                {
+                  "value": "4",
+                  "label": "4"
+                },
+                {
+                  "value": "5",
+                  "label": "5"
+                },
+                {
+                  "value": "6",
+                  "label": "6"
+                },
+                {
+                  "value": "7",
+                  "label": "7"
+                },
+                {
+                  "value": "8",
+                  "label": "8"
+                },
+                {
+                  "value": "9",
+                  "label": "9"
+                },
+                {
+                  "value": "10",
+                  "label": "10"
+                },
+                {
+                  "value": "11",
+                  "label": "11"
+                },
+                {
+                  "value": "12",
+                  "label": "12"
+                },
+                {
+                  "value": "13",
+                  "label": "13"
+                }
+              ],
+              "liveKey": "Channel",
+              "showIf": {
+                "dm": "AutoChannelEnabled",
+                "in": [
+                  "0"
+                ]
+              },
+              "help": "Channels 12-13 are not allowed for Canada/United States."
+            },
+            {
+              "dm": "SideBand",
+              "label": "Extension channel",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Upper (secondary above)"
+                },
+                {
+                  "value": "1",
+                  "label": "Lower (secondary below)"
+                }
+              ],
+              "showIf": {
+                "dm": "AutoChannelEnabled",
+                "in": [
+                  "0"
+                ]
+              },
+              "advanced": true,
+              "help": "Used only with a fixed channel at 40 MHz or 20/40 MHz."
+            },
+            {
+              "dm": "SGIEnabled",
+              "label": "Short guard interval",
+              "type": "bool",
+              "liveKey": "HtGi"
+            },
+            {
+              "dm": "TxPower",
+              "label": "Transmit power",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "200% (boost)"
+                },
+                {
+                  "value": "1",
+                  "label": "100%"
+                },
+                {
+                  "value": "2",
+                  "label": "80%"
+                },
+                {
+                  "value": "3",
+                  "label": "60%"
+                },
+                {
+                  "value": "4",
+                  "label": "40%"
+                },
+                {
+                  "value": "5",
+                  "label": "20%"
+                }
+              ]
+            },
+            {
+              "dm": "TxPowerNum",
+              "label": "Transmit power (%)",
+              "type": "int",
+              "readonly": true,
+              "advanced": true
+            },
+            {
+              "dm": "TxRate",
+              "label": "Transmit rate",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Auto"
+                },
+                {
+                  "value": "1",
+                  "label": "1 Mbps"
+                },
+                {
+                  "value": "2",
+                  "label": "2 Mbps"
+                },
+                {
+                  "value": "3",
+                  "label": "5.5 Mbps"
+                },
+                {
+                  "value": "4",
+                  "label": "11 Mbps"
+                },
+                {
+                  "value": "5",
+                  "label": "6 Mbps"
+                },
+                {
+                  "value": "6",
+                  "label": "9 Mbps"
+                },
+                {
+                  "value": "7",
+                  "label": "12 Mbps"
+                },
+                {
+                  "value": "8",
+                  "label": "18 Mbps"
+                },
+                {
+                  "value": "9",
+                  "label": "24 Mbps"
+                },
+                {
+                  "value": "10",
+                  "label": "36 Mbps"
+                },
+                {
+                  "value": "11",
+                  "label": "48 Mbps"
+                },
+                {
+                  "value": "12",
+                  "label": "54 Mbps"
+                }
+              ],
+              "advanced": true,
+              "help": "Fixed rates only apply to legacy (non-11n) modes; leave on Auto."
+            },
+            {
+              "dm": "QosType",
+              "label": "QoS type",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Disabled"
+                },
+                {
+                  "value": "1",
+                  "label": "WMM"
+                },
+                {
+                  "value": "2",
+                  "label": "By SSID priority"
+                }
+              ]
+            },
+            {
+              "dm": "BeaconInterval",
+              "label": "Beacon interval",
+              "type": "int",
+              "min": 100,
+              "max": 1000,
+              "unit": "ms",
+              "liveKey": "BeaconPeriod"
+            },
+            {
+              "dm": "DTIM",
+              "label": "DTIM interval",
+              "type": "int",
+              "min": 1,
+              "max": 5,
+              "advanced": true,
+              "liveKey": "DtimPeriod"
+            },
+            {
+              "dm": "RtsCts",
+              "label": "RTS threshold",
+              "type": "int",
+              "min": 0,
+              "max": 2347,
+              "advanced": true,
+              "liveKey": "RTSThreshold"
+            },
+            {
+              "dm": "Fragment",
+              "label": "Fragmentation threshold",
+              "type": "int",
+              "min": 256,
+              "max": 2346,
+              "advanced": true,
+              "liveKey": "FragThreshold"
+            },
+            {
+              "dm": "SSIDIsolationEnable",
+              "label": "Isolate SSIDs from each other",
+              "type": "bool",
+              "advanced": true,
+              "liveKey": "NoForwardingBTNBSSID",
+              "help": "Blocks traffic between the SSIDs of this radio."
+            },
+            {
+              "dm": "CardMaxUserNum",
+              "label": "Radio client limit",
+              "type": "int",
+              "readonly": true,
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "radio5",
+          "title": "5 GHz radio",
+          "table": "WLANBase",
+          "mode": "single",
+          "row": "$sel",
+          "rowMap": {
+            "1": 1
+          },
+          "fields": [
+            {
+              "dm": "RadioStatus",
+              "label": "Wireless radio",
+              "type": "bool",
+              "liveKey": "RadioOn",
+              "help": "Turns the whole radio on or off (all SSIDs on this band)."
+            },
+            {
+              "dm": "11nMode",
+              "label": "802.11n",
+              "type": "bool",
+              "help": "Set automatically by the wireless mode."
+            },
+            {
+              "dm": "11acMode",
+              "label": "802.11ac",
+              "type": "bool",
+              "help": "On = mixed a/n/ac; off = mixed a/n."
+            },
+            {
+              "dm": "11axMode",
+              "label": "802.11ax",
+              "type": "bool",
+              "readonly": true,
+              "advanced": true,
+              "help": "Not supported by this radio; leave off."
+            },
+            {
+              "dm": "CountryCode",
+              "label": "Country / region",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "14",
+                  "label": "Default setting"
+                },
+                {
+                  "value": "0",
+                  "label": "China"
+                },
+                {
+                  "value": "1",
+                  "label": "Australia"
+                },
+                {
+                  "value": "2",
+                  "label": "Brazil"
+                },
+                {
+                  "value": "3",
+                  "label": "Canada"
+                },
+                {
+                  "value": "4",
+                  "label": "Egypt"
+                },
+                {
+                  "value": "5",
+                  "label": "France"
+                },
+                {
+                  "value": "6",
+                  "label": "Germany"
+                },
+                {
+                  "value": "7",
+                  "label": "Greece"
+                },
+                {
+                  "value": "8",
+                  "label": "Hong Kong"
+                },
+                {
+                  "value": "9",
+                  "label": "Italy"
+                },
+                {
+                  "value": "10",
+                  "label": "South Korea"
+                },
+                {
+                  "value": "11",
+                  "label": "Spain"
+                },
+                {
+                  "value": "12",
+                  "label": "United Kingdom"
+                },
+                {
+                  "value": "13",
+                  "label": "United States"
+                }
+              ],
+              "help": "Sets which channels are allowed."
+            },
+            {
+              "dm": "BandWidth",
+              "label": "Channel width",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "20 MHz"
+                },
+                {
+                  "value": "1",
+                  "label": "40 MHz"
+                },
+                {
+                  "value": "2",
+                  "label": "20/40 MHz auto"
+                },
+                {
+                  "value": "3",
+                  "label": "80 MHz"
+                }
+              ],
+              "showIf": {
+                "dm": "11nMode",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "AutoChannelEnabled",
+              "label": "Automatic channel",
+              "type": "bool"
+            },
+            {
+              "dm": "Channel",
+              "label": "Channel",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Auto (0)"
+                },
+                {
+                  "value": "36",
+                  "label": "36"
+                },
+                {
+                  "value": "40",
+                  "label": "40"
+                },
+                {
+                  "value": "44",
+                  "label": "44"
+                },
+                {
+                  "value": "48",
+                  "label": "48"
+                },
+                {
+                  "value": "52",
+                  "label": "52"
+                },
+                {
+                  "value": "56",
+                  "label": "56"
+                },
+                {
+                  "value": "60",
+                  "label": "60"
+                },
+                {
+                  "value": "64",
+                  "label": "64"
+                },
+                {
+                  "value": "149",
+                  "label": "149"
+                },
+                {
+                  "value": "153",
+                  "label": "153"
+                },
+                {
+                  "value": "157",
+                  "label": "157"
+                },
+                {
+                  "value": "161",
+                  "label": "161"
+                },
+                {
+                  "value": "165",
+                  "label": "165"
+                }
+              ],
+              "liveKey": "Channel",
+              "showIf": {
+                "dm": "AutoChannelEnabled",
+                "in": [
+                  "0"
+                ]
+              },
+              "help": "165 is valid at 20 MHz only."
+            },
+            {
+              "dm": "SideBand",
+              "label": "Extension channel",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Upper (secondary above)"
+                },
+                {
+                  "value": "1",
+                  "label": "Lower (secondary below)"
+                }
+              ],
+              "showIf": {
+                "dm": "AutoChannelEnabled",
+                "in": [
+                  "0"
+                ]
+              },
+              "advanced": true,
+              "help": "Used only with a fixed channel at 40 MHz or 20/40 MHz."
+            },
+            {
+              "dm": "SGIEnabled",
+              "label": "Short guard interval",
+              "type": "bool",
+              "liveKey": "HtGi"
+            },
+            {
+              "dm": "TxPower",
+              "label": "Transmit power",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "200% (boost)"
+                },
+                {
+                  "value": "1",
+                  "label": "100%"
+                },
+                {
+                  "value": "2",
+                  "label": "80%"
+                },
+                {
+                  "value": "3",
+                  "label": "60%"
+                },
+                {
+                  "value": "4",
+                  "label": "40%"
+                },
+                {
+                  "value": "5",
+                  "label": "20%"
+                }
+              ]
+            },
+            {
+              "dm": "TxPowerNum",
+              "label": "Transmit power (%)",
+              "type": "int",
+              "readonly": true,
+              "advanced": true
+            },
+            {
+              "dm": "TxRate",
+              "label": "Transmit rate",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Auto"
+                },
+                {
+                  "value": "1",
+                  "label": "1 Mbps"
+                },
+                {
+                  "value": "2",
+                  "label": "2 Mbps"
+                },
+                {
+                  "value": "3",
+                  "label": "5.5 Mbps"
+                },
+                {
+                  "value": "4",
+                  "label": "11 Mbps"
+                },
+                {
+                  "value": "5",
+                  "label": "6 Mbps"
+                },
+                {
+                  "value": "6",
+                  "label": "9 Mbps"
+                },
+                {
+                  "value": "7",
+                  "label": "12 Mbps"
+                },
+                {
+                  "value": "8",
+                  "label": "18 Mbps"
+                },
+                {
+                  "value": "9",
+                  "label": "24 Mbps"
+                },
+                {
+                  "value": "10",
+                  "label": "36 Mbps"
+                },
+                {
+                  "value": "11",
+                  "label": "48 Mbps"
+                },
+                {
+                  "value": "12",
+                  "label": "54 Mbps"
+                }
+              ],
+              "advanced": true,
+              "help": "Fixed rates only apply to legacy (non-11n) modes; leave on Auto."
+            },
+            {
+              "dm": "QosType",
+              "label": "QoS type",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Disabled"
+                },
+                {
+                  "value": "1",
+                  "label": "WMM"
+                },
+                {
+                  "value": "2",
+                  "label": "By SSID priority"
+                }
+              ]
+            },
+            {
+              "dm": "BeaconInterval",
+              "label": "Beacon interval",
+              "type": "int",
+              "min": 100,
+              "max": 1000,
+              "unit": "ms",
+              "liveKey": "BeaconPeriod"
+            },
+            {
+              "dm": "DTIM",
+              "label": "DTIM interval",
+              "type": "int",
+              "min": 1,
+              "max": 5,
+              "advanced": true,
+              "liveKey": "DtimPeriod"
+            },
+            {
+              "dm": "RtsCts",
+              "label": "RTS threshold",
+              "type": "int",
+              "min": 0,
+              "max": 2347,
+              "advanced": true,
+              "liveKey": "RTSThreshold"
+            },
+            {
+              "dm": "Fragment",
+              "label": "Fragmentation threshold",
+              "type": "int",
+              "min": 256,
+              "max": 2346,
+              "advanced": true,
+              "liveKey": "FragThreshold"
+            },
+            {
+              "dm": "SSIDIsolationEnable",
+              "label": "Isolate SSIDs from each other",
+              "type": "bool",
+              "advanced": true,
+              "liveKey": "NoForwardingBTNBSSID",
+              "help": "Blocks traffic between the SSIDs of this radio."
+            },
+            {
+              "dm": "CardMaxUserNum",
+              "label": "Radio client limit",
+              "type": "int",
+              "readonly": true,
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "Stock OBJ_WLANCONFIG_ID is per SSID (IGD.LD1.WLANn) but the radio parameters live in WLANBase (row 0 = 2.4 GHz = wlan0, row 1 = 5 GHz = wlan4); the selector here is the radio, not the SSID. Stock 'Mode' (OBJ param Standard) is not a DB field: the firmware derives it from 11nMode/11acMode/GreenField/BasicDataRates/OpDataRates, and the stock JS writes all of them together (b: Basic 0 Op 1 n 0; g: 2/3/0; b+g: 1/3/0; n: 1/3/1 + GreenField 1; g+n: 2/3/1; b+g+n: 1/3/1; a+n: 11ac 0 n 1; a+n+ac: 11ac 1 n 1). A composite 'mode' control would need a schema extension. Stock Channel 'Auto' writes AutoChannelEnabled=1 and keeps the last channel. Stock also writes per-SSID Priority (WLANCfg) when QoS type = SSID; that field is on the Wi-Fi networks page. Codes for TxPower, BandWidth, CountryCode, QosType, TxRate, SideBand come from the cmapi string<->code tables (see notes/wlan-security.md). liveKey values are MediaTek iwpriv keys whose value format equals the stored DB value; fields without liveKey take effect after reboot. UI-text notes moved here: [11nMode]: Part of the wireless mode; see notes. Stock sets it for every mode that contains 'n'. | [GreenField]: Stock writes 1 only for 'IEEE 802.11n Only'. | [BasicDataRates]: b: 0; g and g+n: 2; b+g, n, b+g+n: 1 (stock mapping). | [OpDataRates]: Stock: 1 for 802.11b only, 3 for every other 2.4 GHz mode. | [11axMode]: MT7603/MT7663 have no 802.11ax; always 0. | [CountryCode]: Selects the regulatory channel list (WLANCountry table). | [SideBand]: Only used at 40 MHz / 20-40 MHz with a fixed channel. Code meaning inferred; see notes. | [TxPower]: Stored as a code; TxPowerNum holds the percentage the firmware derives. | [SSIDIsolationEnable]: Hidden on the stock page; blocks traffic between SSIDs of this radio. | [11nMode]: Part of the wireless mode; see notes. Stock sets it for every mode that contains 'n'. | [11acMode]: On = Mixed a+n+ac (stock 'a,n,ac'); off = Mixed a+n. | [11axMode]: MT7603/MT7663 have no 802.11ax; always 0. | [CountryCode]: Selects the regulatory channel list (WLANCountry table). | [SideBand]: Only used at 40 MHz / 20-40 MHz with a fixed channel. Code meaning inferred; see notes. | [TxPower]: Stored as a code; TxPowerNum holds the percentage the firmware derives. | [SSIDIsolationEnable]: Hidden on the stock page; blocks traffic between SSIDs of this radio."
+    },
+    {
+      "id": "wlan-radio-user",
+      "title": "Wi-Fi radio (user view)",
+      "group": "wlan",
+      "order": 11,
+      "icon": "radio-tower",
+      "description": "Radio on/off and transmit power for each band.",
+      "stock": {
+        "menu": "ssmWLANBasicUsr",
+        "page": "net_wlan_conf_t_user.gch",
+        "handler": [
+          "wlan_config.gch",
+          "wlan_config_gch.gch",
+          "net_wlan_conf_js_user.gch"
+        ]
+      },
+      "applicable": true,
+      "apply": "live",
+      "danger": "confirm",
+      "hook": "wifi",
+      "selector": {
+        "label": "Radio",
+        "options": [
+          {
+            "value": "0",
+            "label": "2.4 GHz"
+          },
+          {
+            "value": "1",
+            "label": "5 GHz"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "radio",
+          "title": "Radio",
+          "table": "WLANBase",
+          "mode": "single",
+          "row": "$sel",
+          "fields": [
+            {
+              "dm": "RadioStatus",
+              "label": "Wireless radio",
+              "type": "bool",
+              "liveKey": "RadioOn"
+            },
+            {
+              "dm": "TxPower",
+              "label": "Transmit power",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "100%"
+                },
+                {
+                  "value": "2",
+                  "label": "80%"
+                },
+                {
+                  "value": "3",
+                  "label": "60%"
+                },
+                {
+                  "value": "4",
+                  "label": "40%"
+                },
+                {
+                  "value": "5",
+                  "label": "20%"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "notes": "Stock menu right=2 (user only). Same WLANBase fields as wlan-radio; the stock user page offers 100-20 % only (no 200 %). The stock user page queries only the first OBJ_WLANCONFIG_ID instance (2.4 GHz); a radio selector is added here. Candidate to hide when the admin UI has only an admin role. UI-text notes moved here: [description]: Radio on/off and transmit power only: the subset the stock user account can change."
+    },
+    {
+      "id": "wlan-ssids",
+      "title": "Wi-Fi networks",
+      "group": "wlan",
+      "order": 20,
+      "icon": "wifi",
+      "description": "Enable, name, hide, isolate and limit each of the eight SSIDs.",
+      "stock": {
+        "menu": "ssmWLANMul",
+        "page": "net_wlan_essid_t.gch",
+        "handler": [
+          "wlan_essid.gch",
+          "wlan_config_gch.gch",
+          "net_wlan_essid_js.gch"
+        ]
+      },
+      "applicable": true,
+      "apply": "live",
+      "danger": "confirm",
+      "hook": "wifi",
+      "selector": {
+        "label": "Network",
+        "options": [
+          {
+            "value": "0",
+            "label": "SSID1 · 2.4 GHz"
+          },
+          {
+            "value": "1",
+            "label": "SSID2 · 2.4 GHz"
+          },
+          {
+            "value": "2",
+            "label": "SSID3 · 2.4 GHz"
+          },
+          {
+            "value": "3",
+            "label": "SSID4 · 2.4 GHz"
+          },
+          {
+            "value": "4",
+            "label": "SSID5 · 5 GHz"
+          },
+          {
+            "value": "5",
+            "label": "SSID6 · 5 GHz"
+          },
+          {
+            "value": "6",
+            "label": "SSID7 · 5 GHz"
+          },
+          {
+            "value": "7",
+            "label": "SSID8 · 5 GHz"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "ssid",
+          "title": "Network",
+          "table": "WLANCfg",
+          "mode": "single",
+          "row": "$sel",
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Enabled",
+              "type": "bool",
+              "help": "Takes effect immediately."
+            },
+            {
+              "dm": "ESSID",
+              "label": "Network name (SSID)",
+              "type": "string",
+              "min": 1,
+              "max": 32,
+              "pattern": "^[ -~]{1,32}$",
+              "required": true,
+              "liveKey": "SSID",
+              "help": "1–32 printable ASCII characters."
+            },
+            {
+              "dm": "ESSIDHideEnable",
+              "label": "Hide network (no SSID broadcast)",
+              "type": "bool",
+              "liveKey": "HideSSID"
+            },
+            {
+              "dm": "VapIsolationEnable",
+              "label": "Client isolation",
+              "type": "bool",
+              "liveKey": "NoForwarding",
+              "help": "Stops clients on this SSID from reaching each other."
+            },
+            {
+              "dm": "MaxUserNum",
+              "label": "Maximum clients",
+              "type": "int",
+              "min": 1,
+              "max": 32,
+              "liveKey": "MaxStaNum"
+            },
+            {
+              "dm": "Priority",
+              "label": "Priority",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "0"
+                },
+                {
+                  "value": "1",
+                  "label": "1"
+                },
+                {
+                  "value": "2",
+                  "label": "2"
+                },
+                {
+                  "value": "3",
+                  "label": "3"
+                },
+                {
+                  "value": "4",
+                  "label": "4"
+                },
+                {
+                  "value": "5",
+                  "label": "5"
+                },
+                {
+                  "value": "6",
+                  "label": "6"
+                },
+                {
+                  "value": "7",
+                  "label": "7"
+                }
+              ],
+              "advanced": true,
+              "help": "Used when Wi-Fi QoS type is 'By SSID priority' (0 lowest, 7 highest)."
+            },
+            {
+              "dm": "ESSIDPrefix",
+              "label": "SSID prefix",
+              "type": "string",
+              "readonly": true,
+              "advanced": true,
+              "help": "Operator prefix added before the network name; usually empty."
+            },
+            {
+              "dm": "SSIDAlias",
+              "label": "Alias",
+              "type": "string",
+              "readonly": true,
+              "advanced": true
+            },
+            {
+              "dm": "LocalSetEnable",
+              "label": "Configurable locally",
+              "type": "bool",
+              "readonly": true,
+              "advanced": true,
+              "help": "When off, this SSID is hidden from the Wi-Fi pages."
+            }
+          ]
+        }
+      ],
+      "notes": "Row = SSID index (WLANCfg rows 0-3 = wlan0-3 on 2.4 GHz, rows 4-7 = wlan4-7 on 5 GHz). Stock validates ESSIDPrefix+ESSID together against 1-32 chars. Stock enable checkbox greys out the other fields when off. liveKey SSID and HideSSID are verified on the device; NoForwarding and MaxStaNum are standard MediaTek AP keys, not yet verified on this build. UI-text notes moved here: [Enable]: Applied live by the wifi hook with ifconfig up/down. | [ESSID]: 1-32 printable ASCII characters (stock checkEssid). | [ESSIDPrefix]: Operator prefix the stock UI prepends to the SSID; usually empty. | [LocalSetEnable]: Stock hides SSIDs with LocalSetEnable=0 from every Wi-Fi page."
+    },
+    {
+      "id": "wlan-security",
+      "title": "Wi-Fi security",
+      "group": "wlan",
+      "order": 30,
+      "icon": "lock",
+      "description": "Authentication, encryption, WPA passphrase and WEP keys for each SSID.",
+      "stock": {
+        "menu": "ssmWLANSec",
+        "page": "net_wlan_secrity_t.gch",
+        "handler": [
+          "wlan_security.gch",
+          "wlan_psk_gch.gch",
+          "wlan_wepkey_gch.gch",
+          "wlan_config_gch.gch",
+          "net_wlan_secrity_js.gch"
+        ]
+      },
+      "applicable": true,
+      "apply": "live",
+      "danger": "confirm",
+      "hook": "wifi",
+      "selector": {
+        "label": "Network",
+        "options": [
+          {
+            "value": "0",
+            "label": "SSID1 · 2.4 GHz"
+          },
+          {
+            "value": "1",
+            "label": "SSID2 · 2.4 GHz"
+          },
+          {
+            "value": "2",
+            "label": "SSID3 · 2.4 GHz"
+          },
+          {
+            "value": "3",
+            "label": "SSID4 · 2.4 GHz"
+          },
+          {
+            "value": "4",
+            "label": "SSID5 · 5 GHz"
+          },
+          {
+            "value": "5",
+            "label": "SSID6 · 5 GHz"
+          },
+          {
+            "value": "6",
+            "label": "SSID7 · 5 GHz"
+          },
+          {
+            "value": "7",
+            "label": "SSID8 · 5 GHz"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "auth",
+          "title": "Authentication",
+          "table": "WLANCfg",
+          "mode": "single",
+          "row": "$sel",
+          "fields": [
+            {
+              "dm": "BeaconType",
+              "label": "Security mode",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Open, no encryption"
+                },
+                {
+                  "value": "1",
+                  "label": "WEP"
+                },
+                {
+                  "value": "2",
+                  "label": "WPA-PSK"
+                },
+                {
+                  "value": "3",
+                  "label": "WPA2-PSK"
+                },
+                {
+                  "value": "6",
+                  "label": "WPA/WPA2-PSK"
+                }
+              ]
+            },
+            {
+              "dm": "WEPAuthMode",
+              "label": "WEP authentication",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Open system"
+                },
+                {
+                  "value": "1",
+                  "label": "Shared key"
+                },
+                {
+                  "value": "2",
+                  "label": "Open system and shared key"
+                }
+              ],
+              "showIf": {
+                "dm": "BeaconType",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "WEPLevel",
+              "label": "WEP key length",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "64-bit (5 ASCII / 10 hex)"
+                },
+                {
+                  "value": "2",
+                  "label": "128-bit (13 ASCII / 26 hex)"
+                }
+              ],
+              "showIf": {
+                "dm": "BeaconType",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "WEPKeyIndex",
+              "label": "Active WEP key",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "Key 1"
+                },
+                {
+                  "value": "2",
+                  "label": "Key 2"
+                },
+                {
+                  "value": "3",
+                  "label": "Key 3"
+                },
+                {
+                  "value": "4",
+                  "label": "Key 4"
+                }
+              ],
+              "showIf": {
+                "dm": "BeaconType",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "WPAAuthMode",
+              "label": "WPA authentication",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Pre-shared key"
+                },
+                {
+                  "value": "1",
+                  "label": "EAP / RADIUS"
+                }
+              ],
+              "advanced": true,
+              "showIf": {
+                "dm": "BeaconType",
+                "in": [
+                  "2",
+                  "6"
+                ]
+              }
+            },
+            {
+              "dm": "WPAEncryptType",
+              "label": "WPA encryption",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "TKIP"
+                },
+                {
+                  "value": "1",
+                  "label": "AES"
+                },
+                {
+                  "value": "2",
+                  "label": "TKIP + AES"
+                }
+              ],
+              "showIf": {
+                "dm": "BeaconType",
+                "in": [
+                  "2",
+                  "6"
+                ]
+              },
+              "help": "In WPA/WPA2 mode the same cipher is used for both."
+            },
+            {
+              "dm": "11iAuthMode",
+              "label": "WPA2 authentication",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Pre-shared key"
+                },
+                {
+                  "value": "1",
+                  "label": "EAP / RADIUS"
+                }
+              ],
+              "advanced": true,
+              "showIf": {
+                "dm": "BeaconType",
+                "in": [
+                  "3",
+                  "6"
+                ]
+              }
+            },
+            {
+              "dm": "11iEncryptType",
+              "label": "WPA2 encryption",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "TKIP"
+                },
+                {
+                  "value": "1",
+                  "label": "AES"
+                },
+                {
+                  "value": "2",
+                  "label": "TKIP + AES"
+                }
+              ],
+              "showIf": {
+                "dm": "BeaconType",
+                "in": [
+                  "3",
+                  "6"
+                ]
+              }
+            },
+            {
+              "dm": "WPAGroupRekey",
+              "label": "Group key update interval",
+              "type": "int",
+              "min": 0,
+              "unit": "s",
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "psk",
+          "title": "WPA passphrase",
+          "table": "WLANPSK",
+          "mode": "single",
+          "row": "$sel",
+          "fields": [
+            {
+              "dm": "KeyPassphrase",
+              "label": "Passphrase",
+              "type": "password",
+              "min": 8,
+              "max": 63,
+              "pattern": "^[ -~]{8,63}$",
+              "liveKey": "WPAPSK",
+              "help": "8-63 characters. Used by WPA, WPA2 and WPA/WPA2 modes."
+            }
+          ]
+        },
+        {
+          "id": "wep1",
+          "title": "WEP key 1",
+          "table": "WLANWEP",
+          "mode": "single",
+          "row": "$sel",
+          "rowMap": {
+            "0": 0,
+            "1": 4,
+            "2": 8,
+            "3": 12,
+            "4": 16,
+            "5": 20,
+            "6": 24,
+            "7": 28
+          },
+          "fields": [
+            {
+              "dm": "Key",
+              "label": "WEP key 1",
+              "type": "password",
+              "pattern": "^([ -~]{5}|[ -~]{13}|[0-9A-Fa-f]{10}|[0-9A-Fa-f]{26})$",
+              "help": "5 or 13 ASCII characters, or 10 or 26 hex digits, matching the key length."
+            }
+          ]
+        },
+        {
+          "id": "wep2",
+          "title": "WEP key 2",
+          "table": "WLANWEP",
+          "mode": "single",
+          "row": "$sel",
+          "rowMap": {
+            "0": 1,
+            "1": 5,
+            "2": 9,
+            "3": 13,
+            "4": 17,
+            "5": 21,
+            "6": 25,
+            "7": 29
+          },
+          "fields": [
+            {
+              "dm": "Key",
+              "label": "WEP key 2",
+              "type": "password",
+              "pattern": "^([ -~]{5}|[ -~]{13}|[0-9A-Fa-f]{10}|[0-9A-Fa-f]{26})$",
+              "help": "5 or 13 ASCII characters, or 10 or 26 hex digits, matching the key length."
+            }
+          ]
+        },
+        {
+          "id": "wep3",
+          "title": "WEP key 3",
+          "table": "WLANWEP",
+          "mode": "single",
+          "row": "$sel",
+          "rowMap": {
+            "0": 2,
+            "1": 6,
+            "2": 10,
+            "3": 14,
+            "4": 18,
+            "5": 22,
+            "6": 26,
+            "7": 30
+          },
+          "fields": [
+            {
+              "dm": "Key",
+              "label": "WEP key 3",
+              "type": "password",
+              "pattern": "^([ -~]{5}|[ -~]{13}|[0-9A-Fa-f]{10}|[0-9A-Fa-f]{26})$",
+              "help": "5 or 13 ASCII characters, or 10 or 26 hex digits, matching the key length."
+            }
+          ]
+        },
+        {
+          "id": "wep4",
+          "title": "WEP key 4",
+          "table": "WLANWEP",
+          "mode": "single",
+          "row": "$sel",
+          "rowMap": {
+            "0": 3,
+            "1": 7,
+            "2": 11,
+            "3": 15,
+            "4": 19,
+            "5": 23,
+            "6": 27,
+            "7": 31
+          },
+          "fields": [
+            {
+              "dm": "Key",
+              "label": "WEP key 4",
+              "type": "password",
+              "pattern": "^([ -~]{5}|[ -~]{13}|[0-9A-Fa-f]{10}|[0-9A-Fa-f]{26})$",
+              "help": "5 or 13 ASCII characters, or 10 or 26 hex digits, matching the key length."
+            }
+          ]
+        }
+      ],
+      "notes": "One stock page spans WLANCfg (auth fields), WLANPSK (row = SSID index, KeyPassphrase) and WLANWEP (4 rows per SSID: row = 4*ssid + keyIndex-1, hence four sections with rowMap). Stock mapping of the 'Authentication Type' list: Open System -> BeaconType None(0) or Basic(1)+WEPAuthMode None(0); Shared Key -> Basic(1)+SharedAuthentication(1); Both -> Basic(1)+Both(2); WPA-PSK -> WPA(2)+WPAAuthMode PSK(0)+WPAEncryptType; WPA2-PSK -> 11i(3)+11iAuthMode PSK(0)+11iEncryptType; WPA/WPA2-PSK -> WPAand11i(6)+both auth PSK+both encrypt types. BeaconType codes 4/5/7 (Basic+WPA mixes) and 8/9 (WAPI) exist in firmware but are not offered. WPA3 DMs (WPA3SAE*, WPA3T*) exist in WLANCfg but no stock page sets them and no WPA3 BeaconType code is known; not exposed. Live apply: only WPAPSK is a direct liveKey; AuthMode/EncrypType need a translation (see notes) so a security-mode change takes effect after reboot. WEP keys have no liveKey because the wifi hook maps any table row r to wlan{r}, which is wrong for WLANWEP (32 rows). WEP is also rejected by modern clients; consider hiding it. UI-text notes moved here: [BeaconType]: Stock 'Authentication Type'. Codes from the firmware BeaconType table. | [WEPLevel]: Stock OBJ name WEPEncryptionLevel. | [WPAEncryptType]: Stock writes the same value to WPA and WPA2 encryption in WPA/WPA2 mode. | [WPAGroupRekey]: Hidden on the stock page."
+    },
+    {
+      "id": "wlan-wps",
+      "title": "WPS",
+      "group": "wlan",
+      "order": 40,
+      "icon": "key-round",
+      "description": "Wi-Fi Protected Setup on the main network of each band.",
+      "stock": {
+        "menu": "ssmWifiWPS",
+        "page": "pon_net_wlan_wps_t.gch",
+        "handler": [
+          "pon_net_wlan_wps_js.gch"
+        ]
+      },
+      "applicable": true,
+      "apply": "reboot",
+      "danger": "none",
+      "hook": "wifi",
+      "selector": {
+        "label": "Network",
+        "options": [
+          {
+            "value": "0",
+            "label": "SSID1 · 2.4 GHz"
+          },
+          {
+            "value": "4",
+            "label": "SSID5 · 5 GHz"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "wps",
+          "title": "WPS",
+          "table": "WLANWPS",
+          "mode": "single",
+          "row": "$sel",
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Enable WPS",
+              "type": "bool"
+            },
+            {
+              "dm": "WPSMode",
+              "label": "WPS mode",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Push button (PBC)"
+                },
+                {
+                  "value": "1",
+                  "label": "PIN"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "timeout",
+          "title": "Session",
+          "table": "WLANBase",
+          "mode": "single",
+          "row": "$sel",
+          "rowMap": {
+            "0": 0,
+            "4": 1
+          },
+          "fields": [
+            {
+              "dm": "WPSTimeOut",
+              "label": "WPS session timeout",
+              "type": "int",
+              "min": 1,
+              "unit": "s",
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "wps-start",
+          "label": "Start WPS pairing",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Stock writes WpsPIN through OBJ_WPSPIN_ID (runtime, not a DB table). MediaTek equivalent, unverified on this build: iwpriv wlanN set WscConfMode=7; set WscMode=2 (PBC) or WscMode=1 + WscPinCode=<pin>; set WscGetConf=1."
+        }
+      ],
+      "notes": "Stock page only edits IGD.LD1.WLAN1.WPS (WLANWPS row 0) and OBJ_WPSPIN_ID. WLANWPS has 8 rows (one per SSID); only the main SSID of each band (rows 0 and 4) is offered here, which is what the MediaTek driver supports. WPS requires WPA2/WPA-WPA2 PSK and a visible SSID. No liveKey: the stored values (Enable 0/1, WPSMode 0/1) do not match iwpriv WscConfMode/WscMode values, so the hook skips them and the change applies after reboot."
+    },
+    {
+      "id": "wlan-mac-acl",
+      "title": "Wi-Fi access control",
+      "group": "wlan",
+      "order": 50,
+      "icon": "list-filter",
+      "description": "Allow or block Wi-Fi clients by MAC address per SSID.",
+      "stock": {
+        "menu": null,
+        "page": null,
+        "handler": []
+      },
+      "applicable": "unknown",
+      "applicableNote": "Not yet supported on this router.",
+      "apply": "reboot",
+      "danger": "confirm",
+      "selector": {
+        "label": "Network",
+        "options": [
+          {
+            "value": "0",
+            "label": "SSID1 · 2.4 GHz"
+          },
+          {
+            "value": "1",
+            "label": "SSID2 · 2.4 GHz"
+          },
+          {
+            "value": "2",
+            "label": "SSID3 · 2.4 GHz"
+          },
+          {
+            "value": "3",
+            "label": "SSID4 · 2.4 GHz"
+          },
+          {
+            "value": "4",
+            "label": "SSID5 · 5 GHz"
+          },
+          {
+            "value": "5",
+            "label": "SSID6 · 5 GHz"
+          },
+          {
+            "value": "6",
+            "label": "SSID7 · 5 GHz"
+          },
+          {
+            "value": "7",
+            "label": "SSID8 · 5 GHz"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "policy",
+          "title": "Policy",
+          "table": "WLANCfg",
+          "mode": "single",
+          "row": "$sel",
+          "fields": [
+            {
+              "dm": "ACLPolicy",
+              "label": "MAC access policy",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Disabled"
+                },
+                {
+                  "value": "1",
+                  "label": "Block listed devices"
+                },
+                {
+                  "value": "2",
+                  "label": "Allow only listed devices"
+                }
+              ],
+              "help": "Allow-only with an empty list locks every client out of this SSID."
+            },
+            {
+              "dm": "MACAddressControlEnabled",
+              "label": "MAC address control",
+              "type": "bool",
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "white",
+          "title": "Allow list",
+          "table": "WLANACLWHITE",
+          "mode": "readonly",
+          "maxRows": 40,
+          "fields": []
+        },
+        {
+          "id": "black",
+          "title": "Block list",
+          "table": "WLANACLBLACK",
+          "mode": "readonly",
+          "maxRows": 40,
+          "fields": []
+        }
+      ],
+      "notes": "Not in the stock menu. ACLPolicy codes (Disabled 0, Ban 1, Allow 2) come from the firmware string table; MACAddressControlEnabled is a separate flag whose interaction with ACLPolicy is unverified. List sections are readonly with no fields until the DM names are discovered: add one entry with sidbg and read the table back, or read the clone's cspd/libcmapi (not in this repo). Each list probably carries a WLAN ViewName column to tie entries to an SSID. UI-text notes moved here: [applicableNote]: Tables exist in the DB (WLANACLWHITE/WLANACLBLACK, max 40 rows each per pv) but no stock page uses them and both are empty, so their DM names are not known yet."
+    },
+    {
+      "id": "wlan-steering",
+      "title": "Roaming and band steering",
+      "group": "wlan",
+      "order": 60,
+      "icon": "arrow-left-right",
+      "description": "Nudge clients between bands and between access points by signal strength.",
+      "stock": {
+        "menu": null,
+        "page": null,
+        "handler": []
+      },
+      "applicable": "unknown",
+      "applicableNote": "May not take effect on this router.",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "bandsteer",
+          "title": "Band steering",
+          "table": "WLANBANDSTEERING",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Band steering",
+              "type": "bool",
+              "help": "Needs the same SSID and passphrase on SSID1 and SSID5."
+            },
+            {
+              "dm": "Capability",
+              "label": "Supported",
+              "type": "bool",
+              "readonly": true
+            },
+            {
+              "dm": "RSSIThreshold",
+              "label": "2.4 GHz steer-up RSSI",
+              "type": "int",
+              "min": -100,
+              "max": 0,
+              "unit": "dBm"
+            },
+            {
+              "dm": "RSSIThreshold5G",
+              "label": "5 GHz steer-down RSSI",
+              "type": "int",
+              "min": -100,
+              "max": 0,
+              "unit": "dBm"
+            },
+            {
+              "dm": "ChannelUtilizationThrehold5G",
+              "label": "5 GHz channel utilisation limit",
+              "type": "int",
+              "min": 0,
+              "max": 100,
+              "unit": "%",
+              "advanced": true
+            },
+            {
+              "dm": "STALoadThreshold2G",
+              "label": "2.4 GHz client load limit",
+              "type": "int",
+              "min": 0,
+              "max": 100,
+              "unit": "%",
+              "advanced": true
+            },
+            {
+              "dm": "SteeringDetectInterval",
+              "label": "Detection interval",
+              "type": "int",
+              "min": 1,
+              "unit": "s",
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "bandsteer-radio24",
+          "title": "Per-radio flag (2.4 GHz)",
+          "table": "WLANBase",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "BandSteer",
+              "label": "Band steering on this radio",
+              "type": "bool",
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "bandsteer-radio5",
+          "title": "Per-radio flag (5 GHz)",
+          "table": "WLANBase",
+          "mode": "single",
+          "row": 1,
+          "fields": [
+            {
+              "dm": "BandSteer",
+              "label": "Band steering on this radio",
+              "type": "bool",
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "roam0",
+          "title": "Roaming (2.4 GHz)",
+          "table": "WLANROAMING",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Assisted roaming",
+              "type": "bool"
+            },
+            {
+              "dm": "Start_time",
+              "label": "Start time",
+              "type": "int",
+              "min": 0,
+              "advanced": true
+            },
+            {
+              "dm": "Threshold1_RSSI",
+              "label": "RSSI threshold 1",
+              "type": "int",
+              "min": -100,
+              "max": 0,
+              "unit": "dBm"
+            },
+            {
+              "dm": "Threshold2_RSSI",
+              "label": "RSSI threshold 2",
+              "type": "int",
+              "min": -100,
+              "max": 0,
+              "unit": "dBm"
+            },
+            {
+              "dm": "BSSID",
+              "label": "BSSID",
+              "type": "mac",
+              "readonly": true,
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "roam1",
+          "title": "Roaming (5 GHz)",
+          "table": "WLANROAMING",
+          "mode": "single",
+          "row": 1,
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Assisted roaming",
+              "type": "bool"
+            },
+            {
+              "dm": "Start_time",
+              "label": "Start time",
+              "type": "int",
+              "min": 0,
+              "advanced": true
+            },
+            {
+              "dm": "Threshold1_RSSI",
+              "label": "RSSI threshold 1",
+              "type": "int",
+              "min": -100,
+              "max": 0,
+              "unit": "dBm"
+            },
+            {
+              "dm": "Threshold2_RSSI",
+              "label": "RSSI threshold 2",
+              "type": "int",
+              "min": -100,
+              "max": 0,
+              "unit": "dBm"
+            },
+            {
+              "dm": "BSSID",
+              "label": "BSSID",
+              "type": "mac",
+              "readonly": true,
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "Not in the stock menu. WLANBANDSTEERING defaults (Capability 1, RSSI -40/-80, 80 %, 75 %, 30 s) are firmware defaults. Threshold ranges are assumptions (dBm, -100..0); the stock firmware gives no JS limits. WLANROAMING row-to-band mapping is a guess (2 rows); Threshold1/2 semantics unknown. Stored Threshold*_RSSI are 0 by default, which the 'max 0' range allows. UI-text notes moved here: [applicableNote]: Tables present and defaulted, but no stock page; whether this clone's cspd acts on them is untested. | [roam0.title]: Roaming (row 1, probably 2.4 GHz) | [Start_time]: Units unknown (default 0). | [roam1.title]: Roaming (row 2, probably 5 GHz) | [Start_time]: Units unknown (default 0)."
+    },
+    {
+      "id": "wlan-schedule",
+      "title": "Wi-Fi schedule",
+      "group": "wlan",
+      "order": 70,
+      "icon": "calendar-clock",
+      "description": "Turn Wi-Fi on and off on a timetable.",
+      "stock": {
+        "menu": null,
+        "page": null,
+        "handler": []
+      },
+      "applicable": "unknown",
+      "applicableNote": "Not yet supported on this router.",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "cfg",
+          "title": "Schedule",
+          "table": "WlanTimeCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "TimerEnable",
+              "label": "Use schedule",
+              "type": "bool"
+            },
+            {
+              "dm": "SetEnable",
+              "label": "Schedule configured",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "TimeSetRule",
+              "label": "Rule",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Same every day"
+                },
+                {
+                  "value": "1",
+                  "label": "Separate per day"
+                }
+              ]
+            },
+            {
+              "dm": "SSIDMask",
+              "label": "SSID mask",
+              "type": "int",
+              "min": 0,
+              "max": 255,
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "times",
+          "title": "On/off times",
+          "table": "WlanTime",
+          "mode": "readonly",
+          "fields": []
+        }
+      ],
+      "notes": "Not in the stock menu. TimeSetRule codes and the WlanTime action codes (TimeRFOn 0 / TimeRFOff 1) come from the firmware string tables; reference firmware defaults rows IGD.LD1.WlanTime1/2 with Hour and Minute DMs and rejects on/off intervals under 10 minutes. WlanTime columns are left out until a row can be read. A separate CMCC-style 'Wi-Fi sleep' timer (OBJ_WIFI_SLEEP_ID: Active/Enable/Time/Weekday, used by common_page/aset_wifiTimerSetting.lp) probably maps to SLWTIMEINFO; not mapped here. UI-text notes moved here: [applicableNote]: WlanTimeCfg/WlanTime exist but no stock page edits them; WlanTime is empty and its DM names are unknown. | [SetEnable]: Meaning unverified. | [SSIDMask]: Probably a bitmask of affected SSIDs (bit 0 = SSID1); unverified. 0 = all?"
+    },
+    {
+      "id": "wlan-wmm",
+      "title": "WMM parameters",
+      "group": "wlan",
+      "order": 80,
+      "icon": "sliders-horizontal",
+      "description": "Per access category contention parameters for each radio.",
+      "stock": {
+        "menu": null,
+        "page": null,
+        "handler": []
+      },
+      "applicable": true,
+      "apply": "reboot",
+      "danger": "confirm",
+      "selector": {
+        "label": "Radio",
+        "options": [
+          {
+            "value": "0",
+            "label": "2.4 GHz"
+          },
+          {
+            "value": "1",
+            "label": "5 GHz"
+          }
+        ]
+      },
+      "sections": [
+        {
+          "id": "ac0",
+          "title": "Best effort (BE)",
+          "table": "WLANWMM",
+          "mode": "single",
+          "row": "$sel",
+          "rowMap": {
+            "0": 0,
+            "1": 4
+          },
+          "fields": [
+            {
+              "dm": "Type",
+              "label": "Access category",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Best effort (BE)"
+                },
+                {
+                  "value": "1",
+                  "label": "Background (BK)"
+                },
+                {
+                  "value": "2",
+                  "label": "Video (VI)"
+                },
+                {
+                  "value": "3",
+                  "label": "Voice (VO)"
+                }
+              ],
+              "readonly": true
+            },
+            {
+              "dm": "AIFSN",
+              "label": "AIFSN",
+              "type": "int",
+              "min": 1,
+              "max": 15
+            },
+            {
+              "dm": "ECWMin",
+              "label": "ECWmin",
+              "type": "int",
+              "min": 0,
+              "max": 15
+            },
+            {
+              "dm": "ECWMax",
+              "label": "ECWmax",
+              "type": "int",
+              "min": 0,
+              "max": 15
+            },
+            {
+              "dm": "TXOP",
+              "label": "TXOP limit",
+              "type": "int",
+              "min": 0,
+              "max": 255,
+              "unit": "x32 µs"
+            },
+            {
+              "dm": "Qlength",
+              "label": "Queue length",
+              "type": "int",
+              "min": 1,
+              "advanced": true
+            },
+            {
+              "dm": "SRL",
+              "label": "Short retry limit",
+              "type": "int",
+              "min": 0,
+              "max": 15,
+              "advanced": true
+            },
+            {
+              "dm": "LRL",
+              "label": "Long retry limit",
+              "type": "int",
+              "min": 0,
+              "max": 15,
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "ac1",
+          "title": "Background (BK)",
+          "table": "WLANWMM",
+          "mode": "single",
+          "row": "$sel",
+          "rowMap": {
+            "0": 1,
+            "1": 5
+          },
+          "fields": [
+            {
+              "dm": "Type",
+              "label": "Access category",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Best effort (BE)"
+                },
+                {
+                  "value": "1",
+                  "label": "Background (BK)"
+                },
+                {
+                  "value": "2",
+                  "label": "Video (VI)"
+                },
+                {
+                  "value": "3",
+                  "label": "Voice (VO)"
+                }
+              ],
+              "readonly": true
+            },
+            {
+              "dm": "AIFSN",
+              "label": "AIFSN",
+              "type": "int",
+              "min": 1,
+              "max": 15
+            },
+            {
+              "dm": "ECWMin",
+              "label": "ECWmin",
+              "type": "int",
+              "min": 0,
+              "max": 15
+            },
+            {
+              "dm": "ECWMax",
+              "label": "ECWmax",
+              "type": "int",
+              "min": 0,
+              "max": 15
+            },
+            {
+              "dm": "TXOP",
+              "label": "TXOP limit",
+              "type": "int",
+              "min": 0,
+              "max": 255,
+              "unit": "x32 µs"
+            },
+            {
+              "dm": "Qlength",
+              "label": "Queue length",
+              "type": "int",
+              "min": 1,
+              "advanced": true
+            },
+            {
+              "dm": "SRL",
+              "label": "Short retry limit",
+              "type": "int",
+              "min": 0,
+              "max": 15,
+              "advanced": true
+            },
+            {
+              "dm": "LRL",
+              "label": "Long retry limit",
+              "type": "int",
+              "min": 0,
+              "max": 15,
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "ac2",
+          "title": "Video (VI)",
+          "table": "WLANWMM",
+          "mode": "single",
+          "row": "$sel",
+          "rowMap": {
+            "0": 2,
+            "1": 6
+          },
+          "fields": [
+            {
+              "dm": "Type",
+              "label": "Access category",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Best effort (BE)"
+                },
+                {
+                  "value": "1",
+                  "label": "Background (BK)"
+                },
+                {
+                  "value": "2",
+                  "label": "Video (VI)"
+                },
+                {
+                  "value": "3",
+                  "label": "Voice (VO)"
+                }
+              ],
+              "readonly": true
+            },
+            {
+              "dm": "AIFSN",
+              "label": "AIFSN",
+              "type": "int",
+              "min": 1,
+              "max": 15
+            },
+            {
+              "dm": "ECWMin",
+              "label": "ECWmin",
+              "type": "int",
+              "min": 0,
+              "max": 15
+            },
+            {
+              "dm": "ECWMax",
+              "label": "ECWmax",
+              "type": "int",
+              "min": 0,
+              "max": 15
+            },
+            {
+              "dm": "TXOP",
+              "label": "TXOP limit",
+              "type": "int",
+              "min": 0,
+              "max": 255,
+              "unit": "x32 µs"
+            },
+            {
+              "dm": "Qlength",
+              "label": "Queue length",
+              "type": "int",
+              "min": 1,
+              "advanced": true
+            },
+            {
+              "dm": "SRL",
+              "label": "Short retry limit",
+              "type": "int",
+              "min": 0,
+              "max": 15,
+              "advanced": true
+            },
+            {
+              "dm": "LRL",
+              "label": "Long retry limit",
+              "type": "int",
+              "min": 0,
+              "max": 15,
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "ac3",
+          "title": "Voice (VO)",
+          "table": "WLANWMM",
+          "mode": "single",
+          "row": "$sel",
+          "rowMap": {
+            "0": 3,
+            "1": 7
+          },
+          "fields": [
+            {
+              "dm": "Type",
+              "label": "Access category",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Best effort (BE)"
+                },
+                {
+                  "value": "1",
+                  "label": "Background (BK)"
+                },
+                {
+                  "value": "2",
+                  "label": "Video (VI)"
+                },
+                {
+                  "value": "3",
+                  "label": "Voice (VO)"
+                }
+              ],
+              "readonly": true
+            },
+            {
+              "dm": "AIFSN",
+              "label": "AIFSN",
+              "type": "int",
+              "min": 1,
+              "max": 15
+            },
+            {
+              "dm": "ECWMin",
+              "label": "ECWmin",
+              "type": "int",
+              "min": 0,
+              "max": 15
+            },
+            {
+              "dm": "ECWMax",
+              "label": "ECWmax",
+              "type": "int",
+              "min": 0,
+              "max": 15
+            },
+            {
+              "dm": "TXOP",
+              "label": "TXOP limit",
+              "type": "int",
+              "min": 0,
+              "max": 255,
+              "unit": "x32 µs"
+            },
+            {
+              "dm": "Qlength",
+              "label": "Queue length",
+              "type": "int",
+              "min": 1,
+              "advanced": true
+            },
+            {
+              "dm": "SRL",
+              "label": "Short retry limit",
+              "type": "int",
+              "min": 0,
+              "max": 15,
+              "advanced": true
+            },
+            {
+              "dm": "LRL",
+              "label": "Long retry limit",
+              "type": "int",
+              "min": 0,
+              "max": 15,
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "Not in the stock menu. WLANWMM has 8 rows: rows 0-3 = IGD.LD1.WLAN1.WMM1-4 (2.4 GHz radio), rows 4-7 = IGD.LD1.WLAN5.WMM1-4 (5 GHz); Type 0-3 = BE/BK/VI/VO (firmware table). Only applies when Wi-Fi QoS type = WMM. Ranges are the 802.11 field limits, not stock JS (there is none). No liveKey: MediaTek sets these as per-AC lists (APAifsn=a;b;c;d) and the hook's row->interface mapping is wrong for this table. Hook deliberately not set."
+    },
+    {
+      "id": "wlan-mesh",
+      "title": "EasyMesh",
+      "group": "wlan",
+      "order": 90,
+      "icon": "network",
+      "description": "Wi-Fi EasyMesh controller settings (read only).",
+      "stock": {
+        "menu": null,
+        "page": null,
+        "handler": []
+      },
+      "applicable": "unknown",
+      "applicableNote": "Mesh is not confirmed to work on this router.",
+      "apply": "unknown",
+      "danger": "confirm",
+      "sections": [
+        {
+          "id": "mesh",
+          "title": "EasyMesh",
+          "table": "EASYMESHCONFIG",
+          "mode": "readonly",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "MapEnable",
+              "label": "EasyMesh enabled",
+              "type": "bool"
+            },
+            {
+              "dm": "DeviceRole",
+              "label": "Device role",
+              "type": "int"
+            },
+            {
+              "dm": "Ifmed",
+              "label": "Backhaul medium",
+              "type": "int"
+            },
+            {
+              "dm": "BhPriority2G",
+              "label": "Backhaul priority 2.4 GHz",
+              "type": "int"
+            },
+            {
+              "dm": "BhPriority5GH",
+              "label": "Backhaul priority 5 GHz high",
+              "type": "int"
+            },
+            {
+              "dm": "BhPriority5GL",
+              "label": "Backhaul priority 5 GHz low",
+              "type": "int"
+            }
+          ]
+        }
+      ],
+      "notes": "Read only on purpose: role and medium codes are undocumented. Related but not mapped: WIFISHARE (guest-share; carries ShareAccount, possibly personal), WLANCfg5GBak (firmware's backup of 5 GHz SSID rows 5-8, internal), WLANCountry (14 rows, CountryCode 0-13 + ChannelScope; lookup table). UI-text notes moved here: [applicableNote]: EASYMESHCONFIG exists with MapEnable=1, but no stock page and no mesh agent has been confirmed on this clone."
+    }
+  ]
+}

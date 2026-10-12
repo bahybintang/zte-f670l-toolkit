@@ -1,0 +1,889 @@
+{
+ "pages": [
+  {
+   "id": "admin-users",
+   "title": "Accounts and passwords",
+   "group": "admin",
+   "order": 10,
+   "icon": "users",
+   "description": "Change the web login names and passwords.",
+   "stock": {
+    "menu": "ssmAdUserMgr",
+    "page": "manager_aduser_conf_t.gch",
+    "handler": [
+     "user_info_gch.gch",
+     "manager_user_conf_js.gch"
+    ]
+   },
+   "applicable": true,
+   "applicableNote": "",
+   "apply": "save",
+   "danger": "confirm",
+   "sections": [
+    {
+     "id": "account",
+     "title": "Account",
+     "table": "DevAuthInfo",
+     "mode": "single",
+     "row": "$sel",
+     "rowMap": {
+      "0": 0,
+      "1": 1
+     },
+     "fields": [
+      {
+       "dm": "User",
+       "label": "User name",
+       "type": "string",
+       "min": 1,
+       "max": 256,
+       "required": true,
+       "pattern": "^[\\x01-\\xFF]*$"
+      },
+      {
+       "dm": "Pass",
+       "label": "Password",
+       "type": "password",
+       "min": 0,
+       "max": 256,
+       "pattern": "^[\\x01-\\xFF]*$"
+      },
+      {
+       "dm": "Enable",
+       "label": "Enabled",
+       "type": "bool",
+       "readonly": true,
+       "advanced": true
+      },
+      {
+       "dm": "Level",
+       "label": "Level",
+       "type": "int",
+       "readonly": true,
+       "advanced": true
+      },
+      {
+       "dm": "AppID",
+       "label": "Application",
+       "type": "int",
+       "readonly": true,
+       "advanced": true
+      }
+     ]
+    }
+   ],
+   "notes": "OBJ_USERINFO_ID -> DevAuthInfo, with OBJ Type=AppID, Right=Level, Username=User, Password=Pass (confirmed by the reference firmware usermgr lua). Web accounts are AppID 1: row 0 admin (Level 1), row 1 user (Level 2). Rows 2-5 have AppID 2/4/5 (other services, purpose unverified) and are not shown. Stock handler: when the admin edits its own row it first verifies the old password with login(); editing the user row needs no old password; a user can edit only row 1. Stock length 0-256, chars 1-255, new == confirm. Changing the admin password affects the stock web UI and the telnet.gch check. manager_user_conf_t.gch (right=2) is the user-level variant of the same page.",
+   "selector": {
+    "label": "Account",
+    "options": [
+     {
+      "value": "0",
+      "label": "Administrator"
+     },
+     {
+      "value": "1",
+      "label": "User"
+     }
+    ]
+   }
+  },
+  {
+   "id": "admin-system",
+   "title": "Restart and reset",
+   "group": "admin",
+   "order": 20,
+   "icon": "power",
+   "description": "Restart the router, restore factory settings, back up or restore the configuration.",
+   "stock": {
+    "menu": "ssmSysMgr",
+    "page": "manager_dev_conf_t.gch",
+    "handler": [
+     "equip_gch.gch",
+     "manager_dev_conf_js.gch"
+    ]
+   },
+   "applicable": true,
+   "applicableNote": "",
+   "apply": "live",
+   "danger": "confirm",
+   "sections": [],
+   "actions": [
+    {
+     "id": "reboot",
+     "label": "Restart device",
+     "danger": "confirm",
+     "kind": "builtin",
+     "note": "Stock: POST manager_dev_conf_t.gch IF_ACTION=devrestart -> equip_gch.gch dev_action(CmdId=cmd_devrestart) (cspd). ajaxComLogic.gch IF_ACTION=devRestart does the same. Replacement: save DB (sidbg 1 DB save) then busybox reboot; already implemented as /api/action/reboot."
+    },
+    {
+     "id": "factory-reset",
+     "label": "Restore factory settings",
+     "danger": "confirm",
+     "kind": "builtin",
+     "note": "Stock: IF_ACTION=devrestoreR -> dev_action(CmdId=cmd_factoryreset); cspd marks RESTORE default and reboots, loading /userconfig/cfg/db_default_cfg.xml. (IF_ACTION=devrestore -> cmd_devrestore exists but the page does not use it.) No shell equivalent is proven: either call the stock webd endpoint, or remove db_user_cfg.xml and db_backup_cfg.xml from /userconfig/cfg and reboot (fw_flashing does this unlink on a protocol change; cspd then loads the default). Verify with a full-flash backup first. Resets the admin password and Wi-Fi."
+    },
+    {
+     "id": "backup-download",
+     "label": "Download configuration",
+     "danger": "none",
+     "kind": "builtin",
+     "note": "No web config backup on this stock build (only USB). Replacement: stream /userconfig/cfg/db_user_cfg.xml (ecb-zero DB container, AES-128-ECB zero key, decodable with zte670 unpack-db); already implemented as /api/backup/download. The file contains every secret in the DB."
+    },
+    {
+     "id": "backup-restore",
+     "label": "Restore configuration",
+     "danger": "confirm",
+     "kind": "builtin",
+     "note": "Replacement (proven by hand, README): validate the uploaded file decodes as a DB container, write it to /userconfig/cfg/db_user_cfg.xml and db_backup_cfg.xml, then reboot. Never sidbg DB save after writing (it would overwrite the file with the running DB). Stock alternative: USB restore (admin-usb-restore). httpd also has ConfigUpload/DefCfgUpload upload types via getpage.gch, unused by any page here."
+    }
+   ],
+   "notes": "Factory reset is shown only to Right=1 (admin). manager_dev_conf_t_user.gch (right=2) offers reboot only. After either action the stock page waits and AutoRelogin()s."
+  },
+  {
+   "id": "admin-upgrade",
+   "title": "Firmware upgrade",
+   "group": "admin",
+   "order": 30,
+   "icon": "upload",
+   "description": "Install a firmware image.",
+   "stock": {
+    "menu": "ssmSoftUgr",
+    "page": "manager_dev_version_t.gch",
+    "handler": [
+     "manager_version_query_t.gch",
+     "auth/api.gch",
+     "manager_dev_version_js.gch"
+    ]
+   },
+   "applicable": true,
+   "applicableNote": "",
+   "apply": "live",
+   "danger": "confirm",
+   "sections": [
+    {
+     "id": "status",
+     "title": "Upgrade status",
+     "table": "",
+     "mode": "readonly",
+     "source": "runtime:upgrade_status",
+     "fields": [
+      {
+       "dm": "UpgardeStatus",
+       "label": "Status",
+       "type": "string"
+      },
+      {
+       "dm": "Percent",
+       "label": "Progress",
+       "type": "int",
+       "unit": "%"
+      }
+     ]
+    }
+   ],
+   "actions": [
+    {
+     "id": "firmware-upgrade",
+     "label": "Upload and install firmware",
+     "danger": "confirm",
+     "kind": "builtin",
+     "note": "Stock: multipart POST to getpage.gch?pid=100&<csrf token> with file field VersionUpload (token from get_csrf_session_token, checked first via checkSessionToken.gch). getpage.gch is internal to httpd: it refuses if Content-Length exceeds free memory, writes /var/tmp/fw.bin and calls CmUpgradeStart (pm_upgrade_start) -> cspd upgrade_mgr. cspd checks the image (UpgradeCheckUpgradeFile, verifyCspFwMagic, \"zxic_Header\"/firmware header, dwWhichDefault, UpgradeCheckUpgradeKey), kills processes, runs `fw_flashing -d %d -r %d -p %ld -t %d -f /var/tmp/fw.bin` (bootloader: boot_flashing), which checks magic, board type and software version, writes the inactive image bank (dual image, Image0Status/Image1Status) and reboots. Progress: OBJ_UPGRADE_ID UpgardeStatus (SUCC / UPLOAD_FINISH / REBOOTING) and Percent (508 = specific error upg_508). Replacement: hand the file to the stock path (POST to webd, or copy to /var/tmp/fw.bin and trigger cspd) rather than flashing mtd directly. fw_flashing details are from the reference firmware (ref-fw-v9) and the clone cspd strings; the clone fw_flashing binary was not examined."
+    }
+   ],
+   "notes": "OBJ_UPGRADE_ID is runtime (status DM is spelled UpgardeStatus). This device is a clone with no replacement firmware available (README); a wrong image can brick it, so keep a full-flash backup (backup/firmware). Version strings: /proc/csp/softVersion."
+  },
+  {
+   "id": "admin-usb-backup",
+   "title": "USB backup",
+   "group": "admin",
+   "order": 40,
+   "icon": "hard-drive-download",
+   "description": "Save the configuration to a USB disk.",
+   "stock": {
+    "menu": "ssmUsbBackup",
+    "page": "usbbackup_t.gch",
+    "handler": [
+     "usbbakrst_gch.gch",
+     "usbbackup_js.gch"
+    ]
+   },
+   "applicable": true,
+   "applicableNote": "",
+   "apply": "live",
+   "danger": "none",
+   "sections": [
+    {
+     "id": "disks",
+     "title": "USB disks",
+     "table": "",
+     "mode": "readonly",
+     "source": "runtime:usb_backup_storage",
+     "fields": [
+      {
+       "dm": "Path",
+       "label": "Disk",
+       "type": "string",
+       "column": true
+      },
+      {
+       "dm": "BakFileExist",
+       "label": "Backup present",
+       "type": "bool",
+       "column": true
+      }
+     ]
+    },
+    {
+     "id": "target",
+     "title": "Backup file",
+     "table": "UsbBakRst",
+     "mode": "single",
+     "row": 0,
+     "fields": [
+      {
+       "dm": "BakDir",
+       "label": "Folder",
+       "type": "string",
+       "readonly": true
+      },
+      {
+       "dm": "BakFileName",
+       "label": "File name",
+       "type": "string",
+       "readonly": true
+      }
+     ]
+    }
+   ],
+   "actions": [
+    {
+     "id": "usb-backup",
+     "label": "Back up to USB",
+     "danger": "none",
+     "kind": "builtin",
+     "note": "Stock writes OBJ_USBBAKRST_ID {SelectPath=<USB mount path>, StartBackup=1} with set_inst and undoDBSave (runtime trigger). cspd writes <path>/<UsbBakRst.BakDir>/<UsbBakRst.BakFileName> (firmware default dir e8_Config_Backup, file ctce8_<model>.cfg) in the ctce8 cfg format that zte670 pack/unpack handles. USB storages come from OBJ_USBBACKUPSTORAGE_ID {ViewName, Path, BakFileExist}."
+    }
+   ],
+   "notes": "Stock writes OBJ_USBBAKRST_ID {SelectPath=<USB mount path>, StartBackup=1} with set_inst and undoDBSave (runtime trigger). cspd writes <path>/<UsbBakRst.BakDir>/<UsbBakRst.BakFileName> (firmware default dir e8_Config_Backup, file ctce8_<model>.cfg) in the ctce8 cfg format that zte670 pack/unpack handles. USB storages come from OBJ_USBBACKUPSTORAGE_ID {ViewName, Path, BakFileExist}."
+  },
+  {
+   "id": "admin-usb-restore",
+   "title": "USB restore",
+   "group": "admin",
+   "order": 50,
+   "icon": "hard-drive-upload",
+   "description": "Restore the configuration from a USB disk at the next boot.",
+   "stock": {
+    "menu": "ssmUsbRestore",
+    "page": "usbrestore_t.gch",
+    "handler": [
+     "usbbakrst_gch.gch",
+     "usbrestore_js.gch"
+    ]
+   },
+   "applicable": true,
+   "applicableNote": "",
+   "apply": "reboot",
+   "danger": "confirm",
+   "sections": [
+    {
+     "id": "restore",
+     "title": "USB restore",
+     "table": "UsbBakRst",
+     "mode": "single",
+     "row": 0,
+     "fields": [
+      {
+       "dm": "RstEnable",
+       "label": "Restore from USB at boot",
+       "type": "bool"
+      }
+     ]
+    }
+   ],
+   "notes": "At boot cspd (dbFileUSBRestore) checks RstEnable, opens /mnt/<usb>/<BakDir>/<BakFileName>, verifies version/sign headers, decrypts, decompresses and compares; on success it replaces the user config. Stock: \"takes effect only after the device reboots\". Menu right=3."
+  },
+  {
+   "id": "admin-log",
+   "title": "System log",
+   "group": "admin",
+   "order": 60,
+   "icon": "scroll-text",
+   "description": "Log level, the current log, and log download.",
+   "stock": {
+    "menu": "ssmLogMgr",
+    "page": "manager_log_conf_t.gch",
+    "handler": [
+     "log_gch.gch",
+     "getpage.gch",
+     "auth/api.gch",
+     "manager_log_conf_js.gch"
+    ]
+   },
+   "applicable": true,
+   "applicableNote": "",
+   "apply": "reboot",
+   "danger": "none",
+   "sections": [
+    {
+     "id": "cfg",
+     "title": "Settings",
+     "table": "Log",
+     "mode": "single",
+     "row": 0,
+     "fields": [
+      {
+       "dm": "LogEnable",
+       "label": "Save log",
+       "type": "bool"
+      },
+      {
+       "dm": "LogLevel",
+       "label": "Log level",
+       "type": "enum",
+       "options": [
+        {
+         "value": "0",
+         "label": "Emergency"
+        },
+        {
+         "value": "1",
+         "label": "Alert"
+        },
+        {
+         "value": "2",
+         "label": "Critical"
+        },
+        {
+         "value": "3",
+         "label": "Error"
+        },
+        {
+         "value": "4",
+         "label": "Warning"
+        },
+        {
+         "value": "5",
+         "label": "Notice"
+        },
+        {
+         "value": "6",
+         "label": "Informational"
+        },
+        {
+         "value": "7",
+         "label": "Debug"
+        }
+       ],
+       "showIf": {
+        "dm": "LogEnable",
+        "in": [
+         "1"
+        ]
+       }
+      },
+      {
+       "dm": "ServiceEnable",
+       "label": "Send to remote syslog",
+       "type": "bool",
+       "advanced": true
+      },
+      {
+       "dm": "ServiceIp",
+       "label": "Remote syslog server",
+       "type": "ipv4",
+       "advanced": true
+      },
+      {
+       "dm": "ServicePort",
+       "label": "Remote syslog port",
+       "type": "int",
+       "advanced": true,
+       "min": 1,
+       "max": 65535
+      }
+     ]
+    },
+    {
+     "id": "log",
+     "title": "Log",
+     "table": "",
+     "mode": "readonly",
+     "source": "runtime:syslog",
+     "fields": [
+      {
+       "dm": "text",
+       "label": "Log",
+       "type": "text"
+      }
+     ]
+    }
+   ],
+   "actions": [
+    {
+     "id": "log-clear",
+     "label": "Clear log",
+     "danger": "confirm",
+     "kind": "builtin",
+     "note": "Stock: IF_ACTION=clearlog -> log_gch.gch dev_action(CmdId=cmd_clearlog)."
+    },
+    {
+     "id": "log-download",
+     "label": "Download log",
+     "danger": "none",
+     "kind": "builtin",
+     "note": "Stock: multipart POST getpage.gch?pid=101&<csrf token> with field downloadlog; httpd calls pm_log_get_log_file and returns it as log_file.log (strings suggest /var/userlog.txt). Logs also live in /var/log/tmplog1 and /userconfig/cfg/log."
+    }
+   ],
+   "notes": "OBJ_LOG_ID -> Log. Stock reads the log text with show_log() in a loop. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [ServiceEnable]: In the handler, not on the stock page."
+  },
+  {
+   "id": "admin-maintenance-report",
+   "title": "Maintenance complete",
+   "group": "admin",
+   "order": 70,
+   "icon": "clipboard-check",
+   "description": "Tell the operator management system that on-site maintenance is finished.",
+   "stock": {
+    "menu": "ssmMatReprt",
+    "page": "manager_test_over_t.gch",
+    "handler": [
+     "test_over_gch.gch",
+     "manager_test_over_js.gch"
+    ]
+   },
+   "applicable": "unknown",
+   "applicableNote": "Operator (ITMS/TR-069) maintenance workflow; no effect expected without an ACS.",
+   "apply": "live",
+   "danger": "none",
+   "sections": [],
+   "actions": [
+    {
+     "id": "maintenance-over",
+     "label": "Report maintenance complete",
+     "danger": "confirm",
+     "kind": "builtin",
+     "note": "Stock: IF_ACTION=testover -> dev_action(CmdId=cmd_testover)."
+    }
+   ],
+   "notes": ""
+  },
+  {
+   "id": "admin-business",
+   "title": "Service account numbers",
+   "group": "admin",
+   "order": 80,
+   "icon": "id-card",
+   "description": "Operator account numbers for broadband, IPTV and VoIP.",
+   "stock": {
+    "menu": "ssmBussMgr",
+    "page": "manager_buss_mgr_t.gch",
+    "handler": [
+     "manager_buss_mgr_gch.gch",
+     "manager_buss_mgr_js.gch"
+    ]
+   },
+   "applicable": "unknown",
+   "applicableNote": "Operator provisioning data; informational on a retail unit.",
+   "apply": "reboot",
+   "danger": "none",
+   "sections": [
+    {
+     "id": "dev",
+     "title": "Account numbers",
+     "table": "DevInfo",
+     "mode": "single",
+     "row": 0,
+     "fields": [
+      {
+       "dm": "BANDAccess",
+       "label": "Broadband account number",
+       "type": "string",
+       "min": 0,
+       "max": 64
+      },
+      {
+       "dm": "IPTVAccess",
+       "label": "IPTV account number",
+       "type": "string",
+       "min": 0,
+       "max": 64
+      },
+      {
+       "dm": "VOIPAccess",
+       "label": "VoIP account number",
+       "type": "string",
+       "min": 0,
+       "max": 64
+      }
+     ]
+    }
+   ],
+   "notes": "OBJ_DEVINFO_ID -> DevInfo. These may hold operator account numbers; never copy values. Menu right=3. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified."
+  },
+  {
+   "id": "admin-voip-protocol",
+   "title": "VoIP protocol",
+   "group": "admin",
+   "order": 90,
+   "icon": "phone-call",
+   "description": "Choose SIP or H.248. The router restarts after a change.",
+   "stock": {
+    "menu": "ssmVoIPSwitch",
+    "page": "manager_voip_switch_t.gch",
+    "handler": [
+     "voip_switch_gch.gch",
+     "manager_voip_switch_js.gch"
+    ]
+   },
+   "applicable": true,
+   "applicableNote": "",
+   "apply": "reboot",
+   "danger": "confirm",
+   "sections": [
+    {
+     "id": "proto",
+     "title": "Protocol",
+     "table": "VOIPExt",
+     "mode": "single",
+     "row": 0,
+     "fields": [
+      {
+       "dm": "ProtocolSet",
+       "label": "VoIP protocol",
+       "type": "enum",
+       "options": [
+        {
+         "value": "1",
+         "label": "H.248"
+        },
+        {
+         "value": "4",
+         "label": "SIP"
+        }
+       ]
+      }
+     ]
+    }
+   ],
+   "notes": "OBJ_VOIPEXT_ID -> VOIPExt. Stock: after a successful apply that changes the protocol (compared with getenv VoIPProtocal: 1=H248, 2=MGCP, 4=SIP), the page posts ajaxComLogic.gch?pid=1 IF_ACTION=devRestart. fw_flashing also writes /userconfig/cfg/protocol_flag.file and clears the user DB on a media-protocol change during upgrade. The menu then hides the other protocol pages."
+  },
+  {
+   "id": "admin-led",
+   "title": "Indicator lights",
+   "group": "admin",
+   "order": 100,
+   "icon": "lightbulb",
+   "description": "Turn the front-panel LEDs off or on.",
+   "stock": {
+    "menu": "ssmLedControl",
+    "page": "pon_manager_led_control_t.gch",
+    "handler": [
+     "pon_manager_led_control_gch.gch",
+     "pon_manager_led_control_js.gch"
+    ]
+   },
+   "applicable": true,
+   "applicableNote": "",
+   "apply": "live",
+   "danger": "none",
+   "sections": [
+    {
+     "id": "led",
+     "title": "LEDs",
+     "table": "",
+     "mode": "single",
+     "source": "runtime:led_control",
+     "fields": [
+      {
+       "dm": "LedControl",
+       "label": "Turn off indicator lights",
+       "type": "bool"
+      }
+     ]
+    }
+   ],
+   "notes": "OBJ_LED_CONTROL_ID LedControl (1 = off) is not a DB column: httpd webd_adaptor_pon_led_control.c calls pm_pdt_get_leds_status / pm_pdt_ctl_leds. Persistence across reboot unverified (cspd has LedCtl_Recover and LedTimeCfg/LedTime tables for scheduled LED off). Menu right=3."
+  },
+  {
+   "id": "admin-loopback",
+   "title": "Loop detection",
+   "group": "admin",
+   "order": 110,
+   "icon": "repeat",
+   "description": "Detect Ethernet loops on the LAN ports and shut the looping port.",
+   "stock": {
+    "menu": "ssmBackloop",
+    "page": "pon_net_backloop_conf_t.gch",
+    "handler": [
+     "pon_net_backloop_conf_gch.gch",
+     "pon_net_backloop_conf_js.gch"
+    ]
+   },
+   "applicable": true,
+   "applicableNote": "",
+   "apply": "reboot",
+   "danger": "none",
+   "sections": [
+    {
+     "id": "global",
+     "title": "Loop detection",
+     "table": "LoopbackGlobalConf",
+     "mode": "single",
+     "row": 0,
+     "fields": [
+      {
+       "dm": "Enable",
+       "label": "Enable loop detection",
+       "type": "bool"
+      },
+      {
+       "dm": "DMACAddr",
+       "label": "Destination MAC",
+       "type": "enum",
+       "options": [
+        {
+         "value": "ff:ff:ff:ff:ff:ff",
+         "label": "Broadcast"
+        },
+        {
+         "value": "01:80:c2:00:00:00",
+         "label": "BPDU"
+        }
+       ]
+      },
+      {
+       "dm": "EtherType",
+       "label": "Ethernet type",
+       "type": "int",
+       "help": "Ethernet type of the loop-detection frame, entered as a decimal number (0–65535).",
+       "min": 0,
+       "max": 65535
+      },
+      {
+       "dm": "SendInterval",
+       "label": "Send interval",
+       "type": "int",
+       "unit": "ms",
+       "help": "How often detection frames are sent, in milliseconds (1000–5000).",
+       "min": 1000,
+       "max": 5000
+      },
+      {
+       "dm": "RenewTime",
+       "label": "Port closing time",
+       "type": "int",
+       "unit": "s",
+       "min": 30,
+       "max": 300
+      },
+      {
+       "dm": "CheckInterval",
+       "label": "Loop recovery time",
+       "type": "int",
+       "unit": "s",
+       "min": 5,
+       "max": 300
+      },
+      {
+       "dm": "VlanTag",
+       "label": "VLANs",
+       "type": "string",
+       "pattern": "^[0-9]+(,[0-9]+){0,9}$",
+       "help": "Comma-separated, up to 10 VLAN IDs, each 1-4094."
+      }
+     ]
+    },
+    {
+     "id": "ports",
+     "title": "Ports",
+     "table": "LoopbackEthConf",
+     "mode": "list",
+     "rowLabel": "{PortID}",
+     "addable": false,
+     "deletable": false,
+     "fields": [
+      {
+       "dm": "PortID",
+       "label": "Port",
+       "type": "string",
+       "readonly": true,
+       "column": true
+      },
+      {
+       "dm": "LoopbackEn",
+       "label": "Detect",
+       "type": "bool",
+       "column": true
+      },
+      {
+       "dm": "AlarmEn",
+       "label": "Alarm",
+       "type": "bool",
+       "column": true
+      },
+      {
+       "dm": "PortDisableEn",
+       "label": "Shut port on loop",
+       "type": "bool",
+       "column": true
+      }
+     ]
+    }
+   ],
+   "notes": "OBJ_BACKLOOP_ID {DMac, Ethertype, LoopbackEnable, VidStr, Sendinterval, RenewTime, CheckInterval} mapped to LoopbackGlobalConf {DMACAddr, EtherType, Enable, VlanTag, SendInterval, RenewTime, CheckInterval} by name (verify, especially units). The Ports section (LoopbackEthConf, 6 rows) is not on the stock page. Menu right=3. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [EtherType]: Stock shows hex 0x0000-0xffff; stored as decimal. | [SendInterval]: Stock edits 1-5 s; the DB value suggests milliseconds (verify)."
+  },
+  {
+   "id": "admin-telnet",
+   "title": "Telnet",
+   "group": "admin",
+   "order": 120,
+   "icon": "terminal",
+   "description": "Telnet server access and accounts.",
+   "stock": {
+    "menu": "smTelnetMgr",
+    "page": "tele_sec_tserver_t.gch",
+    "handler": [
+     "tserver_cfg_gch.gch",
+     "telnet.gch"
+    ]
+   },
+   "applicable": true,
+   "applicableNote": "",
+   "apply": "reboot",
+   "danger": "confirm",
+   "sections": [
+    {
+     "id": "server",
+     "title": "Server",
+     "table": "TelnetCfg",
+     "mode": "single",
+     "row": 0,
+     "fields": [
+      {
+       "dm": "TS_Enable",
+       "label": "Enable telnet",
+       "type": "bool"
+      },
+      {
+       "dm": "Lan_Enable",
+       "label": "Allow from LAN",
+       "type": "bool"
+      },
+      {
+       "dm": "Wan_Enable",
+       "label": "Allow from WAN",
+       "type": "bool"
+      },
+      {
+       "dm": "TS_Port",
+       "label": "Port",
+       "type": "int",
+       "advanced": true,
+       "min": 1,
+       "max": 65535
+      },
+      {
+       "dm": "TSLan_Port",
+       "label": "LAN port",
+       "type": "int",
+       "advanced": true,
+       "min": 1,
+       "max": 65535
+      },
+      {
+       "dm": "Max_Con_Num",
+       "label": "Max connections",
+       "type": "int",
+       "advanced": true,
+       "min": 1
+      }
+     ]
+    },
+    {
+     "id": "users",
+     "title": "Accounts",
+     "table": "TelnetUser",
+     "mode": "list",
+     "rowLabel": "{Type}",
+     "addable": false,
+     "deletable": false,
+     "fields": [
+      {
+       "dm": "Type",
+       "label": "Access",
+       "type": "string",
+       "readonly": true,
+       "column": true
+      },
+      {
+       "dm": "Username",
+       "label": "User name",
+       "type": "string",
+       "min": 1,
+       "column": true,
+       "pattern": "^[\\x01-\\xFF]*$"
+      },
+      {
+       "dm": "Password",
+       "label": "Password",
+       "type": "password",
+       "min": 1,
+       "pattern": "^[\\x01-\\xFF]*$"
+      }
+     ]
+    }
+   ],
+   "notes": "Telnet is the recovery path for this device (root shell, the toolkit and the adminui deploy use it). Disabling LAN telnet leaves only this UI and a full-flash restore. The stock menu entry smTelnetMgr has no page; the security menu page tele_sec_tserver_t.gch (OBJ_TSERVER_CONF_ID {TS_Enable, Wan_Enable, Lan_Enable}) edits the same table. Separately, stock telnet.gch enables LAN telnet for anyone presenting a hard-coded credential in the query string (an unauthenticated backdoor; the replacement should not reproduce it). TelnetUser rows: LAN and WAN. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified."
+  },
+  {
+   "id": "admin-monitor",
+   "title": "Monitoring collector",
+   "group": "admin",
+   "order": 130,
+   "icon": "activity",
+   "description": "Operator monitoring upload target (TFTP).",
+   "stock": {
+    "menu": "smmonitorconfig",
+    "page": "pon_monitor_config_t.gch",
+    "handler": [
+     "pon_monitorconfig_gch.gch",
+     "pon_monitor_config_js.gch"
+    ]
+   },
+   "applicable": "unknown",
+   "applicableNote": "Operator monitoring feature used by some ISPs only.",
+   "apply": "reboot",
+   "danger": "none",
+   "sections": [
+    {
+     "id": "collector",
+     "title": "Collector",
+     "table": "MonitorCollectorCfg",
+     "mode": "single",
+     "row": 0,
+     "fields": [
+      {
+       "dm": "Enable",
+       "label": "Enable",
+       "type": "bool"
+      },
+      {
+       "dm": "ServerUrl",
+       "label": "Upload URL",
+       "type": "string",
+       "readonly": true
+      },
+      {
+       "dm": "TftpPort",
+       "label": "TFTP port",
+       "type": "int",
+       "readonly": true
+      }
+     ]
+    }
+   ],
+   "notes": "OBJ_PONMONITORCONFIG_ID {Enable, ServerUrl, TftpPort, MonitorNumberOfEntries} -> MonitorCollectorCfg (MONITORCONFIG also has an Enable column; which one is used is unverified). Stock inputs for URL and port are disabled. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [applicableNote]: Province-specific operator feature (menu under Diagnostics; anhui_monitor_config_t.gch is a variant)."
+  }
+ ]
+}

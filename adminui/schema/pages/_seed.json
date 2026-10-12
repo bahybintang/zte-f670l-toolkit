@@ -1,8 +1,0 @@
-{"pages":[{"id":"seed-wifi","title":"Wi-Fi (seed)","group":"wlan","apply":"live","danger":"none","hook":"wifi",
-"selector":{"label":"Network","options":[{"value":"0","label":"SSID1 · 2.4 GHz"},{"value":"4","label":"SSID5 · 5 GHz"}]},
-"sections":[{"id":"ssid","title":"SSID","table":"WLANCfg","mode":"single","row":"$sel","fields":[
- {"dm":"ESSID","label":"Network name","type":"string","min":1,"max":32,"liveKey":"SSID"},
- {"dm":"ESSIDHideEnable","label":"Hide","type":"bool","liveKey":"HideSSID"},
- {"dm":"Enable","label":"Enabled","type":"bool"}]},
- {"id":"psk","title":"Password","table":"WLANPSK","mode":"single","row":"$sel","fields":[
- {"dm":"KeyPassphrase","label":"Password","type":"password","min":8,"max":63,"liveKey":"WPAPSK"}]}]}]}

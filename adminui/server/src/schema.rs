@@ -280,5 +280,19 @@ mod tests {
     fn embedded_schema_parses() {
         let s = Schema::load();
         assert!(!s.tables.is_empty());
+        // Every page file must parse: a skipped file would silently drop pages.
+        let files = SchemaFiles::iter().filter(|n| n.ends_with(".json")).count();
+        for n in SchemaFiles::iter().filter(|n| n.ends_with(".json")) {
+            let f = SchemaFiles::get(&n).unwrap();
+            serde_json::from_slice::<PageFile>(&f.data).unwrap_or_else(|e| panic!("{n}: {e}"));
+        }
+        assert!(files > 0);
+        for p in &s.pages {
+            for sec in &p.sections {
+                if sec.is_db() {
+                    assert!(s.tables.contains(&sec.table), "{}: unknown table {}", p.id, sec.table);
+                }
+            }
+        }
     }
 }

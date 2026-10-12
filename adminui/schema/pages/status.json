@@ -1,0 +1,2274 @@
+{
+  "pages": [
+    {
+      "id": "status-device",
+      "title": "Device information",
+      "group": "status",
+      "order": 10,
+      "icon": "info",
+      "description": "Model, serial number and firmware versions of this ONT.",
+      "stock": {
+        "menu": "ssmDevStatu",
+        "page": "status_dev_info_t.gch",
+        "handler": []
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "info",
+          "title": "Device",
+          "table": "",
+          "mode": "readonly",
+          "source": "runtime:device_info",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "ModelName",
+              "label": "Model",
+              "type": "string"
+            },
+            {
+              "dm": "SerialNumber",
+              "label": "Serial number",
+              "type": "string",
+              "help": "GPON serial number."
+            },
+            {
+              "dm": "ManuFacturerOui",
+              "label": "Manufacturer OUI",
+              "type": "string",
+              "advanced": true
+            },
+            {
+              "dm": "HardwareVer",
+              "label": "Hardware version",
+              "type": "string"
+            },
+            {
+              "dm": "SoftwareVer",
+              "label": "Software version",
+              "type": "string"
+            },
+            {
+              "dm": "BootVer",
+              "label": "Boot loader version",
+              "type": "string",
+              "advanced": true
+            },
+            {
+              "dm": "SoftwareVerExtent",
+              "label": "Firmware batch number",
+              "type": "string",
+              "advanced": true
+            },
+            {
+              "dm": "DeviceType",
+              "label": "Device type",
+              "type": "string",
+              "advanced": true
+            },
+            {
+              "dm": "AccessType",
+              "label": "Access type",
+              "type": "string",
+              "advanced": true,
+              "help": "GPON, EPON, DSL or Ethernet."
+            },
+            {
+              "dm": "PonMode",
+              "label": "PON mode",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "GPON",
+                  "label": "GPON"
+                },
+                {
+                  "value": "EPON",
+                  "label": "EPON"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "refresh",
+          "label": "Refresh",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Stock pages only re-submit the form (pageReFresh); the new UI just re-fetches the runtime sources."
+        }
+      ],
+      "notes": "Stock template reads OBJ_DEVINFO_ID (ModelName, SerialNumber, HardwareVer, SoftwareVer, BootVer, ManuFacturerOui, SoftwareVerExtent, DeviceType, AccessType) and, only in EPON mode, OBJ_SgwGateWay_ID \"IGD\" param Mac (device MAC). None of ModelName/SerialNumber/versions are DB DMs (DevInfo only holds DeviceType/AccessType/ProvisioningCode etc.), so they come from board/flash data: candidates on the device are /proc/cpuinfo-style board files, the firmware version files under /etc, or a cspd query. BootVer and SoftwareVerExtent rows are display:none in stock. status_dev_info_t_fj.gch is a Fujian variant (adds LOID/OLT/ITMS/optical/WAN/VoIP summary); not used here. status_dev_info_gch.gch dumps hidden fields (incl. WLAN PSK!) for that variant; do not replicate. UI-text notes moved here: [SerialNumber]: GPON serial. Stock shows ManuFacturerOui + \"-\" + SerialNumber when ManuFacturerOui is set, otherwise blank. | [DeviceType]: Shown by stock only when env DevInfoEnable=1. Also stored in DB table DevInfo.DeviceType. | [AccessType]: Stock compares against \"GPON\"/\"EPON\"/\"DSL\"/\"Ethernet\". DB DevInfo.AccessType holds a numeric code. | [PonMode]: Stock prints the httpd env ponmode, not an OBJ parameter."
+    },
+    {
+      "id": "status-wan-ipv4",
+      "title": "IPv4 WAN connections",
+      "group": "status",
+      "order": 20,
+      "icon": "globe",
+      "description": "Address, gateway, DNS and link state of each IPv4 WAN connection.",
+      "stock": {
+        "menu": "ssmETHWANConn",
+        "page": "status_ethwan_if_t.gch",
+        "handler": []
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "config",
+          "title": "Configured connections",
+          "table": "WANC",
+          "mode": "readonly",
+          "source": "db",
+          "rowLabel": "{WANCName}",
+          "fields": [
+            {
+              "dm": "WANCName",
+              "label": "Connection name",
+              "type": "string",
+              "column": true
+            },
+            {
+              "dm": "StrServList",
+              "label": "Services",
+              "type": "string",
+              "column": true
+            },
+            {
+              "dm": "IPMode",
+              "label": "IP mode",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "IPv4"
+                },
+                {
+                  "value": "2",
+                  "label": "IPv6"
+                },
+                {
+                  "value": "3",
+                  "label": "IPv4 + IPv6"
+                }
+              ],
+              "column": true
+            },
+            {
+              "dm": "IsNAT",
+              "label": "NAT",
+              "type": "bool",
+              "column": true
+            },
+            {
+              "dm": "VLANID",
+              "label": "VLAN ID",
+              "type": "int",
+              "column": true
+            },
+            {
+              "dm": "WorkIFMac",
+              "label": "WAN MAC",
+              "type": "mac",
+              "column": true
+            }
+          ]
+        },
+        {
+          "id": "live",
+          "title": "Live status",
+          "table": "",
+          "mode": "list",
+          "source": "runtime:wan_ipv4",
+          "rowLabel": "{WANCName}",
+          "fields": [
+            {
+              "dm": "WANCName",
+              "label": "Connection name",
+              "type": "string",
+              "column": true
+            },
+            {
+              "dm": "Type",
+              "label": "Type",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "PPPoE",
+                  "label": "PPPoE"
+                },
+                {
+                  "value": "Static",
+                  "label": "Static"
+                },
+                {
+                  "value": "DHCP",
+                  "label": "DHCP"
+                },
+                {
+                  "value": "Bridge",
+                  "label": "Bridge"
+                }
+              ],
+              "column": true
+            },
+            {
+              "dm": "IsNAT",
+              "label": "NAT",
+              "type": "bool"
+            },
+            {
+              "dm": "IPAddress",
+              "label": "IP address",
+              "type": "ipv4",
+              "column": true
+            },
+            {
+              "dm": "SubnetMask",
+              "label": "Subnet mask",
+              "type": "ipv4",
+              "help": "Static and DHCP connections only."
+            },
+            {
+              "dm": "GateWay",
+              "label": "Gateway",
+              "type": "ipv4"
+            },
+            {
+              "dm": "DNS1",
+              "label": "DNS 1",
+              "type": "ipv4"
+            },
+            {
+              "dm": "DNS2",
+              "label": "DNS 2",
+              "type": "ipv4"
+            },
+            {
+              "dm": "DNS3",
+              "label": "DNS 3",
+              "type": "ipv4"
+            },
+            {
+              "dm": "WorkIFMac",
+              "label": "WAN MAC",
+              "type": "mac"
+            },
+            {
+              "dm": "ConnStatus",
+              "label": "Connection status",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "Connected",
+                  "label": "Connected"
+                },
+                {
+                  "value": "Demand",
+                  "label": "Disconnected (idle, dial on demand)"
+                },
+                {
+                  "value": "Unconfigured",
+                  "label": "Unconfigured"
+                },
+                {
+                  "value": "Connecting",
+                  "label": "Connecting"
+                },
+                {
+                  "value": "Authenticating",
+                  "label": "Authenticating"
+                },
+                {
+                  "value": "PendingDisconnect",
+                  "label": "Disconnecting"
+                },
+                {
+                  "value": "Disconnected",
+                  "label": "Disconnected"
+                }
+              ],
+              "column": true
+            },
+            {
+              "dm": "ConnError",
+              "label": "Last disconnect reason",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "ERROR_NONE",
+                  "label": "None"
+                },
+                {
+                  "value": "ERROR_ISP_TIME_OUT",
+                  "label": "ISP timeout"
+                },
+                {
+                  "value": "ERROR_USER_DISCONNECT",
+                  "label": "Disconnected by user"
+                },
+                {
+                  "value": "ERROR_ISP_DISCONNECT",
+                  "label": "Disconnected by ISP"
+                },
+                {
+                  "value": "ERROR_IDLE_DISCONNECT",
+                  "label": "Idle disconnect"
+                },
+                {
+                  "value": "ERROR_FORCED_DISCONNECT",
+                  "label": "Forced disconnect"
+                },
+                {
+                  "value": "ERROR_AUTHENTICATION_FAILURE",
+                  "label": "Authentication failure"
+                },
+                {
+                  "value": "ERROR_UNKNOWN",
+                  "label": "Other"
+                }
+              ],
+              "help": "PPPoE only."
+            },
+            {
+              "dm": "UpTime",
+              "label": "Online for",
+              "type": "int",
+              "unit": "s",
+              "help": "PPPoE only."
+            },
+            {
+              "dm": "RemainLeaseTime",
+              "label": "DHCP lease remaining",
+              "type": "int",
+              "unit": "s",
+              "help": "DHCP only."
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "refresh",
+          "label": "Refresh",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Stock pages only re-submit the form (pageReFresh); the new UI just re-fetches the runtime sources."
+        }
+      ],
+      "notes": "Stock loops three OBJs (TypeValue=2, Ethernet/PON uplink): OBJ_ETHWANCPPP_ID (IPMode, WANCName, TransType, IsNAT, StrServList, IPAddress, ConnStatus, DNS1-3, GateWay, UpTime, WorkIFMac, ConnError), OBJ_ETHWANCIP_ID (IPMode, Addressingtype, WANCName, IsNAT, StrServList, IPAddress, SubnetMask, GateWay, RemainLeaseTime, ConnStatus, DNS1-3, WorkIFMac) and OBJ_ETHWANCBRIDGE_ID (WANCName, IPMode, StrServList). Rows with IPMode==\"2\" (IPv6-only) are hidden; static rows always shown. Config parts live in DB: WANC (WANCName, StrServList, IsNAT, IPMode, WorkIFMac, VLANID, DNS1-3 overrides), WANCIP (Addressingtype, static IPAddress/SubnetMask/GateWay), WANCPPP (credentials - never show). Live address/gateway/DNS/ConnStatus/UpTime/ConnError/lease are runtime: on the device use `ip -4 addr`, `ip route`, /proc/net/dev and the pppd/udhcpc state (resolv file, lease) of the matching interface; WANC row -> Linux ifname mapping still to be verified. WANC currently has 1 row in the user DB. UI-text notes moved here: [Type]: PPP rows: TransType; IP rows: Addressingtype; bridge rows: fixed \"Bridge\". | [SubnetMask]: IP (static/DHCP) rows only. | [ConnStatus]: IP rows only use Connected/Connecting/else Disconnected."
+    },
+    {
+      "id": "status-wan-ipv6",
+      "title": "IPv6 WAN connections",
+      "group": "status",
+      "order": 30,
+      "icon": "globe",
+      "description": "IPv6 addresses, delegated prefix, gateway and DNS of each WAN connection.",
+      "stock": {
+        "menu": "ssmIPv6WANSta",
+        "page": "status_wanstatu_ipv6wansta_t.gch",
+        "handler": []
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "live",
+          "title": "IPv6 status",
+          "table": "",
+          "mode": "list",
+          "source": "runtime:wan_ipv6",
+          "rowLabel": "{WANCName}",
+          "fields": [
+            {
+              "dm": "WANCName",
+              "label": "Connection name",
+              "type": "string",
+              "column": true
+            },
+            {
+              "dm": "Type",
+              "label": "Type",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "PPP",
+                  "label": "PPP"
+                },
+                {
+                  "value": "IP",
+                  "label": "IP (DHCP/static)"
+                },
+                {
+                  "value": "Bridge",
+                  "label": "Bridge"
+                }
+              ],
+              "column": true
+            },
+            {
+              "dm": "GuaCurSrc",
+              "label": "Global address source",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "AutoConfigured",
+                  "label": "SLAAC"
+                },
+                {
+                  "value": "RouterAdvertisement",
+                  "label": "Router advertisement"
+                },
+                {
+                  "value": "DHCPv6",
+                  "label": "DHCPv6"
+                },
+                {
+                  "value": "PrefixDelegation",
+                  "label": "DHCPv6 (prefix delegation)"
+                },
+                {
+                  "value": "Static",
+                  "label": "Static"
+                },
+                {
+                  "value": "PPP",
+                  "label": "PPP"
+                },
+                {
+                  "value": "PPPIPV6CP",
+                  "label": "PPP IPv6CP"
+                },
+                {
+                  "value": "AutoAdaptive",
+                  "label": "Adaptive"
+                }
+              ]
+            },
+            {
+              "dm": "GuaNum",
+              "label": "Number of global addresses",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "GUA1",
+              "label": "Global address 1",
+              "type": "ipv6",
+              "column": true
+            },
+            {
+              "dm": "GUA2",
+              "label": "Global address 2",
+              "type": "ipv6"
+            },
+            {
+              "dm": "GUA3",
+              "label": "Global address 3",
+              "type": "ipv6"
+            },
+            {
+              "dm": "DNSv6CurSrc",
+              "label": "DNS source",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "AutoConfigured",
+                  "label": "SLAAC"
+                },
+                {
+                  "value": "RouterAdvertisement",
+                  "label": "Router advertisement"
+                },
+                {
+                  "value": "DHCPv6",
+                  "label": "DHCPv6"
+                },
+                {
+                  "value": "PrefixDelegation",
+                  "label": "DHCPv6 (prefix delegation)"
+                },
+                {
+                  "value": "Static",
+                  "label": "Static"
+                },
+                {
+                  "value": "PPP",
+                  "label": "PPP"
+                },
+                {
+                  "value": "PPPIPV6CP",
+                  "label": "PPP IPv6CP"
+                },
+                {
+                  "value": "AutoAdaptive",
+                  "label": "Adaptive"
+                }
+              ]
+            },
+            {
+              "dm": "DNS1v6",
+              "label": "DNS 1",
+              "type": "ipv6"
+            },
+            {
+              "dm": "DNS2v6",
+              "label": "DNS 2",
+              "type": "ipv6"
+            },
+            {
+              "dm": "DNS3v6",
+              "label": "DNS 3",
+              "type": "ipv6"
+            },
+            {
+              "dm": "WorkIFMac",
+              "label": "WAN MAC",
+              "type": "mac"
+            },
+            {
+              "dm": "PrefixCurSrc",
+              "label": "Prefix delegation source",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "AutoConfigured",
+                  "label": "SLAAC"
+                },
+                {
+                  "value": "RouterAdvertisement",
+                  "label": "Router advertisement"
+                },
+                {
+                  "value": "DHCPv6",
+                  "label": "DHCPv6"
+                },
+                {
+                  "value": "PrefixDelegation",
+                  "label": "DHCPv6 (prefix delegation)"
+                },
+                {
+                  "value": "Static",
+                  "label": "Static"
+                },
+                {
+                  "value": "PPP",
+                  "label": "PPP"
+                },
+                {
+                  "value": "PPPIPV6CP",
+                  "label": "PPP IPv6CP"
+                },
+                {
+                  "value": "AutoAdaptive",
+                  "label": "Adaptive"
+                }
+              ]
+            },
+            {
+              "dm": "Prefix1",
+              "label": "Delegated prefix",
+              "type": "ipv6"
+            },
+            {
+              "dm": "Prefix1Len",
+              "label": "Delegated prefix length",
+              "type": "int"
+            },
+            {
+              "dm": "GuaPd",
+              "label": "Address from delegated prefix",
+              "type": "ipv6"
+            },
+            {
+              "dm": "Gatewayv6CurSrc",
+              "label": "Gateway source",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "AutoConfigured",
+                  "label": "SLAAC"
+                },
+                {
+                  "value": "RouterAdvertisement",
+                  "label": "Router advertisement"
+                },
+                {
+                  "value": "DHCPv6",
+                  "label": "DHCPv6"
+                },
+                {
+                  "value": "PrefixDelegation",
+                  "label": "DHCPv6 (prefix delegation)"
+                },
+                {
+                  "value": "Static",
+                  "label": "Static"
+                },
+                {
+                  "value": "PPP",
+                  "label": "PPP"
+                },
+                {
+                  "value": "PPPIPV6CP",
+                  "label": "PPP IPv6CP"
+                },
+                {
+                  "value": "AutoAdaptive",
+                  "label": "Adaptive"
+                }
+              ]
+            },
+            {
+              "dm": "Gatewayv6",
+              "label": "Gateway",
+              "type": "ipv6"
+            },
+            {
+              "dm": "ConnStatusV6",
+              "label": "IPv6 status",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "Connected",
+                  "label": "Connected"
+                },
+                {
+                  "value": "Demand",
+                  "label": "Disconnected (idle, dial on demand)"
+                },
+                {
+                  "value": "Unconfigured",
+                  "label": "Unconfigured"
+                },
+                {
+                  "value": "Connecting",
+                  "label": "Connecting"
+                },
+                {
+                  "value": "Authenticating",
+                  "label": "Authenticating"
+                },
+                {
+                  "value": "PendingDisconnect",
+                  "label": "Disconnecting"
+                },
+                {
+                  "value": "Disconnected",
+                  "label": "Disconnected"
+                }
+              ],
+              "column": true
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "refresh",
+          "label": "Refresh",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Stock pages only re-submit the form (pageReFresh); the new UI just re-fetches the runtime sources."
+        }
+      ],
+      "notes": "Stock reads OBJ_ETHWANCPPP_ID and OBJ_ETHWANCIP_ID (TypeValue=2) params IPMode, WANCName, TransType, StrServList, GuaCurSrc, GUA1-3, GuaNum, IsOutPreferredLft1-3 (rendered as prefix length), PrefixCurSrc, Prefix1, Prefix1Len, GuaPd, DestAddress/ATMEncapsulation (DSL only), ConnStatusV6, DNSv6CurSrc, DNS1v6-3v6, Gatewayv6, Gatewayv6CurSrc, WorkIFMac; plus OBJ_ETHWANCBRIDGE_ID (WANCName, IPMode). Only rows with IPMode 2 or 3 are listed. OBJ_XDSLMODE_ID / PVC rows are DSL-only and dropped. All values are runtime (only WANC.IPMode and WANCPPP GUA/DNSv6/Prefix \"Trigger\" options are DB). Device sources: `ip -6 addr`, `ip -6 route`, the DHCPv6 client lease/state, /proc/net/if_inet6. UI-text notes moved here: [GUA1]: Stock appends \"/\" + IsOutPreferredLft1 (used as prefix length) when not \"::\". | [Prefix1]: Shown as Prefix1 + \"/\" + Prefix1Len. | [GuaPd]: Hidden in stock when \"::\"."
+    },
+    {
+      "id": "status-dslite",
+      "title": "DS-Lite tunnel (DSL uplink)",
+      "group": "status",
+      "order": 40,
+      "icon": "git-merge",
+      "description": "DS-Lite (4in6) tunnel state for DSL uplinks.",
+      "stock": {
+        "menu": "ssmDSLITEStatus",
+        "page": "status_dslite_if_t.gch",
+        "handler": []
+      },
+      "applicable": false,
+      "applicableNote": "This router has a GPON fiber uplink, not DSL.",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "tunnels",
+          "title": "Tunnels",
+          "table": "",
+          "mode": "list",
+          "source": "runtime:dslite_tunnels",
+          "fields": [
+            {
+              "dm": "Tunnel46name",
+              "label": "Tunnel name",
+              "type": "string",
+              "column": true
+            },
+            {
+              "dm": "Tunneltype",
+              "label": "Tunnel type",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "8",
+                  "label": "DS-Lite"
+                }
+              ]
+            },
+            {
+              "dm": "WANCName",
+              "label": "WAN connection",
+              "type": "string",
+              "column": true,
+              "help": "WAN connection the tunnel runs over."
+            },
+            {
+              "dm": "TUN46Localv4Addr",
+              "label": "Local IPv4 address",
+              "type": "ipv4"
+            },
+            {
+              "dm": "AFTRAddr",
+              "label": "AFTR address",
+              "type": "string"
+            },
+            {
+              "dm": "ConnStatus",
+              "label": "Status",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Offline"
+                },
+                {
+                  "value": "1",
+                  "label": "Online"
+                }
+              ],
+              "column": true
+            }
+          ]
+        }
+      ],
+      "notes": "Same template as status-dslite-eth but bound to OBJ_DSLWANC_ID (TypeValue=1). UI-text notes moved here: [applicableNote]: DSL-uplink variant (menu upMode 1); this device is GPON. See status-dslite-eth. | [WANCName]: Name of the WAN row whose view name equals TUN46WANCViewName. | [ConnStatus]: Stock: 0 = Offline, anything else = Online."
+    },
+    {
+      "id": "status-dslite-eth",
+      "title": "DS-Lite tunnel",
+      "group": "status",
+      "order": 41,
+      "icon": "git-merge",
+      "description": "DS-Lite (4in6) tunnel name, AFTR and state.",
+      "stock": {
+        "menu": "ssmDSLITEEthSta",
+        "page": "status_dsliteeth_if_t.gch",
+        "handler": [
+          "status_dslite_if_t.gch"
+        ]
+      },
+      "applicable": "unknown",
+      "applicableNote": "Only used if your ISP provides a DS-Lite tunnel.",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "tunnels",
+          "title": "Tunnels",
+          "table": "",
+          "mode": "list",
+          "source": "runtime:dslite_tunnels",
+          "fields": [
+            {
+              "dm": "Tunnel46name",
+              "label": "Tunnel name",
+              "type": "string",
+              "column": true
+            },
+            {
+              "dm": "Tunneltype",
+              "label": "Tunnel type",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "8",
+                  "label": "DS-Lite"
+                }
+              ]
+            },
+            {
+              "dm": "WANCName",
+              "label": "WAN connection",
+              "type": "string",
+              "column": true,
+              "help": "WAN connection the tunnel runs over."
+            },
+            {
+              "dm": "TUN46Localv4Addr",
+              "label": "Local IPv4 address",
+              "type": "ipv4"
+            },
+            {
+              "dm": "AFTRAddr",
+              "label": "AFTR address",
+              "type": "string"
+            },
+            {
+              "dm": "ConnStatus",
+              "label": "Status",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Offline"
+                },
+                {
+                  "value": "1",
+                  "label": "Online"
+                }
+              ],
+              "column": true
+            }
+          ]
+        }
+      ],
+      "notes": "status_dsliteeth_if_t.gch just imports status_dslite_if_t.gch. It lists OBJ_TUNNEL_ID instances and reads OBJ_TUNNEL46_ID (Tunnel46name, Tunneltype, TUN46WANCViewName, TUN46Localv4Addr, AFTRAddr, ConnStatus) and resolves the WAN name via OBJ_ETHWANC_ID. Config table TUNNEL46CFG exists but has 0 rows in the user DB, so the page is empty unless DS-Lite is provisioned. Device source: `ip -6 tunnel show` / ip4ip6 interfaces. UI-text notes moved here: [applicableNote]: Only meaningful if the ISP provisions a DS-Lite tunnel (TUNNEL46CFG has 0 rows today). | [WANCName]: Name of the WAN row whose view name equals TUN46WANCViewName. | [ConnStatus]: Stock: 0 = Offline, anything else = Online."
+    },
+    {
+      "id": "status-epon-link",
+      "title": "EPON link information",
+      "group": "status",
+      "order": 50,
+      "icon": "radio",
+      "description": "EPON registration, FEC, encryption, optics and PON counters.",
+      "stock": {
+        "menu": "ssmLinkState",
+        "page": "epon_status_link_info_t.gch",
+        "handler": []
+      },
+      "applicable": false,
+      "applicableNote": "This router has a GPON fiber uplink, not EPON.",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "link",
+          "title": "EPON link",
+          "table": "",
+          "mode": "readonly",
+          "source": "runtime:pon_link",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "LoidState",
+              "label": "EPON state",
+              "type": "string"
+            },
+            {
+              "dm": "FecEnable",
+              "label": "FEC",
+              "type": "bool"
+            },
+            {
+              "dm": "EncryStatus",
+              "label": "Encryption",
+              "type": "bool"
+            }
+          ]
+        }
+      ],
+      "notes": "Reads OBJ_PON_LOID_ID, OBJ_PON_FECSTATUS_ID, OBJ_PON_ENCRYSTATUS_ID, OBJ_PON_OPTICALPARA_ID, OBJ_LOS_INFO_ID, OBJ_PON_STAT_ID. epon_status_link_info_t_user.gch is the user-level copy. The GPON equivalent is status-pon. UI-text notes moved here: [applicableNote]: EPON page; this device is GPON (env ponmode=GPON)."
+    },
+    {
+      "id": "status-pon",
+      "title": "PON link information",
+      "group": "status",
+      "order": 51,
+      "icon": "radio",
+      "description": "GPON registration state, FEC, optical module readings and GEM port counters.",
+      "stock": {
+        "menu": "ssmGemStat",
+        "page": "gpon_status_link_t.gch",
+        "handler": []
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "link",
+          "title": "Link",
+          "table": "",
+          "mode": "readonly",
+          "source": "runtime:pon_link",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "LoidState",
+              "label": "GPON registration",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Initial state"
+                },
+                {
+                  "value": "1",
+                  "label": "Authenticated"
+                },
+                {
+                  "value": "2",
+                  "label": "LOID wrong"
+                },
+                {
+                  "value": "3",
+                  "label": "LOID ok, password wrong"
+                },
+                {
+                  "value": "4",
+                  "label": "LOID conflict"
+                },
+                {
+                  "value": "5",
+                  "label": "Initial state"
+                }
+              ]
+            },
+            {
+              "dm": "FecEnable",
+              "label": "FEC",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Disabled"
+                },
+                {
+                  "value": "1",
+                  "label": "Enabled"
+                }
+              ]
+            },
+            {
+              "dm": "LosInfo",
+              "label": "Optical signal",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Present"
+                },
+                {
+                  "value": "1",
+                  "label": "Loss of signal (LOS)"
+                }
+              ],
+              "help": "When there is loss of signal, optical readings are not shown."
+            }
+          ]
+        },
+        {
+          "id": "optics",
+          "title": "Optical module",
+          "table": "",
+          "mode": "readonly",
+          "source": "runtime:pon_optics",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "RxPower",
+              "label": "Received power",
+              "type": "string",
+              "unit": "dBm"
+            },
+            {
+              "dm": "TxPower",
+              "label": "Transmit power",
+              "type": "string",
+              "unit": "dBm"
+            },
+            {
+              "dm": "Volt",
+              "label": "Supply voltage",
+              "type": "string",
+              "unit": "uV"
+            },
+            {
+              "dm": "Current",
+              "label": "Bias current",
+              "type": "string",
+              "unit": "uA"
+            },
+            {
+              "dm": "Temp",
+              "label": "Temperature",
+              "type": "string",
+              "unit": "C"
+            }
+          ]
+        },
+        {
+          "id": "gemports",
+          "title": "GEM ports",
+          "table": "",
+          "mode": "list",
+          "source": "runtime:pon_gemports",
+          "rowLabel": "GEM port {n}",
+          "fields": [
+            {
+              "dm": "EncrypMode",
+              "label": "Encryption",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Disabled"
+                },
+                {
+                  "value": "1",
+                  "label": "Enabled"
+                }
+              ],
+              "column": true
+            },
+            {
+              "dm": "RxgemFrames",
+              "label": "Frames received",
+              "type": "int",
+              "column": true
+            },
+            {
+              "dm": "TxgemFrames",
+              "label": "Frames sent",
+              "type": "int",
+              "column": true
+            },
+            {
+              "dm": "RxgemOctects",
+              "label": "Bytes received",
+              "type": "int",
+              "column": true
+            },
+            {
+              "dm": "TxgemOctects",
+              "label": "Bytes sent",
+              "type": "int",
+              "column": true
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "refresh",
+          "label": "Refresh",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Stock pages only re-submit the form (pageReFresh); the new UI just re-fetches the runtime sources."
+        }
+      ],
+      "notes": "Stock reads OBJ_PON_LOID_ID (PonLoid, LoidPasswd, LoidState - only LoidState is shown; never expose PonLoid/LoidPasswd here, they belong to the LOID config page), OBJ_GPON_FECSTATUS_ID (FecEnable), OBJ_PON_OPTICALPARA_ID (Volt, RxPower, TxPower, Temp, Current), OBJ_GPON_LOS_INFO_ID (LosInfo), and lists OBJ_PON_GEMPORTSTAT_ID (RxgemFrames, TxgemFrames, RxgemOctects, TxgemOctects, EncrypMode); stock hides the GEM tables (display:none) and the optics table unless env Right==1 (admin) or CountryCode==211. gpon_status_link_info_t.gch / _user.gch are the same page without GEM ports; pon_status_gemport_info_t.gch is the GEM table alone. None of this is in the DB. Device sources to verify: the vendor PON/optic driver (cspd PON module via `sidbg 1 -p`, gpon_omci, or /proc entries of the BOSA/optic driver). \"GPON state\" here is the LOID auth state, not the ONU O1-O5 PLOAM state; exposing the O-state too would be useful if the driver offers it. UI-text notes moved here: [LoidState]: Default (non-GD, CountryCode not 200/213) label set. GD variant: 0=fail/unregistered, 1=registered, 2-5=registered but unauthorised. | [LosInfo]: When 1 the stock page shows \"--\" for Rx/Tx power and bias current. | [RxPower]: Stock: raw/10000, 1 decimal. | [TxPower]: Stock: raw/10000, 1 decimal. | [Volt]: Stock shows raw*1000 labelled uV (raw is mV). | [Current]: Raw value shown as-is. | [Temp]: Stock: raw/1000. | [EncrypMode]: Stock: \"0\" = Disable, anything else = Enable."
+    },
+    {
+      "id": "status-pon-counters",
+      "title": "PON packet counters",
+      "group": "status",
+      "order": 52,
+      "icon": "activity",
+      "description": "Packet, error and FEC counters of the PON port.",
+      "stock": {
+        "menu": "",
+        "page": "pon_status_stat_info_t.gch",
+        "handler": []
+      },
+      "applicable": "unknown",
+      "applicableNote": "Off-menu page; only linked from the EPON link page. May be empty in GPON mode.",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "counters",
+          "title": "Counters",
+          "table": "",
+          "mode": "readonly",
+          "source": "runtime:pon_counters",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "FECErrors",
+              "label": "FEC error packets",
+              "type": "int"
+            },
+            {
+              "dm": "DropPackets",
+              "label": "Lost packets",
+              "type": "int"
+            },
+            {
+              "dm": "PacketSent",
+              "label": "Packets sent",
+              "type": "int"
+            },
+            {
+              "dm": "PacketRecv",
+              "label": "Packets received",
+              "type": "int"
+            },
+            {
+              "dm": "UniPacketSent",
+              "label": "Unicast sent",
+              "type": "int"
+            },
+            {
+              "dm": "UniPacketRecv",
+              "label": "Unicast received",
+              "type": "int"
+            },
+            {
+              "dm": "MulPacketSent",
+              "label": "Multicast sent",
+              "type": "int"
+            },
+            {
+              "dm": "MulPacketRecv",
+              "label": "Multicast received",
+              "type": "int"
+            },
+            {
+              "dm": "BroadPacketSent",
+              "label": "Broadcast sent",
+              "type": "int"
+            },
+            {
+              "dm": "BroadPacketRecv",
+              "label": "Broadcast received",
+              "type": "int"
+            }
+          ]
+        }
+      ],
+      "notes": "Not in the menu. Reads OBJ_PON_STAT_ID (FECErrors, DropPackets, PacketSent, PacketRecv, Uni/Mul/BroadPacketSent/Recv). Used by the EPON link page; unverified whether OBJ_PON_STAT_ID returns data in GPON mode."
+    },
+    {
+      "id": "status-alarms",
+      "title": "Alarms",
+      "group": "status",
+      "order": 60,
+      "icon": "bell",
+      "description": "Optical link and voice registration alarms.",
+      "stock": {
+        "menu": "ssmAlarm",
+        "page": "pon_status_alarm_info_t.gch",
+        "handler": []
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "alarms",
+          "title": "Alarms",
+          "table": "",
+          "mode": "readonly",
+          "source": "runtime:alarms",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "DeviceAlarm",
+              "label": "Device alarm",
+              "type": "string"
+            },
+            {
+              "dm": "LosInfo",
+              "label": "Service quality alarm",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "None"
+                },
+                {
+                  "value": "1",
+                  "label": "Optical link broken"
+                }
+              ]
+            },
+            {
+              "dm": "ProcessingAlarm",
+              "label": "Processing error alarm",
+              "type": "string"
+            },
+            {
+              "dm": "VoiceAlarm",
+              "label": "Communication alarm",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "None"
+                },
+                {
+                  "value": "1",
+                  "label": "Voice line alarm (no line registered)"
+                }
+              ],
+              "help": "On when no phone line is registered."
+            },
+            {
+              "dm": "EnvironmentAlarm",
+              "label": "Environment alarm",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "refresh",
+          "label": "Refresh",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Stock pages only re-submit the form (pageReFresh); the new UI just re-fetches the runtime sources."
+        }
+      ],
+      "notes": "Stock: OBJ_GPON_LOS_INFO_ID LosInfo (GPON) / OBJ_LOS_INFO_ID (EPON); OBJ_VOIPVPLINE_ID IsOnline over all lines; OBJ_PON_CATVPARA_ID RFLinkState only when env IsOnuCatv != 0 (no CATV on this device, row dropped). Device/processing/environment rows are placeholders with no data source. DB table ALARMCONFIG (Enable, AlarmNumberOfEntries, AlarmNumber) is the TR-069 alarm config, not used by this page. UI-text notes moved here: [DeviceAlarm]: Always blank in stock. | [ProcessingAlarm]: Always blank in stock. | [VoiceAlarm]: 1 when no OBJ_VOIPVPLINE_ID instance has IsOnline==1. | [EnvironmentAlarm]: Always blank in stock."
+    },
+    {
+      "id": "status-wlan",
+      "title": "Wi-Fi status",
+      "group": "status",
+      "order": 70,
+      "icon": "wifi",
+      "description": "Radio state, channel, security and traffic counters of each SSID.",
+      "stock": {
+        "menu": "Menu3_SL_WLANinfo",
+        "page": "status_wlaninfo_t.gch",
+        "handler": []
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "radios",
+          "title": "Radios",
+          "table": "WLANBase",
+          "mode": "readonly",
+          "source": "db",
+          "rowLabel": "Radio {n}",
+          "fields": [
+            {
+              "dm": "Band",
+              "label": "Band",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "2.4 GHz"
+                },
+                {
+                  "value": "1",
+                  "label": "5 GHz"
+                }
+              ],
+              "column": true
+            },
+            {
+              "dm": "RadioStatus",
+              "label": "Radio enabled",
+              "type": "bool",
+              "column": true
+            },
+            {
+              "dm": "Channel",
+              "label": "Configured channel",
+              "type": "int",
+              "column": true
+            },
+            {
+              "dm": "AutoChannelEnabled",
+              "label": "Auto channel",
+              "type": "bool",
+              "column": true
+            }
+          ]
+        },
+        {
+          "id": "ssids",
+          "title": "SSIDs",
+          "table": "WLANCfg",
+          "mode": "readonly",
+          "source": "db",
+          "rowFilter": {
+            "dm": "LocalSetEnable",
+            "in": [
+              "1"
+            ]
+          },
+          "rowLabel": "Row {n}: {ESSID}",
+          "fields": [
+            {
+              "dm": "ESSID",
+              "label": "SSID name",
+              "type": "string",
+              "column": true
+            },
+            {
+              "dm": "Enable",
+              "label": "Enabled",
+              "type": "bool",
+              "column": true
+            },
+            {
+              "dm": "BeaconType",
+              "label": "Security",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "None",
+                  "label": "Open"
+                },
+                {
+                  "value": "Basic",
+                  "label": "WEP"
+                },
+                {
+                  "value": "WPA",
+                  "label": "WPA"
+                },
+                {
+                  "value": "11i",
+                  "label": "WPA2"
+                },
+                {
+                  "value": "WPAand11i",
+                  "label": "WPA/WPA2"
+                }
+              ],
+              "column": true
+            },
+            {
+              "dm": "WPAAuthMode",
+              "label": "WPA authentication",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "PSKAuthentication",
+                  "label": "PSK"
+                },
+                {
+                  "value": "EAPAuthentication",
+                  "label": "EAP"
+                }
+              ],
+              "advanced": true
+            },
+            {
+              "dm": "11iAuthMode",
+              "label": "WPA2 authentication",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "PSKAuthentication",
+                  "label": "PSK"
+                },
+                {
+                  "value": "EAPAuthentication",
+                  "label": "EAP"
+                }
+              ],
+              "advanced": true
+            },
+            {
+              "dm": "WPAEncryptType",
+              "label": "WPA cipher",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "TKIPEncryption",
+                  "label": "TKIP"
+                },
+                {
+                  "value": "AESEncryption",
+                  "label": "AES"
+                },
+                {
+                  "value": "TKIPandAESEncryption",
+                  "label": "TKIP + AES"
+                }
+              ],
+              "advanced": true
+            },
+            {
+              "dm": "11iEncryptType",
+              "label": "WPA2 cipher",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "TKIPEncryption",
+                  "label": "TKIP"
+                },
+                {
+                  "value": "AESEncryption",
+                  "label": "AES"
+                },
+                {
+                  "value": "TKIPandAESEncryption",
+                  "label": "TKIP + AES"
+                }
+              ],
+              "column": true
+            },
+            {
+              "dm": "WEPAuthMode",
+              "label": "WEP authentication",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "None",
+                  "label": "Open"
+                },
+                {
+                  "value": "SharedAuthentication",
+                  "label": "Shared key"
+                },
+                {
+                  "value": "Both",
+                  "label": "Open + shared key"
+                }
+              ],
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "live",
+          "title": "Live per-SSID state",
+          "table": "",
+          "mode": "list",
+          "source": "runtime:wlan_ssid_stats",
+          "rowLabel": "SSID {Index}",
+          "fields": [
+            {
+              "dm": "Index",
+              "label": "SSID index",
+              "type": "int",
+              "column": true,
+              "help": "SSID1–4 are 2.4 GHz, SSID5–8 are 5 GHz."
+            },
+            {
+              "dm": "RealRF",
+              "label": "Radio on air",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "Enabled"
+                },
+                {
+                  "value": "0",
+                  "label": "Disabled"
+                }
+              ],
+              "column": true
+            },
+            {
+              "dm": "ChannelInUsed",
+              "label": "Channel in use",
+              "type": "int",
+              "column": true
+            },
+            {
+              "dm": "Bssid",
+              "label": "BSSID",
+              "type": "mac"
+            },
+            {
+              "dm": "TotalBytesReceived",
+              "label": "Bytes received",
+              "type": "int",
+              "column": true
+            },
+            {
+              "dm": "TotalPacketsReceived",
+              "label": "Packets received",
+              "type": "int"
+            },
+            {
+              "dm": "TotalBytesSent",
+              "label": "Bytes sent",
+              "type": "int",
+              "column": true
+            },
+            {
+              "dm": "TotalPacketsSent",
+              "label": "Packets sent",
+              "type": "int"
+            },
+            {
+              "dm": "ErrorsReceived",
+              "label": "Receive errors",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "ErrorsSent",
+              "label": "Send errors",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "DiscardPacketsReceived",
+              "label": "Receive discards",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "DiscardPacketsSent",
+              "label": "Send discards",
+              "type": "int",
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "refresh",
+          "label": "Refresh",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Stock pages only re-submit the form (pageReFresh); the new UI just re-fetches the runtime sources."
+        }
+      ],
+      "notes": "Stock loops IGD.LD1.WLAN1..N (N = env wlanportnum) and skips SSIDs whose LocalSetEnable != 1. From OBJ_WLANCONFIG_ID it reads RadioStatus, ESSID, WEPAuthMode, BeaconType, WPAEncryptType, WPAAuthMode, 11iAuthMode, 11iEncryptType, Enable (all DB: WLANCfg rows 0-7, RadioStatus is WLANBase rows 0/1). From OBJ_WLANCONFIGDRV_ID (driver, runtime) it reads TotalPacketsReceived/Sent, TotalBytesReceived/Sent, ErrorsReceived/Sent, DiscardPacketsReceived/Sent, ChannelInUsed, Bssid, RealRF. Stock \"WLAN connection status\" column shows RadioStatus (radio on), not per-SSID Enable. Auth label derivation: None->NONE; Basic->WEP (+WEPAuthMode); WPA/11i/WPAand11i combined with *AuthMode PSK/EAP -> WPA-PSK, WPA2-PSK, WPA-PSK/WPA2-PSK, WPA-EAP, WPA2-EAP, WPA/WPA2-EAP. Runtime sources: /sys/class/net/wlanN/statistics/* or /proc/net/dev for counters, `iwconfig wlanN` / `iwpriv wlanN stat` for channel/BSSID, operstate for RealRF. e8_status_wlan_info_t.gch is the e8 variant of the same data (adds BSSID and error/discard rows). Associated-client list is not on any stock status page; see the WLAN group. UI-text notes moved here: [Band]: Verified: WLANBase row 0 Band=0 (2.4 GHz), row 1 Band=1 (5 GHz). | [Index]: 1-8 = WLANCfg row + 1; wlan0-3 = 2.4 GHz, wlan4-7 = 5 GHz."
+    },
+    {
+      "id": "status-ethernet",
+      "title": "Ethernet ports",
+      "group": "status",
+      "order": 80,
+      "icon": "network",
+      "description": "LAN IP address and link state, speed and counters of each Ethernet port.",
+      "stock": {
+        "menu": "Menu3_SL_Ethinfo",
+        "page": "status_ponlan_info_t.gch",
+        "handler": []
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "lan",
+          "title": "LAN interface",
+          "table": "",
+          "mode": "readonly",
+          "source": "runtime:lan_bridge",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "IPAddr",
+              "label": "LAN IPv4 address",
+              "type": "ipv4"
+            },
+            {
+              "dm": "IPv6Addr",
+              "label": "LAN IPv6 address",
+              "type": "ipv6"
+            },
+            {
+              "dm": "IPv6PrefLen",
+              "label": "IPv6 prefix length",
+              "type": "int"
+            }
+          ]
+        },
+        {
+          "id": "ports",
+          "title": "Ports",
+          "table": "",
+          "mode": "list",
+          "source": "runtime:lan_ports",
+          "rowLabel": "LAN {n}",
+          "fields": [
+            {
+              "dm": "Port",
+              "label": "Port",
+              "type": "string",
+              "column": true
+            },
+            {
+              "dm": "Status",
+              "label": "Link",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Up"
+                },
+                {
+                  "value": "1",
+                  "label": "No link"
+                },
+                {
+                  "value": "3",
+                  "label": "Disabled"
+                },
+                {
+                  "value": "2",
+                  "label": "Error"
+                }
+              ],
+              "column": true
+            },
+            {
+              "dm": "Speed",
+              "label": "Speed",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "10 Mbit/s"
+                },
+                {
+                  "value": "1",
+                  "label": "100 Mbit/s"
+                },
+                {
+                  "value": "2",
+                  "label": "1000 Mbit/s"
+                }
+              ],
+              "column": true,
+              "help": "Other values = Auto."
+            },
+            {
+              "dm": "Duplex",
+              "label": "Duplex",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Half"
+                },
+                {
+                  "value": "1",
+                  "label": "Full"
+                }
+              ],
+              "column": true,
+              "help": "Other values = Auto."
+            },
+            {
+              "dm": "MACAddress",
+              "label": "Port MAC",
+              "type": "mac",
+              "advanced": true
+            },
+            {
+              "dm": "InOctets",
+              "label": "Bytes received",
+              "type": "int",
+              "column": true
+            },
+            {
+              "dm": "InPkts",
+              "label": "Packets received",
+              "type": "int"
+            },
+            {
+              "dm": "OutOctets",
+              "label": "Bytes sent",
+              "type": "int",
+              "column": true
+            },
+            {
+              "dm": "OutPkts",
+              "label": "Packets sent",
+              "type": "int"
+            },
+            {
+              "dm": "CRC",
+              "label": "Error frames",
+              "type": "int",
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "refresh",
+          "label": "Refresh",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Stock pages only re-submit the form (pageReFresh); the new UI just re-fetches the runtime sources."
+        }
+      ],
+      "notes": "Menu page status_ponlan_info_t.gch shows (a) a DHCP client table (see status-lan-clients) and (b) a port table from OBJ_PON_ETH_ID: InPkts, InOctets, OutPkts, OutOctets, Status, Speed, Duplex. Off-menu status_lan_info_t_user.gch and gpon_status_lan_info_t.gch add OBJ_BRGRP_ID (IPAddr, IPv6Addr, IPv6PrefLen of the LAN bridge) and per-port MACAddress and CRC from OBJ_PON_ETH_ID; both are merged here. DB has the config side only: LAND (IPAddr, NetMask, IPv6Addr...) and EthPortConf rows 0-3 (IFName, Enable, AutoNegEn, MaxBitRate, DuplexMode) - those belong to the network/LAN pages. Runtime sources: /sys/class/net/ethN/{carrier,speed,duplex,statistics/*}, `ip addr show br0` (bridge name to verify). epon_status_lan_info_t.gch is the EPON twin (BytesReceived/PacketsReceived/ErrorFrames param names). UI-text notes moved here: [Port]: LAN1-LAN4 = OBJ_PON_ETH_ID instance index + 1 (eth0-eth3). Stock CT build renames port 2 to \"iTV\" when portnum > 2; do not copy that. | [Status]: status_lan_info_t_user.gch mapping: 0 Up, 1 NoLink, 3 Disabled, other Error. status_ponlan_info_t.gch: 0 = connected, other = disconnected."
+    },
+    {
+      "id": "status-lan-clients",
+      "title": "LAN clients (DHCP)",
+      "group": "status",
+      "order": 90,
+      "icon": "laptop",
+      "description": "Devices that got an address from the built-in DHCP server.",
+      "stock": {
+        "menu": "",
+        "page": "status_ethlan_dhcp_info_t.gch",
+        "handler": [
+          "dhcp_hostinfo_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "leases",
+          "title": "DHCP leases",
+          "table": "",
+          "mode": "list",
+          "source": "runtime:dhcp_leases",
+          "fields": [
+            {
+              "dm": "HostName",
+              "label": "Client name",
+              "type": "string",
+              "column": true
+            },
+            {
+              "dm": "MACAddr",
+              "label": "MAC address",
+              "type": "mac",
+              "column": true
+            },
+            {
+              "dm": "IPAddr",
+              "label": "IP address",
+              "type": "string",
+              "column": true,
+              "help": "IPv4 lease or IPv6 address."
+            },
+            {
+              "dm": "ExpiredTime",
+              "label": "Lease remaining",
+              "type": "int",
+              "unit": "s",
+              "column": true,
+              "help": "-1 = never expires."
+            },
+            {
+              "dm": "PhyPortName",
+              "label": "Port",
+              "type": "string",
+              "column": true,
+              "help": "eth0–eth3 = LAN1–LAN4, wlan0–wlan7 = SSID1–8."
+            },
+            {
+              "dm": "PhyType",
+              "label": "Device type",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Unknown"
+                },
+                {
+                  "value": "1",
+                  "label": "Phone"
+                },
+                {
+                  "value": "2",
+                  "label": "Tablet"
+                },
+                {
+                  "value": "3",
+                  "label": "PC"
+                },
+                {
+                  "value": "4",
+                  "label": "Set-top box"
+                },
+                {
+                  "value": "5",
+                  "label": "Router"
+                },
+                {
+                  "value": "6",
+                  "label": "Smart device"
+                },
+                {
+                  "value": "7",
+                  "label": "Access point"
+                },
+                {
+                  "value": "8",
+                  "label": "PLC"
+                },
+                {
+                  "value": "9",
+                  "label": "Other"
+                }
+              ],
+              "column": true
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "refresh",
+          "label": "Refresh",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Stock pages only re-submit the form (pageReFresh); the new UI just re-fetches the runtime sources."
+        }
+      ],
+      "notes": "Not in the menu on this build. dhcp_hostinfo_gch.gch lists OBJ_DHCPHOSTINFO_ID (HostName, MACAddr, IPAddr, ExpiredTime, PhyPortName, PhyType). status_ponlan_info_t.gch (Ethernet menu page) shows the same leases plus IPv6 clients from OBJ_DHCP6C_ID (IpAddr, MacAddr, SrcPortName) and device type from OBJ_MACTOTYPE_ID (PhyType) keyed by MAC. DB AccessDev / DevAccInfo tables hold a persisted host list (HostName, MACAddress, Interface...) that may be a fallback. Runtime source: the udhcpd/dnsmasq lease file (path to verify, e.g. under /var) and `ip neigh`. UI-text notes moved here: [IPAddr]: IPv4 lease, or IPv6 address for rows from OBJ_DHCP6C_ID. | [ExpiredTime]: -1 = infinite (stock prints a wrong label, \"DNS Server2\", for -1). | [PhyPortName]: eth0-eth3 = LAN1-LAN4, wlan0-wlan3 = SSID1-4 (5 GHz wlan4-7 not mapped by stock). | [PhyType]: From OBJ_MACTOTYPE_ID keyed by MAC."
+    },
+    {
+      "id": "status-usb",
+      "title": "USB devices",
+      "group": "status",
+      "order": 100,
+      "icon": "usb",
+      "description": "Devices plugged into the USB port.",
+      "stock": {
+        "menu": "ssmUSB",
+        "page": "status_usb_info_t.gch",
+        "handler": []
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "devices",
+          "title": "USB devices",
+          "table": "",
+          "mode": "list",
+          "source": "runtime:usb_devices",
+          "fields": [
+            {
+              "dm": "PanelPort",
+              "label": "Port",
+              "type": "string",
+              "column": true
+            },
+            {
+              "dm": "DevName",
+              "label": "Device name",
+              "type": "string",
+              "column": true
+            },
+            {
+              "dm": "ClassInfoStr",
+              "label": "Device type",
+              "type": "string",
+              "column": true
+            },
+            {
+              "dm": "DevID",
+              "label": "Vendor ID / product ID",
+              "type": "string",
+              "column": true
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "refresh",
+          "label": "Refresh",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Stock pages only re-submit the form (pageReFresh); the new UI just re-fetches the runtime sources."
+        }
+      ],
+      "notes": "Stock lists OBJ_USBDEV_ID (PanelPort, DevName, DevID, ClassInfoStr), grouping rows by PanelPort; empty list shows \"No USB device detected\". Runtime source: /sys/bus/usb/devices/*/{idVendor,idProduct,product,bDeviceClass} or /proc/bus/usb/devices."
+    },
+    {
+      "id": "status-tr069",
+      "title": "TR-069 status",
+      "group": "status",
+      "order": 110,
+      "icon": "server",
+      "description": "State of the last Inform to the ISP management server and of the ACS connection.",
+      "stock": {
+        "menu": "ssmItms",
+        "page": "status_itms_info_t.gch",
+        "handler": []
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "state",
+          "title": "Remote management",
+          "table": "",
+          "mode": "readonly",
+          "source": "runtime:tr069_status",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "InfoStat",
+              "label": "Inform to ACS",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Not reported"
+                },
+                {
+                  "value": "1",
+                  "label": "Reporting"
+                },
+                {
+                  "value": "2",
+                  "label": "Report failed"
+                },
+                {
+                  "value": "3",
+                  "label": "Reported successfully"
+                }
+              ]
+            },
+            {
+              "dm": "InfoDesc",
+              "label": "Inform detail",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Device starting"
+                },
+                {
+                  "value": "1",
+                  "label": "-"
+                },
+                {
+                  "value": "2",
+                  "label": "No WAN connection for TR-069"
+                },
+                {
+                  "value": "3",
+                  "label": "TR-069 WAN connection not working"
+                },
+                {
+                  "value": "4",
+                  "label": "No DNS information"
+                },
+                {
+                  "value": "5",
+                  "label": "No ACS configured"
+                },
+                {
+                  "value": "6",
+                  "label": "No response from ACS"
+                },
+                {
+                  "value": "7",
+                  "label": "Interrupted"
+                },
+                {
+                  "value": "8",
+                  "label": "Authentication failure"
+                },
+                {
+                  "value": "9",
+                  "label": "Could not resolve ACS host name"
+                }
+              ]
+            },
+            {
+              "dm": "AcsStat",
+              "label": "ACS connection request",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "CPE connection not initialised"
+                },
+                {
+                  "value": "1",
+                  "label": "ACS connection not initialised"
+                },
+                {
+                  "value": "2",
+                  "label": "ACS connection initialised"
+                }
+              ]
+            },
+            {
+              "dm": "AcsDesc",
+              "label": "ACS detail",
+              "type": "string",
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "refresh",
+          "label": "Refresh",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Stock pages only re-submit the form (pageReFresh); the new UI just re-fetches the runtime sources."
+        }
+      ],
+      "notes": "Admin-only (right=1). Reads OBJ_tr069Stat_ID (InfoStat, InfoDesc, AcsStat, AcsDesc). Runtime state of the cwmp client; candidate source: the TR-069 daemon status (cspd TR069 module via sidbg) - DB MgtServer holds only config (URL/credentials, never show). \"ITMS\" in stock labels is the China Telecom name for the ACS. UI-text notes moved here: [InfoDesc]: 0-5 refine InfoStat 0, 6-9 refine InfoStat 2. | [AcsDesc]: Read by stock but not displayed."
+    },
+    {
+      "id": "status-service-config",
+      "title": "Remote provisioning status",
+      "group": "status",
+      "order": 120,
+      "icon": "download",
+      "description": "Whether the ISP management server has pushed the service configuration.",
+      "stock": {
+        "menu": "ssmServ",
+        "page": "status_service_info_t.gch",
+        "handler": []
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "state",
+          "title": "Provisioning",
+          "table": "",
+          "mode": "readonly",
+          "source": "runtime:service_config",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Result",
+              "label": "Service configuration",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "99",
+                  "label": "Not sent by ACS"
+                },
+                {
+                  "value": "0",
+                  "label": "Receiving configuration"
+                },
+                {
+                  "value": "1",
+                  "label": "Configured successfully"
+                },
+                {
+                  "value": "2",
+                  "label": "Configuration failed"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "refresh",
+          "label": "Refresh",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Stock pages only re-submit the form (pageReFresh); the new UI just re-fetches the runtime sources."
+        }
+      ],
+      "notes": "Admin-only. Reads OBJ_ServQry_ID Result. DB table PDTCTUSERINFO has a Result DM (CT user-registration result) that may be the backing value - verify with `sidbg 1 DB p PDTCTUSERINFO` while comparing with the stock page."
+    },
+    {
+      "id": "status-voip",
+      "title": "VoIP registration",
+      "group": "status",
+      "order": 130,
+      "icon": "phone",
+      "description": "SIP registration state of each phone line.",
+      "stock": {
+        "menu": "ssmVOIPStatu",
+        "page": "status_voip_4less_t.gch",
+        "handler": []
+      },
+      "applicable": "unknown",
+      "applicableNote": "Depends on whether the POTS port is populated/used on this unit.",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "lines",
+          "title": "Phone lines",
+          "table": "",
+          "mode": "list",
+          "source": "runtime:voip_lines",
+          "rowLabel": "Phone {Line}",
+          "fields": [
+            {
+              "dm": "Line",
+              "label": "Phone",
+              "type": "int",
+              "column": true
+            },
+            {
+              "dm": "IsOnline",
+              "label": "Registration",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "Registered"
+                },
+                {
+                  "value": "0",
+                  "label": "Not registered"
+                }
+              ],
+              "column": true,
+              "help": "Anything other than 1 = not registered."
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "refresh",
+          "label": "Refresh",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Stock pages only re-submit the form (pageReFresh); the new UI just re-fetches the runtime sources."
+        }
+      ],
+      "notes": "Lists OBJ_VOIPVPLINE_ID instances and reads IsOnline (runtime, not in DB table VoIPVPLine which has Enable/PhyList/... only). Source: the SIP UA state (voice daemon; verify via sidbg). VoIPVPLine has 1 row."
+    },
+    {
+      "id": "status-voip-accounts",
+      "title": "VoIP accounts",
+      "group": "status",
+      "order": 131,
+      "icon": "phone",
+      "description": "SIP account (phone number) assigned to each line.",
+      "stock": {
+        "menu": "ssmPhoneNumber",
+        "page": "status_voip_phoneNumber_t.gch",
+        "handler": []
+      },
+      "applicable": "unknown",
+      "applicableNote": "Depends on whether the POTS port is used.",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "accounts",
+          "title": "SIP accounts",
+          "table": "VoIPSIPLine",
+          "mode": "readonly",
+          "source": "db",
+          "rowLabel": "Phone {n}",
+          "fields": [
+            {
+              "dm": "AuthUserName",
+              "label": "SIP account",
+              "type": "string",
+              "column": true,
+              "help": "Authentication user name, or the digest user name if that is empty."
+            },
+            {
+              "dm": "DigestUserName",
+              "label": "Digest user name",
+              "type": "string",
+              "column": true,
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "Reads OBJ_VOIPSIPLINE_ID AuthUserName / DigestUserName for each OBJ_VOIPVPLINE_ID instance; both are DB DMs of VoIPSIPLine (1 row). Never expose AuthPassword. UI-text notes moved here: [AuthUserName]: Stock shows AuthUserName, or DigestUserName when AuthUserName is empty."
+    },
+    {
+      "id": "status-smart-gateway",
+      "title": "Smart gateway platform",
+      "group": "status",
+      "order": 140,
+      "icon": "cloud",
+      "description": "Connection state to the ISP smart-gateway distribution, registration and plugin centres.",
+      "stock": {
+        "menu": "smSmartStatu",
+        "page": "status_interactive_t.gch",
+        "handler": []
+      },
+      "applicable": false,
+      "applicableNote": "China Telecom smart-gateway/plugin framework; not in this build's menu and not used by the ISP.",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "state",
+          "title": "Platform connections",
+          "table": "",
+          "mode": "readonly",
+          "source": "runtime:smart_gateway",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "distribute",
+              "label": "Distribution platform",
+              "type": "string"
+            },
+            {
+              "dm": "distributeIP",
+              "label": "Distribution platform IP",
+              "type": "string"
+            },
+            {
+              "dm": "registercenter",
+              "label": "Register centre",
+              "type": "string"
+            },
+            {
+              "dm": "registercenterIP",
+              "label": "Register centre IP",
+              "type": "string"
+            },
+            {
+              "dm": "plugincenter",
+              "label": "Plugin centre",
+              "type": "string"
+            },
+            {
+              "dm": "plugincenterIP",
+              "label": "Plugin centre IP",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "notes": "smSmartStatu has no leaf in dmenu.conf on this build; status_interactive_t.gch (OBJ_GatewayNew_ID: distribute, distributeIP, registercenter, registercenterIP, plugincenter, plugincenterIP with numeric state codes) and status_plugin_t.gch (OBJ_DBUSCALL_ID DBus call com.ctc.appframework1.AppAgent.List -> DbsCmdOut) are the likely children. status_reboot_framework_t.gch (OBJ_FRAMEWORK_REBOOT_ID interval) belongs to the same CT app framework."
+    }
+  ]
+}

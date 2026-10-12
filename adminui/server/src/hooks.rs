@@ -30,7 +30,8 @@ fn iface_for(table: &str, row: u32) -> Option<String> {
             1 => Some("wlan4".into()),
             _ => None,
         },
-        _ if row < 8 => Some(format!("wlan{row}")),
+        // Per-SSID tables only; WLANWEP (4 keys/SSID) and WLANWMM rows do not map 1:1.
+        "WLANCfg" | "WLANPSK" | "WLANWPS" if row < 8 => Some(format!("wlan{row}")),
         _ => None,
     }
 }
@@ -85,5 +86,6 @@ mod tests {
         assert_eq!(iface_for("WLANCfg", 4).as_deref(), Some("wlan4"));
         assert_eq!(iface_for("WLANBase", 1).as_deref(), Some("wlan4"));
         assert_eq!(iface_for("WLANBase", 2), None);
+        assert_eq!(iface_for("WLANWEP", 5), None);
     }
 }

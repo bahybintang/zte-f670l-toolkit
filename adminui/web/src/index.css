@@ -1,0 +1,159 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "@fontsource/barlow/latin-400.css";
+@import "@fontsource/barlow/latin-500.css";
+@import "@fontsource/barlow/latin-600.css";
+@import "@fontsource/barlow-semi-condensed/latin-500.css";
+@import "@fontsource/barlow-semi-condensed/latin-600.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --font-sans: 'Barlow', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'Barlow Semi Condensed', 'Barlow', ui-sans-serif, sans-serif;
+  --color-sidebar-ring: var(--ring);
+  --color-sidebar-border: var(--border);
+  --color-sidebar-accent-foreground: var(--foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--primary-foreground);
+  --color-sidebar-primary: var(--primary);
+  --color-sidebar-foreground: var(--foreground);
+  --color-sidebar: var(--sidebar);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --color-fiber: var(--fiber);
+  --color-fiber-ink: var(--fiber-ink);
+  --color-led-ok: var(--led-ok);
+  --color-led-warn: var(--led-warn);
+  --color-led-err: var(--led-err);
+  --color-led-off: var(--led-off);
+  --color-link: var(--link);
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+  --radius-3xl: 22px;
+  --radius-4xl: 26px;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Aluminium paper + ink; fiber yellow is reserved for "staged, not applied". */
+:root {
+  --background: #eef1f4;
+  --foreground: #16202e;
+  --card: #ffffff;
+  --card-foreground: #16202e;
+  --popover: #ffffff;
+  --popover-foreground: #16202e;
+  --primary: #16202e;
+  --primary-foreground: #f4f6f8;
+  --secondary: #e3e8ed;
+  --secondary-foreground: #16202e;
+  --muted: #e3e8ed;
+  --muted-foreground: #5b6778;
+  --accent: #e3e8ed;
+  --accent-foreground: #16202e;
+  --destructive: #d6453d;
+  --border: #d5dbe2;
+  --input: #c3ccd6;
+  --ring: #e0ad12;
+  --radius: 10px;
+  --sidebar: #e4e8ed;
+  --sidebar-accent: #d7dde4;
+  --fiber: #f2c230;
+  --fiber-ink: #3a2e00;
+  --led-ok: #22a55b;
+  --led-warn: #e09b17;
+  --led-err: #d6453d;
+  --led-off: #b7c0ca;
+  --link: #1c6e8c;
+  color-scheme: light;
+}
+
+.dark {
+  --background: #0f1722;
+  --foreground: #e6ebf1;
+  --card: #162130;
+  --card-foreground: #e6ebf1;
+  --popover: #192536;
+  --popover-foreground: #e6ebf1;
+  --primary: #e6ebf1;
+  --primary-foreground: #0f1722;
+  --secondary: #1d2938;
+  --secondary-foreground: #e6ebf1;
+  --muted: #1d2938;
+  --muted-foreground: #8c99aa;
+  --accent: #213044;
+  --accent-foreground: #e6ebf1;
+  --destructive: #e5605a;
+  --border: #253244;
+  --input: #33435a;
+  --ring: #f2c230;
+  --sidebar: #121c29;
+  --sidebar-accent: #1d2a3b;
+  --led-off: #3a4757;
+  --link: #6cc2de;
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/60;
+  }
+  html {
+    @apply font-sans;
+    font-feature-settings: "tnum" 1;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-size: 15px;
+    line-height: 1.5;
+  }
+  h1, h2, h3 {
+    font-family: var(--font-heading);
+    letter-spacing: -0.005em;
+  }
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  /* A front-panel LED: a lit dot with a soft halo, dim when off. */
+  .led {
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+    background: var(--led-off);
+    flex: none;
+  }
+  .led[data-state="ok"] { background: var(--led-ok); box-shadow: 0 0 0 3px color-mix(in oklab, var(--led-ok) 22%, transparent); }
+  .led[data-state="warn"] { background: var(--led-warn); box-shadow: 0 0 0 3px color-mix(in oklab, var(--led-warn) 25%, transparent); }
+  .led[data-state="err"] { background: var(--led-err); box-shadow: 0 0 0 3px color-mix(in oklab, var(--led-err) 25%, transparent); }
+  .led[data-state="blink"] { background: var(--led-ok); animation: led-blink 1.1s steps(2, jump-none) infinite; }
+  @keyframes led-blink { 50% { opacity: 0.25; } }
+  @media (prefers-reduced-motion: reduce) {
+    .led[data-state="blink"] { animation: none; }
+  }
+  .num { font-variant-numeric: tabular-nums; }
+}

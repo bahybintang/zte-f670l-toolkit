@@ -51,6 +51,8 @@ pub fn router(app: Arc<App>) -> Router {
         .route("/history/{id}/undo", post(undo))
         .route("/status/system", get(status_system))
         .route("/status/traffic", get(status_traffic))
+        .route("/status/leds", get(status_leds))
+        .route("/status/live/{name}", get(status_live))
         .route("/db/tables", get(db_tables))
         .route("/db/table/{name}", get(db_table))
         .route("/db/set", post(db_set))
@@ -275,6 +277,14 @@ async fn status_system(State(app): S) -> Json<Value> {
 
 async fn status_traffic(State(app): S) -> Json<Value> {
     Json(json!({ "ok": true, "traffic": app.stats.traffic() }))
+}
+
+async fn status_leds(State(app): S) -> Json<Value> {
+    Json(json!({ "ok": true, "leds": crate::runtime::leds(&app).await }))
+}
+
+async fn status_live(State(app): S, Path(name): Path<String>) -> R {
+    Ok(Json(json!({ "ok": true, "data": crate::runtime::read(&app, &name).await? })))
 }
 
 async fn db_tables(State(app): S) -> Json<Value> {
