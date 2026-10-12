@@ -1,0 +1,9 @@
+#!/bin/sh
+# Boot hook for adminui. Lives in /etc/rcS.d/ through the persistent /etc
+# overlay (upper dir /opt/upt/apps/etc). rcS runs it as `S99zadminui start`;
+# it only backgrounds the supervisor, so it never blocks boot.
+# Remove this file (or touch /userconfig/adminui.disable) to disable adminui.
+[ -f /userconfig/adminui.disable ] && exit 0
+[ -x /opt/upt/apps/adminui/adminui.sh ] || exit 0
+/opt/upt/apps/adminui/adminui.sh start > /dev/null 2>&1 &
+exit 0
