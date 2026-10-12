@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query'
 import { Search } from 'lucide-react'
 import { api } from '@/lib/api'
 import { cn } from '@/lib/utils'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui/button'
 
 interface Host {
   MAC: string; HostName?: string; IP?: string; arpIp?: string; If?: string; Active?: string; AddrSrc?: string; LastConn?: string
@@ -79,6 +81,20 @@ export function Clients() {
                   </>
                 )}
               </dl>
+              {!h.online && !h.If?.startsWith('wlan') && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="mt-3"
+                  onClick={() =>
+                    api.post('/tools/wol', { mac: h.MAC })
+                      .then(() => toast.success(`Wake-up packet sent to ${h.HostName || h.MAC}.`))
+                      .catch((e) => toast.error((e as Error).message))
+                  }
+                >
+                  Wake
+                </Button>
+              )}
             </li>
           )
         })}

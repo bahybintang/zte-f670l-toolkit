@@ -9,6 +9,7 @@ import { Diagnostics } from './pages/Diagnostics'
 import { Account } from './pages/Account'
 import { NotFound } from './pages/NotFound'
 import { Flash } from './pages/Flash'
+import { ShareWifi } from './pages/ShareWifi'
 
 const root = createRootRoute({
   component: () => (
@@ -28,6 +29,7 @@ const routes = [
   createRoute({ getParentRoute: () => root, path: '/tools', component: Diagnostics }),
   createRoute({ getParentRoute: () => root, path: '/account', component: Account }),
   createRoute({ getParentRoute: () => root, path: '/flash', component: Flash }),
+  createRoute({ getParentRoute: () => root, path: '/share-wifi', component: ShareWifi }),
 ]
 
 export const router = createRouter({ routeTree: root.addChildren(routes), defaultPreload: 'intent' })

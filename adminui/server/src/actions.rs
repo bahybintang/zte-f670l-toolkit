@@ -26,6 +26,7 @@ pub fn routes() -> Router<Arc<crate::state::App>> {
         .route("/clients", get(clients))
         .route("/backup/download", get(backup_download))
         .route("/flash/partitions", get(flash_partitions))
+        .route("/tools/wol", post(wol))
         .route("/flash/dump/{n}", get(flash_dump))
 }
 
@@ -184,6 +185,22 @@ async fn backup_download(State(_app): S) -> Result<Response, ApiError> {
         Body::from(data),
     )
         .into_response())
+}
+
+#[derive(Deserialize)]
+struct MacReq {
+    mac: String,
+}
+
+pub fn valid_mac(m: &str) -> bool {
+    m.len() == 17 && m.split(':').count() == 6 && m.split(':').all(|p| p.len() == 2 && p.chars().all(|c| c.is_ascii_hexdigit()))
+}
+
+async fn wol(Json(r): Json<MacReq>) -> R {
+    if !valid_mac(&r.mac) {
+        return Err("invalid MAC address".into());
+    }
+    tool("ether-wake", &["-i", "br0", &r.mac], 10).await
 }
 
 pub fn parse_mtd(s: &str) -> Vec<(u32, u64, String)> {
