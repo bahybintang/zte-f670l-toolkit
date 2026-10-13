@@ -444,8 +444,11 @@ SSID/PSK via the iwpriv hook.
   rule, **0x9703 adds** the new one (all five tables use the same pair). A firewall `0x2401` notify
   does **not** rebuild these (verified: iptables unchanged after an FWBase notify), so the rule
   events are required. The 428-byte struct (offsets, from `pm_fwset_ip`): name@0 (35B, the rule's
-  ViewName), type-const@36, name@76, name@112, byte@148, type-const@156 (2B), word@160, 259B
-  descriptor@164; the firewall re-reads the rule's fields from the DB by the ViewName. **Remaining
+  ViewName), type-const@36, name@76, name@112, byte@148, event@156 (2B), word@160, 259B
+  descriptor@164; the firewall re-reads the rule's fields from the DB by the ViewName. FWIP's
+  constants (from `pm_fwset_ip`): type-const@36 = `0xb0008`, @156 = the event (`0x9703`); name@76
+  and name@112 are the resolved IN/OUT interface names and @164 a 259B descriptor, both still to
+  trace per table. **Remaining
   to implement:** the per-table type constants (`DAT_*` in each setter) and the field sources for
   the name/descriptor slots, then validate each rule by diffing `iptables -L -n` after a live apply
   against a reboot rebuild of the same DB (a mismatch = reject, so it cannot ship a wrong rule).
