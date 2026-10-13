@@ -12,6 +12,7 @@ mod auth;
 mod db;
 mod exec;
 mod hooks;
+mod oss;
 mod runtime;
 mod schema;
 mod state;
@@ -29,17 +30,26 @@ struct Args {
     dir: PathBuf,
     bind: Option<IpAddr>,
     port: u16,
+    arg: Option<String>,
 }
 
 fn parse_args() -> Args {
-    let mut a = Args { cmd: "serve".into(), dir: DEFAULT_DIR.into(), bind: None, port: DEFAULT_PORT };
+    let mut a = Args { cmd: "serve".into(), dir: DEFAULT_DIR.into(), bind: None, port: DEFAULT_PORT, arg: None };
+    let mut positional = 0;
     let mut it = std::env::args().skip(1);
     while let Some(x) = it.next() {
         match x.as_str() {
             "--dir" => a.dir = it.next().expect("--dir needs a value").into(),
             "--bind" => a.bind = Some(it.next().expect("--bind needs a value").parse().expect("bad --bind")),
             "--port" => a.port = it.next().expect("--port needs a value").parse().expect("bad --port"),
-            c if !c.starts_with('-') => a.cmd = c.to_string(),
+            c if !c.starts_with('-') => {
+                if positional == 0 {
+                    a.cmd = c.to_string();
+                } else {
+                    a.arg = Some(c.to_string());
+                }
+                positional += 1;
+            }
             o => {
                 eprintln!("unknown option {o}");
                 std::process::exit(2);
@@ -74,6 +84,19 @@ fn main() {
             println!("login reset to admin/admin (restart adminui to drop existing sessions)");
         }
         "serve" => serve(args),
+        // Re-send a view's current DB values to its manager (live apply test).
+        "oss-reapply" => {
+            let table = args.arg.clone().unwrap_or_else(|| "SNTP".into());
+            let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime");
+            let db = db::Db::new(Arc::new(exec::Executor::default()));
+            match rt.block_on(oss::reapply(&db, &table, &[])) {
+                Ok(r) => println!("{table}: manager replied iRet={r}"),
+                Err(e) => {
+                    eprintln!("{table}: {e}");
+                    std::process::exit(1);
+                }
+            }
+        }
         c => {
             eprintln!("unknown command {c}");
             std::process::exit(2);

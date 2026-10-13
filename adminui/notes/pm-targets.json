@@ -1,0 +1,409 @@
+{
+ "pm_arp_detect_set_config": {
+  "views": [
+   258
+  ],
+  "targets": [
+   [
+    "0x101a6",
+    "0xe401"
+   ]
+  ]
+ },
+ "pm_bandwidth_port_set_config": {
+  "views": [
+   373
+  ],
+  "targets": [
+   [
+    "0x101a9",
+    "0xe605"
+   ]
+  ]
+ },
+ "pm_bandwidth_set_config": {
+  "views": [
+   326
+  ],
+  "targets": [
+   [
+    "0x101a9",
+    "0xe602"
+   ]
+  ]
+ },
+ "pm_bw_basic_set_config": {
+  "views": [
+   325
+  ],
+  "targets": [
+   [
+    "0x101a9",
+    "0xe601"
+   ]
+  ]
+ },
+ "pm_clt_lmt_set_config": {
+  "views": [
+   257
+  ],
+  "targets": [
+   [
+    "0x101a2",
+    "0x230001"
+   ]
+  ]
+ },
+ "pm_dns_set_config": {
+  "views": [
+   177
+  ],
+  "targets": [
+   [
+    "0x10116",
+    "0x120001"
+   ]
+  ]
+ },
+ "pm_dnssl_set_config": {
+  "views": [
+   410
+  ],
+  "targets": [
+   [
+    "0x10116",
+    "0x120009"
+   ]
+  ]
+ },
+ "pm_dwqb_set_config": {
+  "views": [
+   396,
+   400
+  ],
+  "targets": [
+   [
+    "0x10103",
+    "0x70009"
+   ]
+  ]
+ },
+ "pm_dwqq_del_config": {
+  "views": [
+   396,
+   398,
+   400,
+   401
+  ],
+  "targets": [
+   [
+    "0x10103",
+    "0x7000a"
+   ]
+  ]
+ },
+ "pm_dwqq_set_config": {
+  "views": [
+   396,
+   400
+  ],
+  "targets": [
+   [
+    "0x10103",
+    "0x7000b"
+   ]
+  ]
+ },
+ "pm_dwqq_shaper_set_config": {
+  "views": [
+   396,
+   401
+  ],
+  "targets": [
+   [
+    "0x10103",
+    "0x7000c"
+   ]
+  ]
+ },
+ "pm_dwqr_set_config": {
+  "views": [
+   396,
+   397,
+   398
+  ],
+  "targets": [
+   [
+    "0x10103",
+    "0x7000a"
+   ]
+  ]
+ },
+ "pm_dwqt_del_config": {
+  "views": [
+   396,
+   397,
+   398,
+   399
+  ],
+  "targets": [
+   [
+    "0x10103",
+    "0x7000a"
+   ]
+  ]
+ },
+ "pm_dwqt_set_config": {
+  "views": [
+   396,
+   397,
+   398,
+   399
+  ],
+  "targets": [
+   [
+    "0x10103",
+    "0x7000a"
+   ]
+  ]
+ },
+ "pm_e8_igmp_wan_set_config": {
+  "views": [
+   229
+  ],
+  "targets": [
+   [
+    "0x10112",
+    "0xc0002"
+   ]
+  ]
+ },
+ "pm_flowrl_set_config": {
+  "views": [
+   367
+  ],
+  "targets": [
+   [
+    "0x101a8",
+    "0xe501"
+   ]
+  ]
+ },
+ "pm_ftp_server_set_config": {
+  "views": [
+   184
+  ],
+  "targets": [
+   [
+    "0x11501",
+    "0x190001"
+   ]
+  ]
+ },
+ "pm_igmp_proxy_set_config": {
+  "views": [
+   230
+  ],
+  "targets": [
+   [
+    "0x10112",
+    "0xc0001"
+   ]
+  ]
+ },
+ "pm_igmp_wan_set_config": {
+  "views": [
+   229
+  ],
+  "targets": [
+   [
+    "0x10112",
+    "0xc0002"
+   ]
+  ]
+ },
+ "pm_iptv_set_config": {
+  "views": [
+   229,
+   231
+  ],
+  "targets": [
+   [
+    "0x10112",
+    "0xc0001"
+   ]
+  ]
+ },
+ "pm_log_set_config": {
+  "views": [
+   289
+  ],
+  "targets": [
+   [
+    "0x10118",
+    "0x160001"
+   ]
+  ]
+ },
+ "pm_mld_proxy_set_config": {
+  "views": [
+   294,
+   295
+  ],
+  "targets": [
+   [
+    "0x1013a",
+    "0x280001"
+   ]
+  ]
+ },
+ "pm_qos_qc_set_config": {
+  "views": [
+   277,
+   286
+  ],
+  "targets": [
+   [
+    "0x10103",
+    "0x70002"
+   ]
+  ]
+ },
+ "pm_qos_qp_set_config": {
+  "views": [
+   277,
+   290
+  ],
+  "targets": [
+   [
+    "0x10103",
+    "0x70003"
+   ]
+  ]
+ },
+ "pm_qos_qq_set_config": {
+  "views": [
+   277,
+   282
+  ],
+  "targets": [
+   [
+    "0x10103",
+    "0x70004"
+   ]
+  ]
+ },
+ "pm_qos_qq_shaper_set_config": {
+  "views": [
+   277,
+   281
+  ],
+  "targets": [
+   [
+    "0x10103",
+    "0x70008"
+   ]
+  ]
+ },
+ "pm_qr_set_config": {
+  "views": [
+   277,
+   284,
+   286
+  ],
+  "targets": [
+   [
+    "0x10103",
+    "0x70002"
+   ]
+  ]
+ },
+ "pm_qt_dbus_del_config": {
+  "views": [
+   277,
+   284,
+   285,
+   286
+  ],
+  "targets": [
+   [
+    "0x10103",
+    "0x70002"
+   ]
+  ]
+ },
+ "pm_qt_del_config": {
+  "views": [
+   277,
+   284,
+   285,
+   286
+  ],
+  "targets": [
+   [
+    "0x10103",
+    "0x70002"
+   ]
+  ]
+ },
+ "pm_qt_set_config": {
+  "views": [
+   277,
+   284,
+   285,
+   286
+  ],
+  "targets": [
+   [
+    "0x10103",
+    "0x70002"
+   ]
+  ]
+ },
+ "pm_sntp_set_config": {
+  "views": [
+   250
+  ],
+  "targets": [
+   [
+    "0x1010d",
+    "0x80001"
+   ]
+  ]
+ },
+ "pm_tracert_set_config": {
+  "views": [],
+  "targets": [
+   [
+    "0x1012f",
+    "0x250000"
+   ]
+  ]
+ },
+ "pm_vlanbind_set_config": {
+  "views": [
+   228
+  ],
+  "targets": [
+   [
+    "0x101a3",
+    "0x480000"
+   ]
+  ]
+ },
+ "pm_wlan_set_config": {
+  "views": [
+   202
+  ],
+  "targets": [
+   [
+    "0x11201",
+    "0x10000"
+   ],
+   [
+    "0x11201",
+    "0x10001"
+   ]
+  ]
+ }
+}

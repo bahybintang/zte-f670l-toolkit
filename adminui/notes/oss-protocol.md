@@ -96,8 +96,8 @@ zeroes 0x20, then fills (all little-endian):
 | 0x04 | 4 | **receiver** OSS addr | `receiver` arg (e.g. `0x0001010D`) |
 | 0x08 | 4 | **event \| 0x20000** | e.g. `0x2401 | 0x20000 = 0x00022401` (bit 0x20000 = SYN_REQ) |
 | 0x0C | 2 | **payload length** | `paylen` (low 16) |
-| 0x0E | 2 | seq/inst (`*seq`) | request sequence (in/out) |
-| 0x10 | 2 | copy of `*seq` | also the expected-reply-length slot after return |
+| 0x0E | 2 | **max reply length** | the module refuses to reply if its answer is longer (`OSSSendAckData`) — **corrected 2026-10-13**, it is not a sequence number |
+| 0x10 | 2 | expected reply length | `SocketSynSendMsg` `recvfrom` size − 8; set equal to 0x0E |
 | 0x12 | 2 | sender AppInst | global node/inst (`OSSSenderAppInst` reads this) |
 | 0x16 | 2 | msg counter | per-PCB send counter (echoed in reply for matching) |
 | 0x18 | 2 | 0 | |
@@ -271,3 +271,150 @@ behaviourally identical to the web UI; or (b) replicate the exact pattern — `z
 0x2401,…)` — which needs only the changed field's offset, not the whole struct. The OSS transport
 (AF_UNIX `SOCK_DGRAM`, 32-byte header, `/var/tmp/0X00000001` inbound, per-app reply socket,
 synchronous reply with `iRet` word) **is** fully generic and documented above.
+
+--------------------------------------------------------------------------------
+## Generic re-apply via libpmapi (follow-up)
+
+Goal: a struct-layout-free live apply for object X — `buf=0; pm_X_get_config(id,buf);
+pm_X_set_config(id,buf)` — the get fills `buf` from the DB view, the set writes it back
+(no-op) and fires the `0x2401` notify, exactly like webd. Files produced:
+`adminui/notes/cmapi-table.json`, `adminui/helper/pmcall.c`.
+
+### Q1 — the dispatch table  [method noted]
+httpd does **not** hold a flat `OBJ_*`→handler pointer array: there are no data pointers to the
+`OBJ_*` rodata strings, and the lookup uses split pc-relative loads Ghidra does not turn into
+xrefs, so an exhaustive in-binary dump was not cheap to extract. **What is authoritative and
+machine-checked:** the set of `pm_<x>_get_config`/`_set_config`/`_add_config`/`_del_config`
+functions that are **both** imported by `httpd` **and** defined in `libpmapi.so` — i.e. the
+handlers webd can actually call. That is `cmapi-table.json`: **31 stems, 29 with a get+set pair**.
+Only these support the get→set re-apply. **Objects without a dedicated pm pair (WLAN, firewall,
+WAN, …) use the generic cmapi/paralist path, not this mechanism** — consistent with the WLAN5
+case. `OBJ_*`→stem is left `null` except the one verified by decompilation: **`OBJ_SNTP_ID` →
+`pm_sntp` (view `0xFA`, module `0x0001010D`, structLen `0x4B8`)** **[V]**. To fill `obj/viewid/
+module/structLen` for another stem, decompile its setter: view id = arg1 of `zxicDb*View`,
+module = int const passed arg1 to `pm_send_msg_2mm`, structLen = the `memset`/`local=0xNNN` size
+before `zxicDbGetView`.
+
+### Q2 — pm_* signatures  [V single-instance; I multi-instance]
+Uniform shape (verified on `pm_sntp_get_config` 0x1550d0 and `pm_sntp_set_config` 0x1540b0):
+```c
+int pm_<x>_get_config(const char *identity, void *struct_buf);   // buf filled from DB view
+int pm_<x>_set_config(const char *identity, void *struct_buf);   // DB write + 0x2401 notify
+```
+- `struct_buf` is the **parsed pm struct** (NOT the raw DB view blob); fields are written by
+  `pm_bool_prm_op`/`pm_str_prm_op` into `buf+offset`. Must be caller-zeroed; sizes seen < 0x600,
+  so the helper's 64 KiB buffer is safe. NULL `buf` → returns `-10`/`-0xA`. **[V]**
+- Return `0` = success; negative = error (e.g. `-258`). **[V]**
+- **identity:** for single-instance objects it is `""`/`"IGD"` and the setter hard-codes the
+  ViewName; for **multi-instance** objects the identity (`"IGD.LD1.WLAN5"`, `"IGD.FWDMZ.FWDMZ1"`)
+  is the instance path that becomes the 32-byte **ViewName** field of the `0x2401` message
+  (Section 3) and the `zxicDb*View` key. Treat multi-instance identity flow as **[I]** (not
+  re-decompiled per object). Some objects take extra mask/flags args (not uniform) — **verify
+  the specific setter before trusting the 2-arg shape**; `add`/`del` handlers differ.
+
+### Q3 — process init a standalone caller needs  [V, this is the real gate]
+`pm_*_set_config → pm_send_msg_2mm → SSEND`, and `SSEND` requires this process to own an OSS
+**PCB** (`GetSelfThreadPCBPtr()` must be non-NULL) and a bound reply socket. **webd imports and
+calls `OSSInitConfig` + `OSSStart`** (full OSS *node* init with a task table) — `strings`/imports
+confirm; it does **not** import `InitAppComm`. So:
+- A standalone helper that calls `pm_*_set_config` **must bring up OSS first.** The lightweight
+  `InitAppComm(appid_base, node)` (liboss 0x24e34) binds one AF_UNIX socket and sets the self
+  address = `appid_base + 0x101`, but it does **not** create the PCB that `SSEND` dereferences,
+  so on its own it may be insufficient for the *send* (it is enough for the reply socket and for
+  a raw-datagram sender). If `set()` returns a send error, the process must instead call
+  `OSSInitConfig(cfg)` then `OSSStart(task_table, x, node)` with a minimal 1-task table. **[V/I]**
+- **Recommended sender identity:** choose a subsystem byte **not** present in `sidbg 1 -p`
+  (live module table). `0x01` = cspd modules, `0x03` = webd, `0x3d`(61) = telnetd family — avoid
+  these. The helper uses `InitAppComm(0x7E0000,0)` → self `0x7E0101` (subsystem `0x7E`, reply
+  socket `/var/tmp/0X00007E01`). Requests still go to `/var/tmp/0X00000001`; subsystem `!= 0x01`
+  guarantees the module replies over the socket (Section 5). **[V reasoning]**
+- **The fully self-contained alternative** (no libpmapi init at all) is the raw `0x2401` datagram
+  of Section 6: bind one socket, `sendto` `/var/tmp/0X00000001`, read the `iRet`. It needs the
+  struct bytes, which `pm_<x>_get_config` (a DB read) can supply if it runs without OSS init,
+  else read them from the decrypted DB as adminui already does.
+
+### Q4 — the helper
+`adminui/helper/pmcall.c`: `pmcall reapply <stem|fn> <identity>` (dlopen `libpmapi.so`
+RTLD_GLOBAL, dlsym get+set, `get` then best-effort `InitAppComm` then `set`, prints `OK`/`ERR
+<iRet>`) and `pmcall get <stem|fn> <identity>` (hex-dumps the struct). Defensive: all dlsym
+NULL-checked, 64 KiB zeroed buffer, no shell/exec. **Build (verified to compile with the
+installed `zig` 0.17.0):**
+```
+zig cc -target arm-linux-gnueabi.2.17 -O2 -o pmcall pmcall.c -ldl
+```
+Target rationale, from the backup binaries: `/lib/ld-linux.so.3` ⇒ **soft-float armel** (not
+`armhf`, so `gnueabi` not `gnueabihf`); max required symbol version is **GLIBC_2.17** (most are
+2.4/2.7). The local build produced `ELF 32-bit ARM EABI5, interpreter /lib/ld-linux.so.3` —
+matches the device. **Not run** (per instructions); the binary was deleted, source kept.
+
+### Q5 — risks of get→set re-apply
+- **Round-trip is only safe if the struct is pure config.** If `pm_X_get_config` populates
+  runtime/status fields (counters, link state, negotiated values, lease times) that
+  `pm_X_set_config` then persists, a re-apply can overwrite good runtime state or re-trigger side
+  effects. SNTP's struct is pure config → safe. **[V for SNTP; I in general]**
+- **Dangerous to re-apply** (side effects on set): anything WAN/connection (PPP/DHCP
+  renegotiation, link drop), **firewall / NAT / port-forward** (`pm_fw_*` — rule flush/reorder),
+  routing, and login/telnet objects. Most of these are **not** in `cmapi-table.json`'s get/set
+  set anyway. Within the 31: WAN-side multicast (`pm_igmp_wan`, `pm_e8_igmp_wan`,
+  `pm_igmp_proxy`, `pm_mld_proxy`, `pm_vlanbind`, `pm_iptv`) can blip multicast/IPTV; `pm_dns`,
+  `pm_ddns`, `pm_bandwidth`, `pm_upnp`, `pm_log`, `pm_sntp`, `pm_tracert`, `pm_arp_detect` are
+  low-risk. **Multi-instance identity must be exact** or you apply to the wrong instance.
+- **Crash risk:** `pm_send_msg_2mm` ships a struct to a manager module; a wrong struct/length can
+  crash it → watchdog reboot (no physical reflash here). The get→set flow keeps the struct
+  self-consistent, which is its main safety advantage over hand-building. Test on the spare unit,
+  one object at a time, and check the printed `iRet`.
+
+--------------------------------------------------------------------------------
+## 8. The view struct is generic — built from `/etc/db_tbl_def.xml`  [V 2026-10-13]
+
+The `0x2401` `data[]` blob (the "DB view") does **not** need per-object reverse engineering.
+`dbcGetView` → `dbGetCommView` → `dbViewCommOp` (libdb.so) builds it generically by walking the
+table's DM list (the `<DMDEF>` order in `/etc/db_tbl_def.xml`) and emitting one fixed-size **slot**
+per DM. Verified against `pm_sntp_get_config`'s offsets (SNTP: 19 DMs → 1200 B + 8 = `0x4B8`, which
+equals `sidbg 1 DB pv` Len 1208 and the `getSntpViewParam` length).
+
+**View** = `u32 total_len` (= the `Len` from `pv` / `get<X>ViewParam`) · `u32 magic 0x01020304` · slots.
+
+**Slot** (size = `dbGetPmTypeValLen(type)` = 28-byte header + value, see table):
+
+| off | sz | field |
+|----|----|-------|
+| 0x00 | 2 | DB type code (table below) |
+| 0x02 | 2 | changed flag: 0 from GetView; the pm setters set **1** on each field they changed |
+| 0x04 | 20 | 0, except the view-name DM, which gets its DM name here (`strncpy` 15) |
+| 0x18 | 4 | s32 op result (0) |
+| 0x1C | .. | value: STRn = NUL-terminated text; INT32/DWORD/ENUM/BOOL = LE u32 (BOOL read as u8); IP/IPV6/MAC/BUF16 = raw row bytes |
+
+**Type codes and slot sizes** (cspd type-name table at `0x240320` = `{code,name}` pairs;
+libdb `dbGetPmTypeValLen` u16 table):
+
+| code | XML type | slot | | code | XML type | slot |
+|---|---|---|---|---|---|---|
+| 0 | STR8 | 40 | | 10 | INT32 | 32 |
+| 1 | STR16 | 48 | | 11 | DWORD | 32 |
+| 2 | STR32 | 64 | | 12 | ENUM | 32 |
+| 3 | STR64 | 96 | | 13 | BOOL | 32 |
+| 4 | STR128 | 160 | | 14 | IP | 32 |
+| 5 | STR256 | 288 | | 15 | IPV6 | 44 |
+| 6 | STR512 | 544 | | 16 | MAC | 36 |
+| 7 | STR1024 | 1056 | | 18 | BUF16 | 44 (pointer-backed) |
+| 8 | STR2048 | 2080 | | | | |
+| 9 | STR4096 | 4128 | | | | |
+
+The pm setters' own type writes confirm codes 10, 11 and 13 (`pm_int32/dword/bool_prm_op`).
+**Not yet verified:** the byte order of IP values (raw row memory, probably network order) and
+BUF16; avoid views with those types until a byte-level check exists.
+
+**Safety finding (2026-10-13):** running `pm_sntp_get_config` in a standalone process after
+`DBShmCliInit` (attaches the DB shared memory read-write at `0x60000000`) crashed it, and the whole
+userland (cspd hosts ~60 managers) died: ping answered, but every TCP port was refused until a
+power cycle. The csp locks use `SEM_UNDO` (`cspLock` `semop` flags 0x1800/0x1000), so a stranded
+lock is not the cause. Never attach the DB shm or call `zxicDb*`/`pm_*` from a foreign process.
+Build the view from `db_tbl_def.xml` and `sidbg` values and send it over the socket (§2) instead.
+
+**Verified end to end (2026-10-13, adminui `oss.rs`):** with 0x0E/0x10 = 2048, sender
+`0x0003AA01` and a world-writable reply socket `/var/tmp/0X000003AA` (cspd runs as user csp),
+an SNTP view built from `db_tbl_def.xml` + `sidbg` values is accepted by `sntp_mgr`, which replies
+`iRet 0` and applies it live (`sidbg 1 sntp_mgr getGlobalVar` → `g_dwpoll_time` follows the DB
+value). Setting 0x0E to 1 made the module apply the change but drop its reply.
+Targets for all 34 libpmapi setters that send `0x2401`: `notes/pm-targets.json`.

@@ -2,6 +2,9 @@
 //! effect without a reboot. Failures are warnings: the DB already holds the
 //! new value and boot-init would apply it after a restart.
 //!
+//! oss: any table with a manager target in `oss::TARGETS` is re-sent to its
+//!   manager as the firmware's own 0x2401 change notification (see oss.rs).
+//!   Runs for every page, independent of the page's own hook.
 //! wifi: MediaTek RTPRIV driver via `iwpriv wlanN set Key=Value`.
 //!   WLANCfg/WLANPSK/WLANWPS row r -> wlan{r}; WLANBase row 0 -> wlan0, row 1 -> wlan4.
 
@@ -34,6 +37,25 @@ fn iface_for(table: &str, row: u32) -> Option<String> {
         "WLANCfg" | "WLANPSK" | "WLANWPS" if row < 8 => Some(format!("wlan{row}")),
         _ => None,
     }
+}
+
+/// Notify the manager of every changed table that has an OSS target. Returns
+/// warnings and the tables the manager confirmed (iRet 0), which are live.
+pub async fn oss(app: &App, changes: &[Applied]) -> (Vec<String>, Vec<String>) {
+    let mut warn = Vec::new();
+    let mut live = Vec::new();
+    let mut tables: Vec<&str> = changes.iter().map(|c| c.table.as_str()).filter(|t| crate::oss::target(t).is_some()).collect();
+    tables.sort_unstable();
+    tables.dedup();
+    for t in tables {
+        let changed: Vec<&str> = changes.iter().filter(|c| c.table == t && c.row == 0).map(|c| c.dm.as_str()).collect();
+        match crate::oss::reapply(&app.db, t, &changed).await {
+            Ok(0) => live.push(t.to_string()),
+            Ok(r) => warn.push(format!("{t}: the router did not apply it live (code {r}); takes effect after a restart")),
+            Err(e) => warn.push(format!("{t}: live apply unavailable ({e}); takes effect after a restart")),
+        }
+    }
+    (warn, live)
 }
 
 pub async fn run(app: &App, hook: &str, changes: &[Applied]) -> Vec<String> {

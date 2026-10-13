@@ -129,6 +129,13 @@ impl Schema {
                 Err(e) => eprintln!("schema: skipping {n}: {e}"),
             }
         }
+        // Pages whose every writable table has an OSS manager target apply live.
+        for p in pages.iter_mut() {
+            let mut w = p.sections.iter().filter(|s| s.is_db() && s.mode != "readonly" && s.fields.iter().any(|f| !f.readonly)).peekable();
+            if w.peek().is_some() && w.all(|s| crate::oss::target(&s.table).is_some()) {
+                p.apply = Some("live".into());
+            }
+        }
         let mut by_id = HashMap::new();
         for (i, p) in pages.iter().enumerate() {
             if by_id.insert(p.id.clone(), i).is_some() {

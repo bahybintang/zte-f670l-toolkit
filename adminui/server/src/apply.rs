@@ -349,6 +349,8 @@ pub async fn apply(app: Arc<App>, schema: &Schema, page_id: &str, req: ApplyReq)
     if let Some(h) = &page.hook {
         warnings.extend(crate::hooks::run(&app, h, &applied).await);
     }
+    let (oss_warn, oss_live) = crate::hooks::oss(&app, &applied).await;
+    warnings.extend(oss_warn);
     drop(_g);
 
     let entry = HistoryEntry {
@@ -364,9 +366,14 @@ pub async fn apply(app: Arc<App>, schema: &Schema, page_id: &str, req: ApplyReq)
         undo_of: None,
     };
     let id = app.history.lock().await.push(entry);
-    // Only the Wi-Fi hook applies live today; everything else is read by the
-    // firmware at boot (raw DB writes send no change notification).
-    let live = page.hook.is_some() && planned.iter().all(|p| p.field.live_key.is_some() || p.field.dm == "Enable");
+    // Live when each change was taken by the Wi-Fi driver or confirmed by its
+    // manager over OSS; anything else is read by the firmware at boot (a raw
+    // DB write sends no change notification).
+    let wifi = page.hook.as_deref() == Some("wifi");
+    let live = !structural
+        && planned.iter().all(|p| {
+            (wifi && (p.field.live_key.is_some() || p.field.dm == "Enable")) || oss_live.iter().any(|t| *t == p.sec.table)
+        });
     let apply_mode = if live { "live" } else { "reboot" };
     if !live {
         let mut rp = app.restart_pending.lock().unwrap();
@@ -411,6 +418,9 @@ pub async fn undo(app: &App, id: u64) -> Result<u64, String> {
         for w in crate::hooks::run(app, h, &reverted).await {
             eprintln!("undo hook: {w}");
         }
+    }
+    for w in crate::hooks::oss(app, &reverted).await.0 {
+        eprintln!("undo oss: {w}");
     }
     drop(_g);
     let mut h = app.history.lock().await;
