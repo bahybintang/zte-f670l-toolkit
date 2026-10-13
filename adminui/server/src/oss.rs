@@ -74,6 +74,11 @@ pub const TARGETS: &[Target] = &[
     Target { table: "DevAuthInfo", view: 29, module: 0x10111, subid: 0x110005, identity: "" },
     Target { table: "Log", view: 289, module: 0x10118, subid: 0x160001, identity: "IGD" },
     Target { table: "QOSPolicer", view: 290, module: 0x10103, subid: 0x70003, identity: "" },
+    Target { table: "TelnetCfg", view: 180, module: 0x3d0101, subid: 0x200001, identity: "IGD" },
+    Target { table: "TelnetUser", view: 336, module: 0x3d0101, subid: 0x200002, identity: "" },
+    Target { table: "DHCPCComm", view: 4, module: 0x10c01, subid: 0x9206, identity: "IGD" },
+    Target { table: "WANC", view: 17, module: 0x10137, subid: 0x50005, identity: "" },
+    Target { table: "WANCIP", view: 18, module: 0x10122, subid: 0x4a0001, identity: "" },
     Target { table: "WANCPPP", view: 20, module: 0x10122, subid: 0x4a0001, identity: "" },
 ];
 
