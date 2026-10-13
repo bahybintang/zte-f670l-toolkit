@@ -69,6 +69,11 @@ pub const TARGETS: &[Target] = &[
     Target { table: "FWLevel", view: 236, module: 0x10102, subid: 0xb0006, identity: "IGD" },
     Target { table: "SambaCfg", view: 144, module: 0x11401, subid: 0x260001, identity: "IGD" },
     Target { table: "DHCPSPool", view: 173, module: 0x620101, subid: 0x150003, identity: "" },
+    Target { table: "DHCPSBind", view: 174, module: 0x620101, subid: 0x150001, identity: "" },
+    Target { table: "LAND", view: 5, module: 0x1010b, subid: 0xa0001, identity: "" },
+    Target { table: "DevAuthInfo", view: 29, module: 0x10111, subid: 0x110005, identity: "" },
+    Target { table: "Log", view: 289, module: 0x10118, subid: 0x160001, identity: "IGD" },
+    Target { table: "QOSPolicer", view: 290, module: 0x10103, subid: 0x70003, identity: "" },
     Target { table: "WANCPPP", view: 20, module: 0x10122, subid: 0x4a0001, identity: "" },
 ];
 
@@ -123,9 +128,9 @@ fn slot_len(k: Kind) -> usize {
 pub struct Dm {
     pub name: String,
     pub ty: String,
-    /// True when the DMDEF is guarded by a build macro; such DMs may be
-    /// compiled out of the running view (so the view is shorter than the XML).
-    pub macro_gated: bool,
+    /// The DMDEF's macroNeed (empty when unconditional). A gated DM is in the
+    /// running view only when its macro is enabled on this build (ENABLED_MACROS).
+    pub macro_need: String,
 }
 
 /// The `<DMDEF>`s of one table, in definition order.
@@ -136,20 +141,44 @@ pub fn table_dms(xml: &str, table: &str) -> Option<Vec<Dm>> {
     let re = regex_lite::Regex::new(r#"<DMDEF\s+name="([^"]+)"[^>]*?\stype="([^"]+)"[^>]*?macroNeed="([^"]*)""#).ok()?;
     Some(
         re.captures_iter(&body[..end])
-            .map(|c| Dm { name: c[1].to_string(), ty: c[2].to_string(), macro_gated: !c[3].is_empty() })
+            .map(|c| Dm { name: c[1].to_string(), ty: c[2].to_string(), macro_need: c[3].to_string() })
             .collect(),
     )
 }
 
-/// Pick the DM layout whose view length matches the DB's: either every DMDEF,
-/// or (when macro-gated DMs are compiled out on this build) only the ungated
-/// ones. Returns None when neither matches, so the caller falls back to reboot.
+/// Build macros enabled on this firmware (solved from every table's view
+/// length against db_tbl_def.xml, 2026-10-13). A macro-gated DM is in the
+/// running view only when its macroNeed is one of these.
+const ENABLED_MACROS: &[&str] = &[
+    "CONFIG_CTCC_SMART", "CONFIG_ZXICUS_ADEV_INFO", "CONFIG_ZXICUS_DHCPS_OPT125_E8",
+    "CONFIG_ZXICUS_DNSSL", "CONFIG_ZXICUS_E8", "CONFIG_ZXICUS_IPV6", "CONFIG_ZXICUS_MULTI_E8",
+    "CONFIG_ZXICUS_QOS_QC_OUTDEV", "CONFIG_ZXICUS_QOS_QC_TCREMARK", "CONFIG_ZXIC_YUEME3",
+    "CONFIG_ZXIC_WLAN_WPS", "CONFIG_ZXICUS_IGMPSNOOPING", "CONFIG_ZXICUS_MLDSNOOPING",
+    "CONFIG_ZXICUS_AUTOIP",
+];
+
+fn dm_in_build(d: &Dm) -> bool {
+    if d.macro_need.is_empty() || ENABLED_MACROS.contains(&d.macro_need.as_str()) {
+        return true;
+    }
+    // Runtime override for RE probing: ADMINUI_MACROS=comma,sep,list
+    std::env::var("ADMINUI_MACROS").ok().is_some_and(|v| v.split(',').any(|m| m == d.macro_need))
+}
+
+/// Pick the DM layout whose view length matches the DB's. Preferred: the DMs
+/// compiled into this build (macroNeed empty or enabled). Fallbacks, both still
+/// length-checked: every DMDEF, or only the unconditional ones. Returns None
+/// when none matches, so the caller falls back to reboot.
 pub fn layout_for<'a>(dms: &'a [Dm], expect_len: usize) -> Option<Vec<&'a Dm>> {
+    let built: Vec<&Dm> = dms.iter().filter(|d| dm_in_build(d)).collect();
+    if view_len(&built) == Some(expect_len) {
+        return Some(built);
+    }
     let all: Vec<&Dm> = dms.iter().collect();
     if view_len(&all) == Some(expect_len) {
         return Some(all);
     }
-    let ungated: Vec<&Dm> = dms.iter().filter(|d| !d.macro_gated).collect();
+    let ungated: Vec<&Dm> = dms.iter().filter(|d| d.macro_need.is_empty()).collect();
     (view_len(&ungated) == Some(expect_len)).then_some(ungated)
 }
 
@@ -336,8 +365,33 @@ pub async fn send(t: &Target, payload: &[u8]) -> Result<i32, String> {
 /// `changed` names the DMs this apply wrote. A multi-instance row is named by
 /// its own ViewName (e.g. IGD.RIPIf2), which is also the identity webd sends.
 /// Returns the manager's iRet (0 = applied).
-pub async fn reapply(db: &crate::db::Db, table: &str, row_no: u32, changed: &[&str]) -> Result<i32, String> {
-    let t = target(table).ok_or_else(|| format!("{table} has no live-apply target"))?;
+/// Probe an arbitrary (module, subid) with a table's view, for mapping which
+/// manager owns a view. Returns the reply iRet, or an error.
+pub async fn probe(db: &crate::db::Db, table: &str, row_no: u32, module: u32, subid: u32) -> Result<i32, String> {
+    let t = Target { table: "", view: view_of(db, table).await?, module, subid, identity: "" };
+    send_view(db, &t, table, row_no, &[]).await
+}
+
+async fn view_of(db: &crate::db::Db, table: &str) -> Result<u32, String> {
+    // The table's view id: look it up by its VIEWFUNC szDsc in pv.
+    let xml = tokio::fs::read_to_string(TBL_DEF).await.map_err(|e| format!("{TBL_DEF}: {e}"))?;
+    let start = xml.find(&format!("<Tbl name=\"{table}\"")).ok_or_else(|| format!("{table} not in db_tbl_def"))?;
+    let body = &xml[start..xml[start..].find("</Tbl>").map(|e| start + e).unwrap_or(xml.len())];
+    let dsc = regex_lite::Regex::new(r#"szDsc="([^"]*)""#)
+        .ok()
+        .and_then(|re| re.captures(body).map(|c| c[1].to_string()))
+        .unwrap_or_else(|| table.to_string());
+    let pv = db.exec.run("sidbg", &["1", "DB", "pv"], Duration::from_secs(10)).await?;
+    pv.stdout
+        .lines()
+        .find_map(|l| {
+            let c: Vec<&str> = l.split_whitespace().collect();
+            (c.len() >= 2 && c[1] == dsc).then(|| c[0].parse().ok()).flatten()
+        })
+        .ok_or_else(|| format!("no view for dsc {dsc}"))
+}
+
+async fn send_view(db: &crate::db::Db, t: &Target, table: &str, row_no: u32, changed: &[&str]) -> Result<i32, String> {
     let xml = tokio::fs::read_to_string(TBL_DEF).await.map_err(|e| format!("{TBL_DEF}: {e}"))?;
     let all_dms = table_dms(&xml, table).ok_or_else(|| format!("{table} not in {TBL_DEF}"))?;
     let pv = db.exec.run("sidbg", &["1", "DB", "pv"], Duration::from_secs(10)).await?;
@@ -352,6 +406,11 @@ pub async fn reapply(db: &crate::db::Db, table: &str, row_no: u32, changed: &[&s
     };
     let view = build_view(&dms, row, changed, len)?;
     send(t, &mm_msg(t.subid, identity, &view)).await
+}
+
+pub async fn reapply(db: &crate::db::Db, table: &str, row_no: u32, changed: &[&str]) -> Result<i32, String> {
+    let t = target(table).ok_or_else(|| format!("{table} has no live-apply target"))?;
+    send_view(db, t, table, row_no, changed).await
 }
 
 #[cfg(test)]

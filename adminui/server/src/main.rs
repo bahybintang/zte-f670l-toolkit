@@ -101,6 +101,27 @@ fn main() {
                 }
             }
         }
+        // Probe an arbitrary module/subid with a table's view (RE mapping tool).
+        "oss-probe" => {
+            let a = args.arg.clone().unwrap_or_default();
+            let parts: Vec<&str> = a.split(',').collect();
+            if parts.len() != 3 {
+                eprintln!("usage: adminui oss-probe <table:row>,<module hex>,<subid hex>");
+                std::process::exit(2);
+            }
+            let (table, row) = parts[0].split_once(':').map(|(t, r)| (t.to_string(), r.parse().unwrap_or(0))).unwrap_or((parts[0].to_string(), 0));
+            let module = u32::from_str_radix(parts[1].trim_start_matches("0x"), 16).expect("module hex");
+            let subid = u32::from_str_radix(parts[2].trim_start_matches("0x"), 16).expect("subid hex");
+            let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime");
+            let db = db::Db::new(Arc::new(exec::Executor::default()));
+            match rt.block_on(oss::probe(&db, &table, row, module, subid)) {
+                Ok(r) => println!("{table}:{row} {module:#x}/{subid:#x}: iRet={r}"),
+                Err(e) => {
+                    eprintln!("{table}: {e}");
+                    std::process::exit(1);
+                }
+            }
+        }
         c => {
             eprintln!("unknown command {c}");
             std::process::exit(2);
