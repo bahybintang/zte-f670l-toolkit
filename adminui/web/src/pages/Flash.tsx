@@ -44,7 +44,7 @@ export function Flash() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border/70">
-            {q.data?.partitions.map((p) => (
+            {q.data?.partitions?.map((p) => (
               <tr key={p.index}>
                 <td className="num px-3 py-2 whitespace-nowrap">
                   mtd{p.index} <span className="text-muted-foreground">{p.name}</span>

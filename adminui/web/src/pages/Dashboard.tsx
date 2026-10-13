@@ -33,7 +33,7 @@ export function Dashboard() {
   const s = sys.data
   const memUsed = s ? 1 - s.memAvailableKb / s.memTotalKb : 0
   const cpu = traffic.data?.cpu ?? []
-  const online = hosts.data?.rows.filter((h) => h.Active === '1').length
+  const online = hosts.data?.rows?.filter((h) => h.Active === '1').length ?? 0
 
   return (
     <div>
@@ -55,7 +55,7 @@ export function Dashboard() {
           <h2 id="tp" className="mb-3 border-b border-border pb-2 font-heading text-[19px] font-semibold">Throughput</h2>
           <ul className="divide-y divide-border/70">
             {IFACES.map((i) => {
-              const t = traffic.data?.ifaces.find((x) => x.name === i.id)
+              const t = traffic.data?.ifaces?.find((x) => x.name === i.id)
               const rx = t?.rxRate.at(-1) ?? 0
               const tx = t?.txRate.at(-1) ?? 0
               return (

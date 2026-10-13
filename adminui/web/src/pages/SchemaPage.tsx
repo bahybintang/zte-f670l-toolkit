@@ -36,7 +36,7 @@ export function key(section: string, row: number, dm: string) {
 export function SchemaPage() {
   const { pageId } = useParams({ from: '/p/$pageId' })
   const schema = useSchema()
-  const page = schema.data?.pages.find((p) => p.id === pageId)
+  const page = schema.data?.pages?.find((p) => p.id === pageId)
   if (schema.isPending) return <PageSkeleton />
   if (!page) return <NotFound />
   return <PageBody key={page.id} page={page} />
