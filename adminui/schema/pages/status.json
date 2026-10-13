@@ -767,7 +767,7 @@
     },
     {
       "id": "status-dslite-eth",
-      "title": "DS-Lite tunnel",
+      "title": "DS-Lite status",
       "group": "status",
       "order": 41,
       "icon": "git-merge",

@@ -1,5 +1,6 @@
-import { createRootRoute, createRoute, createRouter, Outlet } from '@tanstack/react-router'
+import { createRootRoute, createRoute, createRouter, Outlet, useRouterState } from '@tanstack/react-router'
 import { Shell } from './app/Shell'
+import { PageErrorBoundary } from './components/PageErrorBoundary'
 import { Dashboard } from './pages/Dashboard'
 import { SchemaPage } from './pages/SchemaPage'
 import { History } from './pages/History'
@@ -11,12 +12,21 @@ import { NotFound } from './pages/NotFound'
 import { Flash } from './pages/Flash'
 import { ShareWifi } from './pages/ShareWifi'
 
-const root = createRootRoute({
-  component: () => (
+function RootLayout() {
+  // Key the boundary on the route so navigating away from a crashed page
+  // remounts it clean; the boundary sits inside <main>, so the shell survives.
+  const path = useRouterState({ select: (s) => s.location.pathname })
+  return (
     <Shell>
-      <Outlet />
+      <PageErrorBoundary key={path}>
+        <Outlet />
+      </PageErrorBoundary>
     </Shell>
-  ),
+  )
+}
+
+const root = createRootRoute({
+  component: RootLayout,
   notFoundComponent: NotFound,
 })
 

@@ -68,7 +68,15 @@ export interface Page {
 export interface Schema { pages: Page[] }
 
 export interface RowData { no: number; values: Record<string, string>; secretSet: Record<string, boolean> }
-export interface SectionData { rows?: RowData[]; hidden?: boolean; error?: string; [k: string]: unknown }
+export interface SectionData {
+  rows?: RowData[]
+  hidden?: boolean
+  error?: string
+  /** Live source has no data path on this firmware — render a calm "not available" state. */
+  unavailable?: boolean
+  unavailableNote?: string
+  [k: string]: unknown
+}
 
 export const GROUPS: { id: string; label: string }[] = [
   { id: 'status', label: 'Status' },
@@ -116,6 +124,18 @@ export const SUBGROUPS: Record<string, { label: string; ids: string[] }[]> = {
     { label: 'Backup & firmware', ids: ['admin-upgrade', 'admin-usb-backup', 'admin-usb-restore', 'admin-maintenance-report'] },
     { label: 'Logs & monitoring', ids: ['admin-log', 'admin-monitor', 'admin-loopback'] },
     { label: 'Access', ids: ['admin-telnet', 'admin-voip-protocol'] },
+  ],
+  status: [
+    { label: 'Overview', ids: ['status-device', 'status-service-config', 'status-alarms'] },
+    { label: 'Internet', ids: ['status-wan-ipv4', 'status-wan-ipv6', 'status-dslite-eth', 'status-pon', 'status-pon-counters'] },
+    { label: 'LAN & Wi-Fi', ids: ['status-lan-clients', 'status-wlan', 'status-ethernet', 'status-usb'] },
+    { label: 'Voice', ids: ['status-voip', 'status-voip-accounts'] },
+    { label: 'Remote', ids: ['status-tr069'] },
+  ],
+  diagnostics: [
+    { label: 'Network tools', ids: ['diag-ping', 'diag-traceroute', 'diag-arp', 'diag-mac-table'] },
+    { label: 'Line & mirror', ids: ['diag-mirror', 'diag-monitor'] },
+    { label: 'Voice & remote', ids: ['diag-voice', 'diag-simulation', 'diag-tr069-inform'] },
   ],
 }
 

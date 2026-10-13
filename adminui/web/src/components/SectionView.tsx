@@ -5,6 +5,7 @@ import { isVisible, sectionWritable, type Field, type RowData, type Section, typ
 import { key, type Edits } from '@/pages/SchemaPage'
 import { FieldControl, displayValue } from './FieldControl'
 import { RowDialog } from './RowDialog'
+import { NotAvailable } from './NotAvailable'
 import { Button } from '@/components/ui/button'
 
 interface Props {
@@ -32,7 +33,9 @@ export function SectionView(p: Props) {
         </div>
         {isRuntime && <span className="flex items-center gap-1.5 text-xs text-muted-foreground"><span className="led" data-state="ok" />Live</span>}
       </div>
-      {data?.error ? (
+      {data?.unavailable ? (
+        <NotAvailable note={data.unavailableNote} />
+      ) : data?.error ? (
         <p className="text-sm text-muted-foreground">{data.error}</p>
       ) : isRuntime ? (
         <RuntimeView section={section} data={data} />
