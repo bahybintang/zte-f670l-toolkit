@@ -26,8 +26,11 @@ export function Clients() {
   const [onlineOnly, setOnlineOnly] = useState(false)
 
   const rows = useMemo(() => {
-    const w = new Map((wifi.data ?? []).map((c) => [c.mac, c]))
-    return (hosts.data ?? [])
+    // Be defensive: a stale cache or odd response could hand us a non-array.
+    const hostList = Array.isArray(hosts.data) ? hosts.data : []
+    const wifiList = Array.isArray(wifi.data) ? wifi.data : []
+    const w = new Map(wifiList.map((c) => [c.mac, c]))
+    return hostList
       .map((h) => ({ ...h, wifi: w.get(h.MAC), online: h.Active === '1' || w.has(h.MAC) }))
       .filter((h) => !onlineOnly || h.online)
       .filter((h) => !q || [h.HostName, h.MAC, h.IP, h.arpIp].some((x) => x?.toLowerCase().includes(q.toLowerCase())))

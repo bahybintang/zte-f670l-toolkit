@@ -10,6 +10,13 @@ import { pending } from '@/lib/pending'
 import { SectionView } from '@/components/SectionView'
 import { ApplyBar, type Staged } from '@/components/ApplyBar'
 import { PageActions } from '@/components/PageActions'
+import { DiagnosticRunner } from '@/components/DiagnosticRunner'
+
+// Diagnostic pages that run a live tool rather than show request/result views.
+const DIAG_TOOLS: Record<string, { tool: string; label: string }> = {
+  'diag-ping': { tool: 'ping', label: 'Ping' },
+  'diag-traceroute': { tool: 'traceroute', label: 'Traceroute' },
+}
 import { Skeleton } from '@/components/ui/skeleton'
 import { NotFound } from './NotFound'
 
@@ -143,6 +150,19 @@ function PageBody({ page }: { page: Page }) {
   const allowInstant = (page.danger ?? 'none') === 'none' && dirtyCount === 0
 
   const hasAdvanced = page.sections.some((s) => s.fields.some((f) => f.advanced))
+
+  const diag = DIAG_TOOLS[page.id]
+  if (diag) {
+    return (
+      <article>
+        <header className="mb-7 max-w-3xl">
+          <h1 className="font-heading text-[30px] leading-tight font-semibold tracking-tight sm:text-[34px]">{page.title}</h1>
+          {page.description && <p className="mt-1.5 text-[15px] text-muted-foreground">{page.description}</p>}
+        </header>
+        <DiagnosticRunner tool={diag.tool} label={diag.label} />
+      </article>
+    )
+  }
 
   return (
     <article>
