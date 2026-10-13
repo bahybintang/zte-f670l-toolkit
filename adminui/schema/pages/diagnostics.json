@@ -358,21 +358,21 @@
           "source": "runtime:arp_table",
           "fields": [
             {
-              "dm": "DestIP",
+              "dm": "ip",
               "label": "IP address",
-              "type": "ipv4",
+              "readonly": true,
               "column": true
             },
             {
-              "dm": "MACAddr",
+              "dm": "mac",
               "label": "MAC address",
-              "type": "mac",
+              "readonly": true,
               "column": true
             },
             {
-              "dm": "Interface",
+              "dm": "iface",
               "label": "Interface",
-              "type": "string",
+              "readonly": true,
               "column": true
             }
           ]
@@ -417,22 +417,27 @@
           "source": "runtime:mac_table",
           "fields": [
             {
-              "dm": "LanName",
-              "label": "Port",
-              "type": "string",
-              "column": true
-            },
-            {
-              "dm": "MACAddr",
+              "dm": "mac",
               "label": "MAC address",
-              "type": "mac",
+              "readonly": true,
               "column": true
             },
             {
-              "dm": "AgingTm",
-              "label": "Ageing time",
-              "type": "int",
-              "unit": "s",
+              "dm": "port",
+              "label": "Port",
+              "readonly": true,
+              "column": true
+            },
+            {
+              "dm": "local",
+              "label": "Local",
+              "readonly": true,
+              "column": true
+            },
+            {
+              "dm": "ageingSec",
+              "label": "Ageing time (s)",
+              "readonly": true,
               "column": true
             }
           ]
@@ -478,74 +483,29 @@
           "row": 0,
           "fields": [
             {
-              "dm": "InfoStat",
-              "label": "Inform to ACS",
-              "type": "enum",
-              "options": [
-                {
-                  "value": "0",
-                  "label": "Not reported"
-                },
-                {
-                  "value": "1",
-                  "label": "Reporting"
-                },
-                {
-                  "value": "2",
-                  "label": "Report failed"
-                },
-                {
-                  "value": "3",
-                  "label": "Reported successfully"
-                }
-              ]
+              "dm": "enabled",
+              "label": "Enabled",
+              "readonly": true
             },
             {
-              "dm": "InfoDesc",
-              "label": "Detail",
-              "type": "enum",
-              "options": [
-                {
-                  "value": "0",
-                  "label": "Device starting"
-                },
-                {
-                  "value": "1",
-                  "label": "-"
-                },
-                {
-                  "value": "2",
-                  "label": "No WAN connection for TR-069"
-                },
-                {
-                  "value": "3",
-                  "label": "TR-069 WAN connection not working"
-                },
-                {
-                  "value": "4",
-                  "label": "No DNS information"
-                },
-                {
-                  "value": "5",
-                  "label": "No ACS configured"
-                },
-                {
-                  "value": "6",
-                  "label": "No response from ACS"
-                },
-                {
-                  "value": "7",
-                  "label": "Interrupted"
-                },
-                {
-                  "value": "8",
-                  "label": "Authentication failure"
-                },
-                {
-                  "value": "9",
-                  "label": "Could not resolve ACS host name"
-                }
-              ]
+              "dm": "acsUrl",
+              "label": "ACS URL",
+              "readonly": true
+            },
+            {
+              "dm": "periodicInform",
+              "label": "Periodic inform",
+              "readonly": true
+            },
+            {
+              "dm": "connectionRequestUrl",
+              "label": "Connection request URL",
+              "readonly": true
+            },
+            {
+              "dm": "connectionRequestUser",
+              "label": "Connection request user",
+              "readonly": true
             }
           ]
         }

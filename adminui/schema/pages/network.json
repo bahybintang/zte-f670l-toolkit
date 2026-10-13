@@ -1023,81 +1023,29 @@
           "source": "runtime:wan_status",
           "fields": [
             {
-              "dm": "WANCName",
-              "label": "Connection",
-              "type": "string"
-            },
-            {
-              "dm": "ConnStatus",
+              "dm": "status",
               "label": "Status",
-              "type": "string"
+              "readonly": true
             },
             {
-              "dm": "IPAddress",
+              "dm": "ipAddress",
               "label": "IP address",
-              "type": "string"
+              "readonly": true
             },
             {
-              "dm": "SubnetMask",
-              "label": "Subnet mask",
-              "type": "string"
-            },
-            {
-              "dm": "GateWay",
-              "label": "Gateway",
-              "type": "string"
-            },
-            {
-              "dm": "DNS1",
+              "dm": "dns1",
               "label": "DNS 1",
-              "type": "string"
+              "readonly": true
             },
             {
-              "dm": "DNS2",
+              "dm": "dns2",
               "label": "DNS 2",
-              "type": "string"
+              "readonly": true
             },
             {
-              "dm": "UpTime",
-              "label": "Uptime",
-              "type": "string",
-              "unit": "s"
-            },
-            {
-              "dm": "ConnError",
-              "label": "Last error",
-              "type": "string"
-            },
-            {
-              "dm": "RemainLeaseTime",
-              "label": "DHCP lease remaining",
-              "type": "string",
-              "unit": "s"
-            },
-            {
-              "dm": "GUA1",
-              "label": "IPv6 address",
-              "type": "string"
-            },
-            {
-              "dm": "Gatewayv6",
-              "label": "IPv6 gateway",
-              "type": "string"
-            },
-            {
-              "dm": "Prefix1",
-              "label": "Delegated prefix",
-              "type": "string"
-            },
-            {
-              "dm": "RxBytes",
-              "label": "Received bytes",
-              "type": "string"
-            },
-            {
-              "dm": "TxBytes",
-              "label": "Sent bytes",
-              "type": "string"
+              "dm": "dns3",
+              "label": "DNS 3",
+              "readonly": true
             }
           ]
         },
@@ -3869,14 +3817,14 @@
           "source": "runtime:sntp_status",
           "fields": [
             {
-              "dm": "CurrentLocalTime",
+              "dm": "currentTime",
               "label": "Current time",
-              "type": "string"
+              "readonly": true
             },
             {
-              "dm": "isSynchronized",
-              "label": "Synchronised",
-              "type": "string"
+              "dm": "sntpEnabled",
+              "label": "SNTP enabled",
+              "readonly": true
             }
           ]
         }
@@ -4157,24 +4105,24 @@
           "source": "runtime:route_table",
           "fields": [
             {
-              "dm": "DestIP",
+              "dm": "destination",
               "label": "Network",
-              "type": "ipv4"
+              "readonly": true
             },
             {
-              "dm": "DestIPMask",
-              "label": "Subnet mask",
-              "type": "ipv4"
-            },
-            {
-              "dm": "GWIP",
+              "dm": "gateway",
               "label": "Gateway",
-              "type": "ipv4"
+              "readonly": true
             },
             {
-              "dm": "Interface",
+              "dm": "interface",
               "label": "Interface",
-              "type": "string"
+              "readonly": true
+            },
+            {
+              "dm": "source",
+              "label": "Source",
+              "readonly": true
             }
           ]
         }

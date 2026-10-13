@@ -128,7 +128,9 @@ function ListView({ section, data, edits, setEdits }: Props) {
   const shown = cols.length ? cols : section.fields.slice(0, 5)
   const deleted = (no: number) => edits.deletes.some((d) => d.section === section.id && d.row === no)
   const adds = edits.adds.filter((a) => a.section === section.id)
-  const full = section.maxRows !== undefined && rows.length + adds.length >= section.maxRows
+  // maxRows is null (not undefined) when the server omits it — `!= null` catches both,
+  // otherwise `>= null` (→ >= 0) is always true and wrongly disables Add on every list.
+  const full = section.maxRows != null && rows.length + adds.length >= section.maxRows
 
   return (
     <div>

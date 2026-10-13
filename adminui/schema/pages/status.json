@@ -26,71 +26,49 @@
           "row": 0,
           "fields": [
             {
-              "dm": "ModelName",
+              "dm": "model",
               "label": "Model",
-              "type": "string"
+              "readonly": true
             },
             {
-              "dm": "SerialNumber",
+              "dm": "serialNumber",
               "label": "Serial number",
-              "type": "string",
-              "help": "GPON serial number."
+              "readonly": true
             },
             {
-              "dm": "ManuFacturerOui",
-              "label": "Manufacturer OUI",
-              "type": "string",
-              "advanced": true
+              "dm": "ManuFacturer",
+              "label": "Manufacturer",
+              "readonly": true
             },
             {
-              "dm": "HardwareVer",
+              "dm": "hardwareVersion",
               "label": "Hardware version",
-              "type": "string"
+              "readonly": true
             },
             {
-              "dm": "SoftwareVer",
+              "dm": "softwareVersion",
               "label": "Software version",
-              "type": "string"
+              "readonly": true
             },
             {
-              "dm": "BootVer",
+              "dm": "bootVersion",
               "label": "Boot loader version",
-              "type": "string",
-              "advanced": true
+              "readonly": true
             },
             {
-              "dm": "SoftwareVerExtent",
+              "dm": "innerVersion",
               "label": "Firmware batch number",
-              "type": "string",
-              "advanced": true
+              "readonly": true
             },
             {
-              "dm": "DeviceType",
-              "label": "Device type",
-              "type": "string",
-              "advanced": true
+              "dm": "Description",
+              "label": "Description",
+              "readonly": true
             },
             {
-              "dm": "AccessType",
-              "label": "Access type",
-              "type": "string",
-              "advanced": true,
-              "help": "GPON, EPON, DSL or Ethernet."
-            },
-            {
-              "dm": "PonMode",
-              "label": "PON mode",
-              "type": "enum",
-              "options": [
-                {
-                  "value": "GPON",
-                  "label": "GPON"
-                },
-                {
-                  "value": "EPON",
-                  "label": "EPON"
-                }
-              ]
+              "dm": "ProductClass",
+              "label": "Product class",
+              "readonly": true
             }
           ]
         }
@@ -192,166 +170,34 @@
           "rowLabel": "{WANCName}",
           "fields": [
             {
-              "dm": "WANCName",
-              "label": "Connection name",
-              "type": "string",
-              "column": true
-            },
-            {
-              "dm": "Type",
-              "label": "Type",
-              "type": "enum",
-              "options": [
-                {
-                  "value": "PPPoE",
-                  "label": "PPPoE"
-                },
-                {
-                  "value": "Static",
-                  "label": "Static"
-                },
-                {
-                  "value": "DHCP",
-                  "label": "DHCP"
-                },
-                {
-                  "value": "Bridge",
-                  "label": "Bridge"
-                }
-              ],
-              "column": true
-            },
-            {
-              "dm": "IsNAT",
-              "label": "NAT",
-              "type": "bool"
-            },
-            {
-              "dm": "IPAddress",
-              "label": "IP address",
-              "type": "ipv4",
-              "column": true
-            },
-            {
-              "dm": "SubnetMask",
-              "label": "Subnet mask",
-              "type": "ipv4",
-              "help": "Static and DHCP connections only."
-            },
-            {
-              "dm": "GateWay",
-              "label": "Gateway",
-              "type": "ipv4"
-            },
-            {
-              "dm": "DNS1",
-              "label": "DNS 1",
-              "type": "ipv4"
-            },
-            {
-              "dm": "DNS2",
-              "label": "DNS 2",
-              "type": "ipv4"
-            },
-            {
-              "dm": "DNS3",
-              "label": "DNS 3",
-              "type": "ipv4"
-            },
-            {
-              "dm": "WorkIFMac",
-              "label": "WAN MAC",
-              "type": "mac"
-            },
-            {
-              "dm": "ConnStatus",
+              "dm": "status",
               "label": "Connection status",
-              "type": "enum",
-              "options": [
-                {
-                  "value": "Connected",
-                  "label": "Connected"
-                },
-                {
-                  "value": "Demand",
-                  "label": "Disconnected (idle, dial on demand)"
-                },
-                {
-                  "value": "Unconfigured",
-                  "label": "Unconfigured"
-                },
-                {
-                  "value": "Connecting",
-                  "label": "Connecting"
-                },
-                {
-                  "value": "Authenticating",
-                  "label": "Authenticating"
-                },
-                {
-                  "value": "PendingDisconnect",
-                  "label": "Disconnecting"
-                },
-                {
-                  "value": "Disconnected",
-                  "label": "Disconnected"
-                }
-              ],
+              "readonly": true,
               "column": true
             },
             {
-              "dm": "ConnError",
-              "label": "Last disconnect reason",
-              "type": "enum",
-              "options": [
-                {
-                  "value": "ERROR_NONE",
-                  "label": "None"
-                },
-                {
-                  "value": "ERROR_ISP_TIME_OUT",
-                  "label": "ISP timeout"
-                },
-                {
-                  "value": "ERROR_USER_DISCONNECT",
-                  "label": "Disconnected by user"
-                },
-                {
-                  "value": "ERROR_ISP_DISCONNECT",
-                  "label": "Disconnected by ISP"
-                },
-                {
-                  "value": "ERROR_IDLE_DISCONNECT",
-                  "label": "Idle disconnect"
-                },
-                {
-                  "value": "ERROR_FORCED_DISCONNECT",
-                  "label": "Forced disconnect"
-                },
-                {
-                  "value": "ERROR_AUTHENTICATION_FAILURE",
-                  "label": "Authentication failure"
-                },
-                {
-                  "value": "ERROR_UNKNOWN",
-                  "label": "Other"
-                }
-              ],
-              "help": "PPPoE only."
+              "dm": "ipAddress",
+              "label": "IP address",
+              "readonly": true,
+              "column": true
             },
             {
-              "dm": "UpTime",
-              "label": "Online for",
-              "type": "int",
-              "unit": "s",
-              "help": "PPPoE only."
+              "dm": "dns1",
+              "label": "DNS 1",
+              "readonly": true,
+              "column": true
             },
             {
-              "dm": "RemainLeaseTime",
-              "label": "DHCP lease remaining",
-              "type": "int",
-              "unit": "s",
-              "help": "DHCP only."
+              "dm": "dns2",
+              "label": "DNS 2",
+              "readonly": true,
+              "column": true
+            },
+            {
+              "dm": "dns3",
+              "label": "DNS 3",
+              "readonly": true,
+              "column": true
             }
           ]
         }
@@ -989,34 +835,34 @@
           "row": 0,
           "fields": [
             {
-              "dm": "RxPower",
-              "label": "Received power",
-              "type": "string",
-              "unit": "dBm"
+              "dm": "rxPowerDbm",
+              "label": "Received power (dBm)",
+              "readonly": true
             },
             {
-              "dm": "TxPower",
-              "label": "Transmit power",
-              "type": "string",
-              "unit": "dBm"
+              "dm": "txPowerDbm",
+              "label": "Transmit power (dBm)",
+              "readonly": true
             },
             {
-              "dm": "Volt",
-              "label": "Supply voltage",
-              "type": "string",
-              "unit": "uV"
+              "dm": "supplyVoltageV",
+              "label": "Supply voltage (V)",
+              "readonly": true
             },
             {
-              "dm": "Current",
-              "label": "Bias current",
-              "type": "string",
-              "unit": "uA"
+              "dm": "biasCurrentMa",
+              "label": "Bias current (mA)",
+              "readonly": true
             },
             {
-              "dm": "Temp",
-              "label": "Temperature",
-              "type": "string",
-              "unit": "C"
+              "dm": "temperatureC",
+              "label": "Temperature (°C)",
+              "readonly": true
+            },
+            {
+              "dm": "los",
+              "label": "Loss of signal",
+              "readonly": true
             }
           ]
         },
@@ -1584,19 +1430,19 @@
           "row": 0,
           "fields": [
             {
-              "dm": "IPAddr",
-              "label": "LAN IPv4 address",
-              "type": "ipv4"
+              "dm": "bridge",
+              "label": "Bridge",
+              "readonly": true
             },
             {
-              "dm": "IPv6Addr",
-              "label": "LAN IPv6 address",
-              "type": "ipv6"
+              "dm": "members",
+              "label": "Members",
+              "readonly": true
             },
             {
-              "dm": "IPv6PrefLen",
-              "label": "IPv6 prefix length",
-              "type": "int"
+              "dm": "portCount",
+              "label": "Member count",
+              "readonly": true
             }
           ]
         },
@@ -1609,106 +1455,52 @@
           "rowLabel": "LAN {n}",
           "fields": [
             {
-              "dm": "Port",
+              "dm": "label",
               "label": "Port",
-              "type": "string",
+              "readonly": true,
               "column": true
             },
             {
-              "dm": "Status",
+              "dm": "link",
               "label": "Link",
-              "type": "enum",
-              "options": [
-                {
-                  "value": "0",
-                  "label": "Up"
-                },
-                {
-                  "value": "1",
-                  "label": "No link"
-                },
-                {
-                  "value": "3",
-                  "label": "Disabled"
-                },
-                {
-                  "value": "2",
-                  "label": "Error"
-                }
-              ],
+              "readonly": true,
               "column": true
             },
             {
-              "dm": "Speed",
-              "label": "Speed",
-              "type": "enum",
-              "options": [
-                {
-                  "value": "0",
-                  "label": "10 Mbit/s"
-                },
-                {
-                  "value": "1",
-                  "label": "100 Mbit/s"
-                },
-                {
-                  "value": "2",
-                  "label": "1000 Mbit/s"
-                }
-              ],
-              "column": true,
-              "help": "Other values = Auto."
+              "dm": "speedMbps",
+              "label": "Speed (Mbit/s)",
+              "readonly": true,
+              "column": true
             },
             {
-              "dm": "Duplex",
-              "label": "Duplex",
-              "type": "enum",
-              "options": [
-                {
-                  "value": "0",
-                  "label": "Half"
-                },
-                {
-                  "value": "1",
-                  "label": "Full"
-                }
-              ],
-              "column": true,
-              "help": "Other values = Auto."
+              "dm": "fullDuplex",
+              "label": "Full duplex",
+              "readonly": true,
+              "column": true
             },
             {
-              "dm": "MACAddress",
-              "label": "Port MAC",
-              "type": "mac",
-              "advanced": true
-            },
-            {
-              "dm": "InOctets",
+              "dm": "rxBytes",
               "label": "Bytes received",
-              "type": "int",
+              "readonly": true,
               "column": true
             },
             {
-              "dm": "InPkts",
-              "label": "Packets received",
-              "type": "int"
-            },
-            {
-              "dm": "OutOctets",
+              "dm": "txBytes",
               "label": "Bytes sent",
-              "type": "int",
+              "readonly": true,
               "column": true
             },
             {
-              "dm": "OutPkts",
-              "label": "Packets sent",
-              "type": "int"
+              "dm": "rxErrors",
+              "label": "Rx errors",
+              "readonly": true,
+              "column": true
             },
             {
-              "dm": "CRC",
-              "label": "Error frames",
-              "type": "int",
-              "advanced": true
+              "dm": "txErrors",
+              "label": "Tx errors",
+              "readonly": true,
+              "column": true
             }
           ]
         }
@@ -1882,99 +1674,29 @@
           "row": 0,
           "fields": [
             {
-              "dm": "InfoStat",
-              "label": "Inform to ACS",
-              "type": "enum",
-              "options": [
-                {
-                  "value": "0",
-                  "label": "Not reported"
-                },
-                {
-                  "value": "1",
-                  "label": "Reporting"
-                },
-                {
-                  "value": "2",
-                  "label": "Report failed"
-                },
-                {
-                  "value": "3",
-                  "label": "Reported successfully"
-                }
-              ]
+              "dm": "enabled",
+              "label": "Enabled",
+              "readonly": true
             },
             {
-              "dm": "InfoDesc",
-              "label": "Inform detail",
-              "type": "enum",
-              "options": [
-                {
-                  "value": "0",
-                  "label": "Device starting"
-                },
-                {
-                  "value": "1",
-                  "label": "-"
-                },
-                {
-                  "value": "2",
-                  "label": "No WAN connection for TR-069"
-                },
-                {
-                  "value": "3",
-                  "label": "TR-069 WAN connection not working"
-                },
-                {
-                  "value": "4",
-                  "label": "No DNS information"
-                },
-                {
-                  "value": "5",
-                  "label": "No ACS configured"
-                },
-                {
-                  "value": "6",
-                  "label": "No response from ACS"
-                },
-                {
-                  "value": "7",
-                  "label": "Interrupted"
-                },
-                {
-                  "value": "8",
-                  "label": "Authentication failure"
-                },
-                {
-                  "value": "9",
-                  "label": "Could not resolve ACS host name"
-                }
-              ]
+              "dm": "acsUrl",
+              "label": "ACS URL",
+              "readonly": true
             },
             {
-              "dm": "AcsStat",
-              "label": "ACS connection request",
-              "type": "enum",
-              "options": [
-                {
-                  "value": "0",
-                  "label": "CPE connection not initialised"
-                },
-                {
-                  "value": "1",
-                  "label": "ACS connection not initialised"
-                },
-                {
-                  "value": "2",
-                  "label": "ACS connection initialised"
-                }
-              ]
+              "dm": "periodicInform",
+              "label": "Periodic inform",
+              "readonly": true
             },
             {
-              "dm": "AcsDesc",
-              "label": "ACS detail",
-              "type": "string",
-              "advanced": true
+              "dm": "connectionRequestUrl",
+              "label": "Connection request URL",
+              "readonly": true
+            },
+            {
+              "dm": "connectionRequestUser",
+              "label": "Connection request user",
+              "readonly": true
             }
           ]
         }
@@ -2078,27 +1800,22 @@
           "rowLabel": "Phone {Line}",
           "fields": [
             {
-              "dm": "Line",
+              "dm": "line",
               "label": "Phone",
-              "type": "int",
+              "readonly": true,
               "column": true
             },
             {
-              "dm": "IsOnline",
-              "label": "Registration",
-              "type": "enum",
-              "options": [
-                {
-                  "value": "1",
-                  "label": "Registered"
-                },
-                {
-                  "value": "0",
-                  "label": "Not registered"
-                }
-              ],
-              "column": true,
-              "help": "Anything other than 1 = not registered."
+              "dm": "number",
+              "label": "Number",
+              "readonly": true,
+              "column": true
+            },
+            {
+              "dm": "enabled",
+              "label": "Registered",
+              "readonly": true,
+              "column": true
             }
           ]
         }

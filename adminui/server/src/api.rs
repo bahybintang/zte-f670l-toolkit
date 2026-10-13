@@ -213,9 +213,11 @@ async fn page_read(State(app): S, Path(id): Path<String>, Query(q): Query<SelQ>)
                         json!({ "rows": t.rows.iter().map(|r| row_json(sec, r)).collect::<Vec<_>>() })
                     } else {
                         match sec.resolve_row(q.sel.as_deref()) {
+                            // A single-config row that doesn't exist yet (e.g. a
+                            // feature not set up) shows an empty state, not an error.
                             Some(n) => match t.row(n) {
                                 Some(r) => json!({ "rows": [row_json(sec, r)] }),
-                                None => json!({ "error": format!("row {n} not present") }),
+                                None => json!({ "rows": [] }),
                             },
                             None => json!({ "hidden": true }),
                         }
