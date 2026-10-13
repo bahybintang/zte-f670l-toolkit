@@ -129,12 +129,26 @@ impl Schema {
                 Err(e) => eprintln!("schema: skipping {n}: {e}"),
             }
         }
-        // Pages whose every writable table has an OSS manager target apply live.
+        // The server decides how a writable page applies: live when the Wi-Fi
+        // hook or an OSS manager target covers every writable table, partly
+        // live when only some are, otherwise at the next restart.
         for p in pages.iter_mut() {
-            let mut w = p.sections.iter().filter(|s| s.is_db() && s.mode != "readonly" && s.fields.iter().any(|f| !f.readonly)).peekable();
-            if w.peek().is_some() && w.all(|s| crate::oss::target(&s.table).is_some()) {
-                p.apply = Some("live".into());
+            let w: Vec<&Section> =
+                p.sections.iter().filter(|s| s.is_db() && s.mode != "readonly" && s.fields.iter().any(|f| !f.readonly)).collect();
+            if w.is_empty() {
+                continue;
             }
+            let oss = w.iter().filter(|s| crate::oss::target(&s.table).is_some()).count();
+            p.apply = Some(
+                if p.hook.as_deref() == Some("wifi") || oss == w.len() {
+                    "live"
+                } else if oss > 0 {
+                    "unknown"
+                } else {
+                    "reboot"
+                }
+                .into(),
+            );
         }
         let mut by_id = HashMap::new();
         for (i, p) in pages.iter().enumerate() {

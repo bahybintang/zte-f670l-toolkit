@@ -32,7 +32,13 @@ pub struct Target {
     pub identity: &'static str,
 }
 
-pub const TARGETS: &[Target] = &[Target { table: "SNTP", view: 250, module: 0x1010d, subid: 0x80001, identity: "IGD" }];
+pub const TARGETS: &[Target] = &[
+    Target { table: "SNTP", view: 250, module: 0x1010d, subid: 0x80001, identity: "IGD" },
+    Target { table: "ARPDETECTConfig", view: 258, module: 0x101a6, subid: 0xe401, identity: "IGD" },
+    Target { table: "IGMPProxy", view: 230, module: 0x10112, subid: 0xc0001, identity: "IGD" },
+    Target { table: "MLDProxyCfg", view: 295, module: 0x1013a, subid: 0x280001, identity: "IGD" },
+    Target { table: "DNSSettings", view: 177, module: 0x10116, subid: 0x120001, identity: "IGD" },
+];
 
 pub fn target(table: &str) -> Option<&'static Target> {
     TARGETS.iter().find(|t| t.table == table)
@@ -46,10 +52,14 @@ enum Kind {
     Enum,
     Bool,
     Mac,
+    Ip,
+    Ipv6,
 }
 
 /// DB type name -> (type code, value encoding). Codes from cspd's type-name
-/// table; IP, IPV6 and BUF16 are left out until their byte layout is checked.
+/// table. IP is a host-order u32 (libcommfun `IPToStr` prints v>>24 first),
+/// IPV6 the 16 address bytes in network order (`IPv6ToStr`). BUF16 is
+/// pointer-backed in the DB and is not supported.
 fn kind(t: &str) -> Option<(u16, Kind)> {
     if let Some(n) = t.strip_prefix("STR") {
         let n: usize = n.parse().ok()?;
@@ -61,6 +71,8 @@ fn kind(t: &str) -> Option<(u16, Kind)> {
         "DWORD" => (11, Kind::Dword),
         "ENUM" => (12, Kind::Enum),
         "BOOL" => (13, Kind::Bool),
+        "IP" => (14, Kind::Ip),
+        "IPV6" => (15, Kind::Ipv6),
         "MAC" => (16, Kind::Mac),
         _ => return None,
     })
@@ -70,6 +82,7 @@ fn slot_len(k: Kind) -> usize {
     match k {
         Kind::Str(n) => 32 + n,
         Kind::Mac => 36,
+        Kind::Ipv6 => 44,
         _ => 32,
     }
 }
@@ -118,6 +131,20 @@ fn encode_value(k: Kind, v: &str, out: &mut [u8]) -> Result<(), String> {
         }
         Kind::Int32 | Kind::Dword | Kind::Enum => out[..4].copy_from_slice(&num(v)?.to_le_bytes()),
         Kind::Bool => out[..4].copy_from_slice(&((num(v)? != 0) as u32).to_le_bytes()),
+        Kind::Ip => {
+            let a: u32 = if v.trim().is_empty() {
+                0
+            } else {
+                v.trim().parse::<std::net::Ipv4Addr>().map_err(|_| format!("not an IPv4 address: {v:?}"))?.into()
+            };
+            out[..4].copy_from_slice(&a.to_le_bytes());
+        }
+        Kind::Ipv6 => {
+            if !v.trim().is_empty() {
+                let a: std::net::Ipv6Addr = v.trim().parse().map_err(|_| format!("not an IPv6 address: {v:?}"))?;
+                out[..16].copy_from_slice(&a.octets());
+            }
+        }
         Kind::Mac => {
             let p: Vec<u8> = v.split(':').filter_map(|x| u8::from_str_radix(x, 16).ok()).collect();
             if p.len() != 6 {
@@ -299,6 +326,20 @@ mod tests {
         assert_eq!(&v[at(880) + 0x1c..at(880) + 0x20], &86401u32.to_le_bytes());
         assert_eq!(&v[at(976) + 0x1c..at(976) + 0x20], &(-1i32).to_le_bytes());
         assert_eq!(mm_msg(0x80001, "IGD", &v).len(), 0x4e0);
+    }
+
+    #[test]
+    fn ip_encodings() {
+        let mut b = [0u8; 16];
+        encode_value(Kind::Ip, "192.0.2.10", &mut b).unwrap();
+        assert_eq!(&b[..4], &[10, 2, 0, 192]);
+        let mut b = [0u8; 16];
+        encode_value(Kind::Ipv6, "2001:db8::1", &mut b).unwrap();
+        assert_eq!(b, [0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+        assert!(encode_value(Kind::Ip, "300.1.1.1", &mut [0u8; 4]).is_err());
+        let mut z = [9u8; 4];
+        encode_value(Kind::Ip, "", &mut z).unwrap();
+        assert_eq!(z, [0; 4]);
     }
 
     #[test]
