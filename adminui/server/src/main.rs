@@ -86,11 +86,15 @@ fn main() {
         "serve" => serve(args),
         // Re-send a view's current DB values to its manager (live apply test).
         "oss-reapply" => {
-            let table = args.arg.clone().unwrap_or_else(|| "SNTP".into());
+            let spec = args.arg.clone().unwrap_or_else(|| "SNTP".into());
+            let (table, row) = match spec.split_once(':') {
+                Some((t, r)) => (t.to_string(), r.parse().expect("row number")),
+                None => (spec, 0),
+            };
             let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime");
             let db = db::Db::new(Arc::new(exec::Executor::default()));
-            match rt.block_on(oss::reapply(&db, &table, &[])) {
-                Ok(r) => println!("{table}: manager replied iRet={r}"),
+            match rt.block_on(oss::reapply(&db, &table, row, &[])) {
+                Ok(r) => println!("{table}:{row}: manager replied iRet={r}"),
                 Err(e) => {
                     eprintln!("{table}: {e}");
                     std::process::exit(1);

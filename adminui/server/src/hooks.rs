@@ -44,15 +44,29 @@ fn iface_for(table: &str, row: u32) -> Option<String> {
 pub async fn oss(app: &App, changes: &[Applied]) -> (Vec<String>, Vec<String>) {
     let mut warn = Vec::new();
     let mut live = Vec::new();
-    let mut tables: Vec<&str> = changes.iter().map(|c| c.table.as_str()).filter(|t| crate::oss::target(t).is_some()).collect();
-    tables.sort_unstable();
-    tables.dedup();
-    for t in tables {
-        let changed: Vec<&str> = changes.iter().filter(|c| c.table == t && c.row == 0).map(|c| c.dm.as_str()).collect();
-        match crate::oss::reapply(&app.db, t, &changed).await {
-            Ok(0) => live.push(t.to_string()),
-            Ok(r) => warn.push(format!("{t}: the router did not apply it live (code {r}); takes effect after a restart")),
-            Err(e) => warn.push(format!("{t}: live apply unavailable ({e}); takes effect after a restart")),
+    let mut rows: Vec<(&str, u32)> =
+        changes.iter().map(|c| (c.table.as_str(), c.row)).filter(|(t, _)| crate::oss::target(t).is_some()).collect();
+    rows.sort_unstable();
+    rows.dedup();
+    let mut failed: Vec<&str> = Vec::new();
+    for &(t, r) in &rows {
+        let changed: Vec<&str> = changes.iter().filter(|c| c.table == t && c.row == r).map(|c| c.dm.as_str()).collect();
+        match crate::oss::reapply(&app.db, t, r, &changed).await {
+            Ok(0) => {}
+            Ok(code) => {
+                failed.push(t);
+                warn.push(format!("{t}: the router did not apply it live (code {code}); takes effect after a restart"))
+            }
+            Err(e) => {
+                failed.push(t);
+                warn.push(format!("{t}: live apply unavailable ({e}); takes effect after a restart"))
+            }
+        }
+    }
+    // A table is live only when every changed row of it was accepted.
+    for &(t, _) in &rows {
+        if !failed.contains(&t) && !live.iter().any(|l: &String| l == t) {
+            live.push(t.to_string());
         }
     }
     (warn, live)

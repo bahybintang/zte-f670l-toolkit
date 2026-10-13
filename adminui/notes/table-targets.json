@@ -1,0 +1,1581 @@
+{
+ "ARPDETECTConfig": {
+  "view": 258,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": -1,
+  "multi": false,
+  "targets": [
+   [
+    "0x101a6",
+    "0xe401"
+   ]
+  ],
+  "pages": [
+   "arp-detect"
+  ]
+ },
+ "CltLmt": {
+  "view": 257,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 9,
+  "multi": true,
+  "targets": [
+   [
+    "0x101a2",
+    "0x230001"
+   ]
+  ],
+  "pages": [
+   "wan-client-limit"
+  ]
+ },
+ "DDNSClient": {
+  "view": 260,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 1,
+  "multi": true,
+  "targets": [
+   [
+    "0x10114",
+    "0xd0001"
+   ],
+   [
+    "0x10114",
+    "0xd0002"
+   ]
+  ],
+  "pages": [
+   "app-ddns"
+  ]
+ },
+ "DDNSHostname": {
+  "view": 262,
+  "rdsc": "DDNSC",
+  "lenok": true,
+  "rows": 1,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "app-ddns"
+  ]
+ },
+ "DDNSService": {
+  "view": 261,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 2,
+  "multi": true,
+  "targets": [
+   [
+    "0x10114",
+    "0xd0002"
+   ]
+  ],
+  "pages": [
+   "app-ddns"
+  ]
+ },
+ "DHCP6SHostCfg": {
+  "view": 172,
+  "rdsc": "LD",
+  "lenok": false,
+  "rows": 1,
+  "multi": true,
+  "targets": [
+   [
+    "0x1010b",
+    "0xa0001"
+   ],
+   [
+    "0x1010b",
+    "0xa0004"
+   ],
+   [
+    "0x620101",
+    "0x150001"
+   ],
+   [
+    "0x620101",
+    "0x150002"
+   ],
+   [
+    "0x620101",
+    "0x150003"
+   ],
+   [
+    "0x620101",
+    "0x150004"
+   ]
+  ],
+  "pages": [
+   "dhcpv6-server"
+  ]
+ },
+ "DHCPCComm": {
+  "view": 4,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": -1,
+  "multi": false,
+  "targets": [
+   [
+    "0x10c01",
+    "0x9206"
+   ]
+  ],
+  "pages": [
+   "dhcp-client"
+  ]
+ },
+ "DHCPSBind": {
+  "view": 174,
+  "rdsc": "HostCfg",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [
+   [
+    "0x620101",
+    "0x150001"
+   ],
+   [
+    "0x620101",
+    "0x150003"
+   ]
+  ],
+  "pages": [
+   "dhcp-static"
+  ]
+ },
+ "DHCPSHostCfg": {
+  "view": 172,
+  "rdsc": "LD",
+  "lenok": true,
+  "rows": -1,
+  "multi": true,
+  "targets": [
+   [
+    "0x1010b",
+    "0xa0001"
+   ],
+   [
+    "0x1010b",
+    "0xa0004"
+   ],
+   [
+    "0x620101",
+    "0x150001"
+   ],
+   [
+    "0x620101",
+    "0x150002"
+   ],
+   [
+    "0x620101",
+    "0x150003"
+   ],
+   [
+    "0x620101",
+    "0x150004"
+   ]
+  ],
+  "pages": [
+   "dhcp-server"
+  ]
+ },
+ "DHCPSPool": {
+  "view": 173,
+  "rdsc": "LD",
+  "lenok": true,
+  "rows": -1,
+  "multi": true,
+  "targets": [
+   [
+    "0x1010b",
+    "0xa0001"
+   ],
+   [
+    "0x1010b",
+    "0xa0004"
+   ],
+   [
+    "0x620101",
+    "0x150003"
+   ],
+   [
+    "0x620101",
+    "0x150004"
+   ]
+  ],
+  "pages": [
+   "dhcp-device-pools",
+   "dhcp-port"
+  ]
+ },
+ "DMSCfg": {
+  "view": 310,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": -1,
+  "multi": false,
+  "targets": [
+   [
+    "0x420201",
+    "0x270001"
+   ]
+  ],
+  "pages": [
+   "dms"
+  ]
+ },
+ "DNSHostsList": {
+  "view": 179,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [
+   [
+    "0x10116",
+    "0x120002"
+   ]
+  ],
+  "pages": [
+   "dns-hosts"
+  ]
+ },
+ "DNSSettings": {
+  "view": 177,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": -1,
+  "multi": false,
+  "targets": [
+   [
+    "0x10116",
+    "0x120001"
+   ]
+  ],
+  "pages": [
+   "dhcpv6-server",
+   "dns-domain"
+  ]
+ },
+ "DWQOSQueue": {
+  "view": 400,
+  "rdsc": "DWQOS",
+  "lenok": true,
+  "rows": 4,
+  "multi": true,
+  "targets": [
+   [
+    "0x10103",
+    "0x70009"
+   ],
+   [
+    "0x10103",
+    "0x7000a"
+   ],
+   [
+    "0x10103",
+    "0x7000b"
+   ]
+  ],
+  "pages": [
+   "qos-queues"
+  ]
+ },
+ "DevAuthInfo": {
+  "view": 29,
+  "rdsc": "IGD",
+  "lenok": false,
+  "rows": 6,
+  "multi": true,
+  "targets": [
+   [
+    "0x10111",
+    "0x110005"
+   ],
+   [
+    "0x11501",
+    "0x190002"
+   ]
+  ],
+  "pages": [
+   "admin-users"
+  ]
+ },
+ "DevInfo": {
+  "view": 28,
+  "rdsc": "IGD",
+  "lenok": false,
+  "rows": -1,
+  "multi": false,
+  "targets": [],
+  "pages": [
+   "admin-business"
+  ]
+ },
+ "FWALG": {
+  "view": 237,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": -1,
+  "multi": false,
+  "targets": [
+   [
+    "0x10102",
+    "0xb0002"
+   ]
+  ],
+  "pages": [
+   "app-alg"
+  ]
+ },
+ "FWBase": {
+  "view": 185,
+  "rdsc": "IGD",
+  "lenok": false,
+  "rows": -1,
+  "multi": false,
+  "targets": [
+   [
+    "0x10102",
+    "0xb0004"
+   ]
+  ],
+  "pages": [
+   "sec-mac-filter",
+   "sec-service-control",
+   "sec-url-filter"
+  ]
+ },
+ "FWDMZ": {
+  "view": 238,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 1,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "app-dmz"
+  ]
+ },
+ "FWIP": {
+  "view": 239,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "sec-ip-filter"
+  ]
+ },
+ "FWLevel": {
+  "view": 236,
+  "rdsc": "IGD",
+  "lenok": false,
+  "rows": 1,
+  "multi": false,
+  "targets": [
+   [
+    "0x10102",
+    "0xb0006"
+   ]
+  ],
+  "pages": [
+   "sec-firewall-attack",
+   "sec-firewall-level"
+  ]
+ },
+ "FWPM": {
+  "view": 27,
+  "rdsc": "WC",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "app-port-forwarding"
+  ]
+ },
+ "FWSC": {
+  "view": 189,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "sec-service-control"
+  ]
+ },
+ "FWURL": {
+  "view": 240,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [
+   [
+    "0x10102",
+    "0xb000c"
+   ]
+  ],
+  "pages": [
+   "sec-url-filter"
+  ]
+ },
+ "IGMPProxy": {
+  "view": 230,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": -1,
+  "multi": false,
+  "targets": [
+   [
+    "0x10112",
+    "0xc0001"
+   ]
+  ],
+  "pages": [
+   "igmp-proxy"
+  ]
+ },
+ "L3ForwardingRT": {
+  "view": 7,
+  "rdsc": "L3F",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [
+   [
+    "0x1010e",
+    "0x90001"
+   ],
+   [
+    "0x1010e",
+    "0x90002"
+   ],
+   [
+    "0x1010e",
+    "0x90003"
+   ]
+  ],
+  "pages": [
+   "static-routes"
+  ]
+ },
+ "LAND": {
+  "view": 5,
+  "rdsc": "IGD",
+  "lenok": false,
+  "rows": -1,
+  "multi": true,
+  "targets": [
+   [
+    "0x1010b",
+    "0xa0001"
+   ],
+   [
+    "0x1010b",
+    "0xa0002"
+   ],
+   [
+    "0x1010b",
+    "0xa0004"
+   ],
+   [
+    "0x1010b",
+    "0xa0005"
+   ],
+   [
+    "0x620101",
+    "0x150004"
+   ]
+  ],
+  "pages": [
+   "dhcpv6-server",
+   "igmp-snooping",
+   "ipv6-lan-prefix",
+   "lan",
+   "mld-snooping"
+  ]
+ },
+ "Log": {
+  "view": 289,
+  "rdsc": "IGD",
+  "lenok": false,
+  "rows": 1,
+  "multi": false,
+  "targets": [
+   [
+    "0x10118",
+    "0x160001"
+   ]
+  ],
+  "pages": [
+   "admin-log"
+  ]
+ },
+ "LoopbackEthConf": {
+  "view": 191,
+  "rdsc": "IGD.LOOPBACK",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [
+   [
+    "0x10140",
+    "0x340002"
+   ]
+  ],
+  "pages": [
+   "admin-loopback"
+  ]
+ },
+ "LoopbackGlobalConf": {
+  "view": 190,
+  "rdsc": "IGD.LOOPBACK",
+  "lenok": true,
+  "rows": -1,
+  "multi": true,
+  "targets": [
+   [
+    "0x10140",
+    "0x340001"
+   ]
+  ],
+  "pages": [
+   "admin-loopback"
+  ]
+ },
+ "MLDProxyCfg": {
+  "view": 295,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": -1,
+  "multi": false,
+  "targets": [
+   [
+    "0x1013a",
+    "0x280001"
+   ]
+  ],
+  "pages": [
+   "mld-proxy"
+  ]
+ },
+ "MLDWan": {
+  "view": 294,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 1,
+  "multi": true,
+  "targets": [
+   [
+    "0x1013a",
+    "0x280001"
+   ]
+  ],
+  "pages": [
+   "mld-proxy"
+  ]
+ },
+ "MacFilter": {
+  "view": 244,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "sec-mac-filter"
+  ]
+ },
+ "MgtServer": {
+  "view": 171,
+  "rdsc": "IGD",
+  "lenok": false,
+  "rows": -1,
+  "multi": false,
+  "targets": [],
+  "pages": [
+   "tr069",
+   "tr069-cert"
+  ]
+ },
+ "MirrorConf": {
+  "view": 245,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "diag-mirror"
+  ]
+ },
+ "MonitorCollectorCfg": {
+  "view": 208,
+  "rdsc": "DevInfo",
+  "lenok": true,
+  "rows": -1,
+  "multi": false,
+  "targets": [],
+  "pages": [
+   "admin-monitor",
+   "diag-monitor"
+  ]
+ },
+ "MultiWancd": {
+  "view": 217,
+  "rdsc": "WCD",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [
+   [
+    "0x101a7",
+    "0x470000"
+   ]
+  ],
+  "pages": [
+   "wan"
+  ]
+ },
+ "PortControl": {
+  "view": 186,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": -1,
+  "multi": true,
+  "targets": [
+   [
+    "0x10102",
+    "0xb0015"
+   ]
+  ],
+  "pages": [
+   "sec-service-ports"
+  ]
+ },
+ "PrefixCfg": {
+  "view": 160,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [
+   [
+    "0x10134",
+    "0x290004"
+   ]
+  ],
+  "pages": [
+   "prefix"
+  ]
+ },
+ "QOSBasic": {
+  "view": 277,
+  "rdsc": "QOS",
+  "lenok": true,
+  "rows": -1,
+  "multi": false,
+  "targets": [
+   [
+    "0x10103",
+    "0x70001"
+   ],
+   [
+    "0x10103",
+    "0x70002"
+   ],
+   [
+    "0x10103",
+    "0x70003"
+   ],
+   [
+    "0x10103",
+    "0x70004"
+   ],
+   [
+    "0x10103",
+    "0x70005"
+   ],
+   [
+    "0x10103",
+    "0x70008"
+   ]
+  ],
+  "pages": [
+   "qos"
+  ]
+ },
+ "QOSPolicer": {
+  "view": 290,
+  "rdsc": "QOS",
+  "lenok": false,
+  "rows": 0,
+  "multi": true,
+  "targets": [
+   [
+    "0x10103",
+    "0x70003"
+   ]
+  ],
+  "pages": [
+   "qos-policers"
+  ]
+ },
+ "QOSQueue": {
+  "view": 282,
+  "rdsc": "QOS",
+  "lenok": true,
+  "rows": 8,
+  "multi": true,
+  "targets": [
+   [
+    "0x10103",
+    "0x70002"
+   ],
+   [
+    "0x10103",
+    "0x70004"
+   ],
+   [
+    "0x10118",
+    "0x160002"
+   ]
+  ],
+  "pages": [
+   "qos-queues"
+  ]
+ },
+ "QOSRule": {
+  "view": 284,
+  "rdsc": "QOS",
+  "lenok": true,
+  "rows": 4,
+  "multi": true,
+  "targets": [
+   [
+    "0x10103",
+    "0x70002"
+   ]
+  ],
+  "pages": [
+   "qos-rules"
+  ]
+ },
+ "QOSType": {
+  "view": 285,
+  "rdsc": "QOS",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [
+   [
+    "0x10103",
+    "0x70002"
+   ]
+  ],
+  "pages": [
+   "qos-rules"
+  ]
+ },
+ "RIPConf": {
+  "view": 263,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": -1,
+  "multi": false,
+  "targets": [
+   [
+    "0x10127",
+    "0x220001"
+   ]
+  ],
+  "pages": [
+   "rip"
+  ]
+ },
+ "RIPIf": {
+  "view": 264,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [
+   [
+    "0x10127",
+    "0x220001"
+   ]
+  ],
+  "pages": [
+   "rip"
+  ]
+ },
+ "RaCfg": {
+  "view": 311,
+  "rdsc": "IGD.RA",
+  "lenok": true,
+  "rows": 1,
+  "multi": true,
+  "targets": [
+   [
+    "0x610101",
+    "0x300001"
+   ]
+  ],
+  "pages": [
+   "ipv6-ra"
+  ]
+ },
+ "SNTP": {
+  "view": 250,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": -1,
+  "multi": false,
+  "targets": [
+   [
+    "0x1010d",
+    "0x80001"
+   ]
+  ],
+  "pages": [
+   "sntp"
+  ]
+ },
+ "SambaCfg": {
+  "view": 144,
+  "rdsc": "IGD",
+  "lenok": false,
+  "rows": -1,
+  "multi": false,
+  "targets": [
+   [
+    "0x11401",
+    "0x260001"
+   ]
+  ],
+  "pages": [
+   "samba"
+  ]
+ },
+ "TUNNEL46CFG": {
+  "view": 11,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [
+   [
+    "0x1013b",
+    "0x310001"
+   ]
+  ],
+  "pages": [
+   "dslite"
+  ]
+ },
+ "TelnetCfg": {
+  "view": 180,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 1,
+  "multi": false,
+  "targets": [
+   [
+    "0x3d0101",
+    "0x200001"
+   ]
+  ],
+  "pages": [
+   "admin-telnet",
+   "sec-telnet"
+  ]
+ },
+ "TelnetUser": {
+  "view": 336,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 2,
+  "multi": true,
+  "targets": [
+   [
+    "0x10111",
+    "0x110005"
+   ],
+   [
+    "0x3d0101",
+    "0x200002"
+   ]
+  ],
+  "pages": [
+   "admin-telnet"
+  ]
+ },
+ "UPnPCfg": {
+  "view": 297,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": -1,
+  "multi": false,
+  "targets": [],
+  "pages": [
+   "app-upnp"
+  ]
+ },
+ "UsbBakRst": {
+  "view": 273,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": -1,
+  "multi": false,
+  "targets": [],
+  "pages": [
+   "admin-usb-restore"
+  ]
+ },
+ "VLANBIND": {
+  "view": 228,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [
+   [
+    "0x101a3",
+    "0x480000"
+   ]
+  ],
+  "pages": [
+   "vlan-binding"
+  ]
+ },
+ "VOIPCIDCfg": {
+  "view": 152,
+  "rdsc": "VS",
+  "lenok": true,
+  "rows": -1,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-callerid"
+  ]
+ },
+ "VOIPExt": {
+  "view": 155,
+  "rdsc": "VS",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "admin-voip-protocol"
+  ]
+ },
+ "VOIPPhyInterface": {
+  "view": 137,
+  "rdsc": "VS",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-advanced",
+   "voip-services"
+  ]
+ },
+ "VOIPVPCallFeature": {
+  "view": 132,
+  "rdsc": "VL",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-services"
+  ]
+ },
+ "VoIPDMTimerCfg": {
+  "view": 113,
+  "rdsc": "VP",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-timers"
+  ]
+ },
+ "VoIPFaxModemRptCtrlCfg": {
+  "view": 75,
+  "rdsc": "VS",
+  "lenok": false,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-advanced"
+  ]
+ },
+ "VoIPFaxT38Cfg": {
+  "view": 96,
+  "rdsc": "VP",
+  "lenok": false,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-advanced"
+  ]
+ },
+ "VoIPH248LineCfg": {
+  "view": 147,
+  "rdsc": "VL",
+  "lenok": true,
+  "rows": -1,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-h248-endpoint"
+  ]
+ },
+ "VoIPH248MainCfg": {
+  "view": 145,
+  "rdsc": "VP",
+  "lenok": true,
+  "rows": -1,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-h248-auth",
+   "voip-h248-basic",
+   "voip-h248-endpoint",
+   "voip-h248-qos",
+   "voip-h248-services"
+  ]
+ },
+ "VoIPH248SubCfg": {
+  "view": 145,
+  "rdsc": "VP",
+  "lenok": false,
+  "rows": -1,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-h248-services"
+  ]
+ },
+ "VoIPHomeLine": {
+  "view": 150,
+  "rdsc": "VS",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-media"
+  ]
+ },
+ "VoIPRTPADVCfg": {
+  "view": 89,
+  "rdsc": "VP",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-advanced"
+  ]
+ },
+ "VoIPRTPCfg": {
+  "view": 89,
+  "rdsc": "VP",
+  "lenok": false,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-advanced",
+   "voip-h248-qos",
+   "voip-qos"
+  ]
+ },
+ "VoIPSIP": {
+  "view": 72,
+  "rdsc": "VP",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-callerid",
+   "voip-qos",
+   "voip-sip"
+  ]
+ },
+ "VoIPSIPLine": {
+  "view": 103,
+  "rdsc": "VL",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-accounts"
+  ]
+ },
+ "VoIPSIPServer": {
+  "view": 72,
+  "rdsc": "VP",
+  "lenok": false,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-sip"
+  ]
+ },
+ "VoIPSLCINFCfg": {
+  "view": 73,
+  "rdsc": "VY",
+  "lenok": false,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-line-interface"
+  ]
+ },
+ "VoIPSLCTIMECfg": {
+  "view": 73,
+  "rdsc": "VY",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-timers"
+  ]
+ },
+ "VoIPVMediaCfg": {
+  "view": 67,
+  "rdsc": "LC",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-media"
+  ]
+ },
+ "VoIPVPCallTimer": {
+  "view": 76,
+  "rdsc": "VS",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-timers"
+  ]
+ },
+ "VoIPVPCodec": {
+  "view": 75,
+  "rdsc": "VS",
+  "lenok": false,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-advanced",
+   "voip-media"
+  ]
+ },
+ "VoIPVPDTMF": {
+  "view": 75,
+  "rdsc": "VS",
+  "lenok": false,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-advanced"
+  ]
+ },
+ "VoIPVPLine": {
+  "view": 80,
+  "rdsc": "VP",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-accounts",
+   "voip-digitmap",
+   "voip-h248-endpoint"
+  ]
+ },
+ "VoIPVoiceProcCfg": {
+  "view": 101,
+  "rdsc": "VL",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-advanced"
+  ]
+ },
+ "VoIPVoiceProfile": {
+  "view": 75,
+  "rdsc": "VS",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "voip-digitmap",
+   "voip-sip"
+  ]
+ },
+ "WANC": {
+  "view": 17,
+  "rdsc": "WCD",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [
+   [
+    "0x1010b",
+    "0xa0001"
+   ],
+   [
+    "0x1010b",
+    "0xa0004"
+   ],
+   [
+    "0x1010e",
+    "0x90003"
+   ],
+   [
+    "0x10122",
+    "0x4a0001"
+   ],
+   [
+    "0x10137",
+    "0x50005"
+   ],
+   [
+    "0x10c01",
+    null
+   ],
+   [
+    "0x620101",
+    "0x150004"
+   ]
+  ],
+  "pages": [
+   "usb-iptv",
+   "wan"
+  ]
+ },
+ "WANCD": {
+  "view": 16,
+  "rdsc": "WD",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "wan"
+  ]
+ },
+ "WANCEXT": {
+  "view": 221,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "wan"
+  ]
+ },
+ "WANCIP": {
+  "view": 18,
+  "rdsc": "WCD",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [
+   [
+    "0x1010b",
+    "0xa0001"
+   ],
+   [
+    "0x1010b",
+    "0xa0004"
+   ],
+   [
+    "0x10137",
+    "0x50005"
+   ],
+   [
+    "0x10c01",
+    null
+   ],
+   [
+    "0x620101",
+    "0x150004"
+   ]
+  ],
+  "pages": [
+   "wan"
+  ]
+ },
+ "WANCPPP": {
+  "view": 20,
+  "rdsc": "WCD",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [
+   [
+    "0x10122",
+    "0x4a0001"
+   ],
+   [
+    "0x10137",
+    "0x50005"
+   ]
+  ],
+  "pages": [
+   "wan",
+   "wan-user-pppoe"
+  ]
+ },
+ "WANCPPPComm": {
+  "view": 213,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": -1,
+  "multi": false,
+  "targets": [],
+  "pages": [
+   "wan"
+  ]
+ },
+ "WANCServList": {
+  "view": 193,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [],
+  "pages": [
+   "wan"
+  ]
+ },
+ "WLANBANDSTEERING": {
+  "view": 382,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [
+   [
+    "0x11201",
+    "0x10018"
+   ]
+  ],
+  "pages": [
+   "wlan-steering"
+  ]
+ },
+ "WLANBase": {
+  "view": 201,
+  "rdsc": "LD",
+  "lenok": false,
+  "rows": -1,
+  "multi": true,
+  "targets": [
+   [
+    "0x11201",
+    "0x10009"
+   ]
+  ],
+  "pages": [
+   "wlan-radio",
+   "wlan-radio-user",
+   "wlan-steering",
+   "wlan-wps"
+  ]
+ },
+ "WLANCfg": {
+  "view": 202,
+  "rdsc": "LD",
+  "lenok": false,
+  "rows": -1,
+  "multi": true,
+  "targets": [
+   [
+    "0x1010b",
+    "0xa0001"
+   ],
+   [
+    "0x1010b",
+    "0xa0004"
+   ],
+   [
+    "0x11201",
+    "0x10000"
+   ],
+   [
+    "0x11201",
+    "0x10001"
+   ],
+   [
+    "0x11201",
+    "0x10002"
+   ],
+   [
+    "0x11201",
+    "0x10003"
+   ],
+   [
+    "0x11201",
+    "0x10012"
+   ],
+   [
+    "0x11201",
+    "0x1001c"
+   ],
+   [
+    "0x11201",
+    "0x1001d"
+   ],
+   [
+    "0x620101",
+    "0x150004"
+   ]
+  ],
+  "pages": [
+   "wlan-mac-acl",
+   "wlan-security",
+   "wlan-ssids"
+  ]
+ },
+ "WLANPSK": {
+  "view": 206,
+  "rdsc": "WLAN",
+  "lenok": true,
+  "rows": -1,
+  "multi": true,
+  "targets": [
+   [
+    "0x11201",
+    "0x10003"
+   ]
+  ],
+  "pages": [
+   "wlan-security"
+  ]
+ },
+ "WLANROAMING": {
+  "view": 381,
+  "rdsc": "IGD",
+  "lenok": true,
+  "rows": 0,
+  "multi": true,
+  "targets": [
+   [
+    "0x11201",
+    "0x10013"
+   ]
+  ],
+  "pages": [
+   "wlan-steering"
+  ]
+ },
+ "WLANWEP": {
+  "view": 204,
+  "rdsc": "WLAN",
+  "lenok": true,
+  "rows": -1,
+  "multi": true,
+  "targets": [
+   [
+    "0x11201",
+    "0x10001"
+   ],
+   [
+    "0x11201",
+    "0x10002"
+   ]
+  ],
+  "pages": [
+   "wlan-security"
+  ]
+ },
+ "WLANWMM": {
+  "view": 203,
+  "rdsc": "WLAN",
+  "lenok": true,
+  "rows": -1,
+  "multi": true,
+  "targets": [
+   [
+    "0x11201",
+    "0x10007"
+   ]
+  ],
+  "pages": [
+   "wlan-wmm"
+  ]
+ },
+ "WLANWPS": {
+  "view": 234,
+  "rdsc": "WLAN",
+  "lenok": true,
+  "rows": -1,
+  "multi": true,
+  "targets": [
+   [
+    "0x11201",
+    "0x10004"
+   ],
+   [
+    "0x11201",
+    "0x1000f"
+   ]
+  ],
+  "pages": [
+   "wlan-wps"
+  ]
+ },
+ "WlanTimeCfg": {
+  "view": 246,
+  "rdsc": "LD",
+  "lenok": true,
+  "rows": 1,
+  "multi": false,
+  "targets": [
+   [
+    "0x10f01",
+    "0x2"
+   ]
+  ],
+  "pages": [
+   "wlan-schedule"
+  ]
+ }
+}

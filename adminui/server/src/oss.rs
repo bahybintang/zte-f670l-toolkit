@@ -13,11 +13,12 @@ use std::time::Duration;
 use tokio::net::UnixDatagram;
 
 pub const TBL_DEF: &str = "/etc/db_tbl_def.xml";
-const CSPD_SOCK: &str = "/var/tmp/0X00000001";
 const EVENT_SET: u32 = 0x2401;
 const SYN_REQ: u32 = 0x20000;
 const VIEW_MAGIC: u32 = 0x0102_0304;
 const SLOT_HDR: usize = 0x1c;
+/// The DM that names a row of a multi-instance view (libdb dbViewCommOp).
+const VIEW_NAME_DM: &str = "ViewName";
 const REPLY_MAX: u16 = 2048;
 const REPLY_TIMEOUT: Duration = Duration::from_secs(8);
 
@@ -38,6 +39,26 @@ pub const TARGETS: &[Target] = &[
     Target { table: "IGMPProxy", view: 230, module: 0x10112, subid: 0xc0001, identity: "IGD" },
     Target { table: "MLDProxyCfg", view: 295, module: 0x1013a, subid: 0x280001, identity: "IGD" },
     Target { table: "DNSSettings", view: 177, module: 0x10116, subid: 0x120001, identity: "IGD" },
+    Target { table: "FWALG", view: 237, module: 0x10102, subid: 0xb0002, identity: "IGD" },
+    Target { table: "RIPConf", view: 263, module: 0x10127, subid: 0x220001, identity: "IGD" },
+    // Multi-instance views: identity comes from each row's ViewName.
+    Target { table: "DDNSService", view: 261, module: 0x10114, subid: 0xd0002, identity: "" },
+    Target { table: "DNSHostsList", view: 179, module: 0x10116, subid: 0x120002, identity: "" },
+    Target { table: "FWURL", view: 240, module: 0x10102, subid: 0xb000c, identity: "" },
+    Target { table: "LoopbackEthConf", view: 191, module: 0x10140, subid: 0x340002, identity: "" },
+    Target { table: "MLDWan", view: 294, module: 0x1013a, subid: 0x280001, identity: "" },
+    Target { table: "MultiWancd", view: 217, module: 0x101a7, subid: 0x470000, identity: "" },
+    Target { table: "PortControl", view: 186, module: 0x10102, subid: 0xb0015, identity: "" },
+    Target { table: "PrefixCfg", view: 160, module: 0x10134, subid: 0x290004, identity: "" },
+    Target { table: "QOSRule", view: 284, module: 0x10103, subid: 0x70002, identity: "" },
+    Target { table: "QOSType", view: 285, module: 0x10103, subid: 0x70002, identity: "" },
+    Target { table: "RIPIf", view: 264, module: 0x10127, subid: 0x220001, identity: "" },
+    Target { table: "RaCfg", view: 311, module: 0x610101, subid: 0x300001, identity: "" },
+    Target { table: "TUNNEL46CFG", view: 11, module: 0x1013b, subid: 0x310001, identity: "" },
+    Target { table: "VLANBIND", view: 228, module: 0x101a3, subid: 0x480000, identity: "" },
+    Target { table: "WLANBANDSTEERING", view: 382, module: 0x11201, subid: 0x10018, identity: "" },
+    Target { table: "WLANROAMING", view: 381, module: 0x11201, subid: 0x10013, identity: "" },
+    Target { table: "WLANWMM", view: 203, module: 0x11201, subid: 0x10007, identity: "" },
 ];
 
 pub fn target(table: &str) -> Option<&'static Target> {
@@ -161,9 +182,6 @@ fn encode_value(k: Kind, v: &str, out: &mut [u8]) -> Result<(), String> {
 pub fn build_view(dms: &[Dm], row: &Row, changed: &[&str], expect_len: usize) -> Result<Vec<u8>, String> {
     let mut kinds = Vec::with_capacity(dms.len());
     for d in dms {
-        if d.name == "ViewName" {
-            return Err("multi-instance views are not supported yet".into());
-        }
         let k = kind(&d.ty).ok_or_else(|| format!("{}: type {} not supported for live apply", d.name, d.ty))?;
         kinds.push(k);
     }
@@ -179,6 +197,11 @@ pub fn build_view(dms: &[Dm], row: &Row, changed: &[&str], expect_len: usize) ->
         slot[0..2].copy_from_slice(&code.to_le_bytes());
         if changed.contains(&d.name.as_str()) {
             slot[2..4].copy_from_slice(&1u16.to_le_bytes());
+        }
+        // dbViewGetName: the view-name DM also carries its own name at +4.
+        if d.name == VIEW_NAME_DM {
+            let n = &d.name.as_bytes()[..d.name.len().min(15)];
+            slot[4..4 + n.len()].copy_from_slice(n);
         }
         let v = row.get(&d.name).unwrap_or("");
         encode_value(k, v, &mut slot[SLOT_HDR..]).map_err(|e| format!("{}: {e}", d.name))?;
@@ -229,6 +252,12 @@ pub fn parse_reply(r: &[u8], seq: u16) -> Result<i32, String> {
     Ok(i32::from_le_bytes([r[8], r[9], r[10], r[11]]))
 }
 
+/// A process's inbound socket is named after the receiver's subsystem byte
+/// (cspd hosts subsystem 0x01; other daemons have their own, e.g. 0x42).
+pub fn request_sock(module: u32) -> String {
+    format!("/var/tmp/0X{:08X}", (module >> 16) & 0xff)
+}
+
 /// Our reply address: subsystem 0x03 (not cspd's 0x01, so the module replies
 /// over the socket), an AA/MM nobody has bound.
 fn free_sender() -> Result<(u32, String), String> {
@@ -251,7 +280,7 @@ pub async fn send(t: &Target, payload: &[u8]) -> Result<i32, String> {
     }
     let seq: u16 = 1;
     let r = async {
-        sock.send_to(&datagram(sender, t.module, seq, payload), CSPD_SOCK).await.map_err(|e| format!("send: {e}"))?;
+        sock.send_to(&datagram(sender, t.module, seq, payload), request_sock(t.module)).await.map_err(|e| format!("send: {e}"))?;
         let mut buf = vec![0u8; REPLY_MAX as usize + 8];
         let n = tokio::time::timeout(REPLY_TIMEOUT, sock.recv(&mut buf))
             .await
@@ -264,18 +293,25 @@ pub async fn send(t: &Target, payload: &[u8]) -> Result<i32, String> {
     r
 }
 
-/// Rebuild `table`'s view from the DB and notify its manager. `changed`
-/// names the DMs this apply wrote. Returns the manager's iRet (0 = applied).
-pub async fn reapply(db: &crate::db::Db, table: &str, changed: &[&str]) -> Result<i32, String> {
+/// Rebuild one row of `table`'s view from the DB and notify its manager.
+/// `changed` names the DMs this apply wrote. A multi-instance row is named by
+/// its own ViewName (e.g. IGD.RIPIf2), which is also the identity webd sends.
+/// Returns the manager's iRet (0 = applied).
+pub async fn reapply(db: &crate::db::Db, table: &str, row_no: u32, changed: &[&str]) -> Result<i32, String> {
     let t = target(table).ok_or_else(|| format!("{table} has no live-apply target"))?;
     let xml = tokio::fs::read_to_string(TBL_DEF).await.map_err(|e| format!("{TBL_DEF}: {e}"))?;
     let dms = table_dms(&xml, table).ok_or_else(|| format!("{table} not in {TBL_DEF}"))?;
     let pv = db.exec.run("sidbg", &["1", "DB", "pv"], Duration::from_secs(10)).await?;
     let len = pv_len(&pv.stdout, t.view).ok_or_else(|| format!("view {} not listed by the DB", t.view))?;
     let rows = db.read_fresh(table).await?;
-    let row = rows.row(0).ok_or_else(|| format!("{table} has no row 0"))?;
+    let row = rows.row(row_no).ok_or_else(|| format!("{table} has no row {row_no}"))?;
+    let identity = if dms.iter().any(|d| d.name == VIEW_NAME_DM) {
+        row.get(VIEW_NAME_DM).filter(|v| !v.is_empty() && v.len() < 32).ok_or_else(|| format!("{table} row {row_no} has no view name"))?
+    } else {
+        t.identity
+    };
     let view = build_view(&dms, row, changed, len)?;
-    send(t, &mm_msg(t.subid, t.identity, &view)).await
+    send(t, &mm_msg(t.subid, identity, &view)).await
 }
 
 #[cfg(test)]
@@ -343,6 +379,19 @@ mod tests {
     }
 
     #[test]
+    fn view_name_slot() {
+        let x = r#"<Tbl name="RIPIf"><TblDef>
+ <DMDEF name="ViewName" dmId="0" type="STR32" bKey="1"/>
+ <DMDEF name="Enable" dmId="0" type="BOOL" bKey="0"/>
+</TblDef></Tbl>"#;
+        let dms = table_dms(x, "RIPIf").unwrap();
+        let v = build_view(&dms, &row(&[("ViewName", "IGD.RIPIf2"), ("Enable", "1")]), &[], 8 + 64 + 32).unwrap();
+        assert_eq!(u16::from_le_bytes([v[8], v[9]]), 2, "STR32 code");
+        assert_eq!(&v[8 + 4..8 + 12], b"ViewName");
+        assert_eq!(&v[8 + 0x1c..8 + 0x1c + 10], b"IGD.RIPIf2");
+    }
+
+    #[test]
     fn length_guard_refuses_mismatch() {
         let dms = table_dms(XML, "SNTP").unwrap();
         assert!(build_view(&dms, &row(&[]), &[], 0x4b0).is_err());
@@ -361,5 +410,7 @@ mod tests {
         assert_eq!(d.len(), 32 + 0x4e0);
         assert_eq!(&d[8..12], &0x22401u32.to_le_bytes());
         assert_eq!(d[6], 0x01);
+        assert_eq!(request_sock(0x1010d), "/var/tmp/0X00000001");
+        assert_eq!(request_sock(0x420201), "/var/tmp/0X00000042");
     }
 }
