@@ -437,22 +437,53 @@ SSID/PSK via the iwpriv hook.
 
 **Restart-only, and why** (so a later session does not re-walk these):
 - **Firewall rule lists** — MacFilter (244), FWSC (189), FWDMZ (238), FWIP (239), FWPM port
-  forwarding (27). Transport is fully mapped: their setters (`pm_fwset_ip` etc.) write the rule to
-  the DB, then call `plib_fw_schudle_register_api(event, struct428)`, which is
-  **`SSEND(event, struct, 428, 5000, replybuf, &seq, receiver=0x10102)`** — the firewall module,
-  reachable on cspd's socket exactly like the 0x2401 targets. Events: **0x9704 deletes** the old
-  rule, **0x9703 adds** the new one (all five tables use the same pair). A firewall `0x2401` notify
-  does **not** rebuild these (verified: iptables unchanged after an FWBase notify), so the rule
-  events are required. The 428-byte struct (offsets, from `pm_fwset_ip`): name@0 (35B, the rule's
-  ViewName), type-const@36, name@76, name@112, byte@148, event@156 (2B), word@160, 259B
-  descriptor@164; the firewall re-reads the rule's fields from the DB by the ViewName. FWIP's
-  constants (from `pm_fwset_ip`): type-const@36 = `0xb0008`, @156 = the event (`0x9703`); name@76
-  and name@112 are the resolved IN/OUT interface names and @164 a 259B descriptor, both still to
-  trace per table. **Remaining
-  to implement:** the per-table type constants (`DAT_*` in each setter) and the field sources for
-  the name/descriptor slots, then validate each rule by diffing `iptables -L -n` after a live apply
-  against a reboot rebuild of the same DB (a mismatch = reject, so it cannot ship a wrong rule).
-  Left restart-only until then: the firewall rebuilds them correctly from DB at boot.
+  forwarding (27). **Not restart-only — not applicable from a DB write at all.** This corrects an
+  earlier claim here ("the firewall rebuilds them correctly from DB at boot"), which on-device
+  testing disproved.
+
+  Transport (confirmed working): the setters (`pm_fwset_ip` @libpmapi `0x5bc18` etc.) write the
+  rule, then call `plib_fw_schudle_register_api(event, struct428)` (libplib `0x22150`) =
+  **`SSEND(event, struct, 428, 5000, replybuf, &seq, receiver=0x10102)`**. The firewall module
+  `0x10102` is hosted in cspd (subsystem byte 0x01), so its request socket is cspd's
+  `/var/tmp/0X00000001`, exactly like the 0x2401 targets; the reply carries iRet at payload+0.
+  Events: **0x9704 deletes, 0x9703 adds** (all five tables share the pair). adminui implements this
+  as `oss::send_raw` / `oss::fw_register` / `oss::fw_struct` and the `oss-fwreg <table:ViewName>`
+  CLI. FWIP constants (`pm_fwset_ip` literal pool): type-const@36 = `0x000b0008` (`0x5c0bc`),
+  struct[156] = the event halfword (`0xffff9703`/`0xffff9704` at `0x5c0d4`/`0x5c0c0`).
+
+  **Why it is not enough (verified on device, 2025 — spare F670L clone):**
+  1. Created an FWIP row by hand (`sidbg DB addr/set/save`: ViewName=TestBlk1, Enable=1,
+     Protocol=4, FilterTarget=0, MinSrcIp=MaxSrcIp=10.11.12.13). The `ipfilter` iptables chain
+     stayed **empty** — a DB write alone does not apply.
+  2. Sent `oss-fwreg FWIP:TestBlk1` (0x9704 then 0x9703) with the minimal struct (ViewName@0,
+     0x000b0008@36, event@156). Firewall replied **del iRet=0, add iRet=0, box healthy** — but
+     `ipfilter` was **still empty**. iRet=0 means "message parsed," not "rule programmed": the
+     minimal struct has an empty descriptor@164, and the firewall programs nothing from it.
+  3. Rebooted (rule persisted in DB). `ipfilter` **still empty** — the DB row does not render at
+     boot either. Added the resolved IN connection (INCViewName=`IGD.LD1`, INCName=`br0`,
+     FilterIndex=1) and rebooted again: **still empty**.
+
+  Conclusion: iptables rules are programmed by the vendor **OBJ instance manager**
+  (`applyOrNewOrDelInst("OBJ_FWIP_ID", …)` in `/home/httpd/fw_ip_gch.gch` → webd → `pm_fwset_*`),
+  which resolves the interface names (`OBJ_WANLAN_ID`), assigns FilterIndex, and builds the
+  ~259-byte rule descriptor@164 that the firewall consumes. The DB table is persistence the OBJ
+  layer loads; the raw table is not a rule source on its own. There is **no `sendcmd`/OBJ CLI** on
+  this device, so the OBJ layer is reachable only via webd or the pm libs.
+
+  **To actually ship these pages**, two options, both distinct projects (neither is "port the
+  0x2401 notify"):
+  - **(a) Replicate the descriptor** — build the 428-byte struct fully per table (interfaces@76/
+    @112, byte@148, word@160, descriptor@164) from DB fields, matching each `pm_fwset_*` transform,
+    and validate by diffing `iptables -L -n` live vs a reboot rebuild. 5× the transform RE, each
+    with a different descriptor format; open-ended.
+  - **(b) Delegate to the stock UI** — POST to the device's own gch OBJ endpoints
+    (`fw_ip_gch.gch` etc., IF_ACTION + the 22 `OBJ_FWIP_ID` PARA fields) so webd does the correct
+    transform and programs iptables. Lower risk (no vendor-lib load in adminui, guaranteed-correct
+    rules), but couples adminui to the stock UI's auth/session and needs per-table field mapping.
+
+  Until one is done, adminui marks these 5 pages `apply:"unknown"` with an applicableNote telling
+  the user to change firewall rules from the router's built-in pages (schema.rs `OBJ_RULE_TABLES`).
+  `fw_register`/`oss-fwreg` are kept as a proven transport building block for option (a).
 - **No 0x2401 sender / no sync reply** — MultiWancd (iRet -5), LoopbackGlobalConf (iRet -1),
   DMSCfg / CltLmt / UPnPCfg / WANCIP-via-IP-manager (no reply), DDNSHostname (gdbus),
   WANCD/WANCEXT/WANCServList/WANCPPPComm, DevInfo, MonitorCollectorCfg, MirrorConf, UsbBakRst,

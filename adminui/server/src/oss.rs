@@ -366,6 +366,101 @@ pub async fn send(t: &Target, payload: &[u8]) -> Result<i32, String> {
     r
 }
 
+// --- Firewall rule lists (MacFilter, FWSC, FWDMZ, FWIP, FWPM) ---------------
+//
+// These do not take a 0x2401 view notify; their rules live in dedicated views
+// and the firewall rebuilds iptables from a register event. The stock path is
+// `plib_fw_schudle_register_api(event, struct428)` = `SSEND(event, struct, 428,
+// 5000, reply, &seq, receiver=0x10102)` (libplib `plib_fw_schudle_register_api`
+// @0x22150). The firewall module is hosted in cspd (subsystem 0x01), so the
+// request socket is cspd's, exactly like the 0x2401 targets. 0x9704 deletes the
+// old rule, 0x9703 adds the current DB rule. The firewall re-reads the rule's
+// fields from the DB by ViewName; the struct carries the identity, the per-table
+// type constant at +36, and the event at +156. See notes/oss-protocol.md §9.
+
+/// The firewall module id (`plib_fw_schudle_register_api` receiver).
+pub const FW_MODULE: u32 = 0x10102;
+const FW_DEL: u32 = 0x9704;
+const FW_ADD: u32 = 0x9703;
+
+/// Per-table firewall rule type constant (struct +36), read from each pm setter's
+/// literal pool (FWIP: `pm_fwset_ip` @0x5bfd0 = 0x000b0008).
+pub fn fw_type_const(table: &str) -> Option<u32> {
+    Some(match table {
+        "FWIP" => 0x000b_0008,
+        _ => return None,
+    })
+}
+
+/// The 428-byte firewall rule-register struct. Minimal form: ViewName at +0
+/// (strncpy, ≤34 bytes + NUL), the type constant at +36, and the event at +156.
+pub fn fw_struct(view_name: &str, type_const: u32, event: u16) -> Vec<u8> {
+    let mut s = vec![0u8; 428];
+    let nb = view_name.as_bytes();
+    let n = nb.len().min(34);
+    s[..n].copy_from_slice(&nb[..n]);
+    s[36..40].copy_from_slice(&type_const.to_le_bytes());
+    s[156..158].copy_from_slice(&event.to_le_bytes());
+    s
+}
+
+/// OSS datagram with an explicit event (the 0x2401 path hardcodes EVENT_SET;
+/// the firewall register uses 0x9703/0x9704). Sync flag set as the stock path.
+pub fn datagram_ev(sender: u32, receiver: u32, event: u32, seq: u16, payload: &[u8]) -> Vec<u8> {
+    let mut d = vec![0u8; 32];
+    d[0..4].copy_from_slice(&sender.to_le_bytes());
+    d[4..8].copy_from_slice(&receiver.to_le_bytes());
+    d[8..12].copy_from_slice(&(event | SYN_REQ).to_le_bytes());
+    d[12..14].copy_from_slice(&(payload.len() as u16).to_le_bytes());
+    d[14..16].copy_from_slice(&REPLY_MAX.to_le_bytes());
+    d[16..18].copy_from_slice(&REPLY_MAX.to_le_bytes());
+    d[22..24].copy_from_slice(&seq.to_le_bytes());
+    d.extend_from_slice(payload);
+    d
+}
+
+/// Send a raw payload to `module` under `event`; return the manager's iRet
+/// (reply: [0:2] event echo, [6:8] seq, [8:12] iRet).
+pub async fn send_raw(module: u32, event: u32, payload: &[u8]) -> Result<i32, String> {
+    let (sender, path) = free_sender()?;
+    let sock = UnixDatagram::bind(&path).map_err(|e| format!("bind {path}: {e}"))?;
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o777));
+    }
+    let seq: u16 = 1;
+    let r = async {
+        sock.send_to(&datagram_ev(sender, module, event, seq, payload), request_sock(module))
+            .await
+            .map_err(|e| format!("send: {e}"))?;
+        let mut buf = vec![0u8; REPLY_MAX as usize + 8];
+        let n = tokio::time::timeout(REPLY_TIMEOUT, sock.recv(&mut buf))
+            .await
+            .map_err(|_| "no reply from the manager".to_string())?
+            .map_err(|e| format!("recv: {e}"))?;
+        if n < 12 {
+            return Err(format!("short reply ({n} bytes)"));
+        }
+        let rs = u16::from_le_bytes([buf[6], buf[7]]);
+        if rs != seq {
+            return Err(format!("reply seq {rs} != {seq}"));
+        }
+        Ok(i32::from_le_bytes([buf[8], buf[9], buf[10], buf[11]]))
+    }
+    .await;
+    let _ = std::fs::remove_file(&path);
+    r
+}
+
+/// Re-register a firewall rule by ViewName: delete (0x9704) then add (0x9703),
+/// so the firewall rebuilds it from the DB with no reboot. Returns (del, add) iRet.
+pub async fn fw_register(table: &str, view_name: &str) -> Result<(i32, i32), String> {
+    let tc = fw_type_const(table).ok_or_else(|| format!("no firewall type const for {table}"))?;
+    let del = send_raw(FW_MODULE, FW_DEL, &fw_struct(view_name, tc, FW_DEL as u16)).await?;
+    let add = send_raw(FW_MODULE, FW_ADD, &fw_struct(view_name, tc, FW_ADD as u16)).await?;
+    Ok((del, add))
+}
+
 /// Rebuild one row of `table`'s view from the DB and notify its manager.
 /// `changed` names the DMs this apply wrote. A multi-instance row is named by
 /// its own ViewName (e.g. IGD.RIPIf2), which is also the identity webd sends.
@@ -495,6 +590,29 @@ mod tests {
         assert_eq!(u16::from_le_bytes([v[8], v[9]]), 2, "STR32 code");
         assert_eq!(&v[8 + 4..8 + 12], b"ViewName");
         assert_eq!(&v[8 + 0x1c..8 + 0x1c + 10], b"IGD.RIPIf2");
+    }
+
+    #[test]
+    fn fw_struct_offsets() {
+        // The firewall register struct: 428 bytes, ViewName at +0 (≤34 + NUL),
+        // type constant at +36, event halfword at +156 (pm_fwset_ip @0x5bfc8..).
+        let s = fw_struct("TestBlk1", 0x000b_0008, FW_ADD as u16);
+        assert_eq!(s.len(), 428);
+        assert_eq!(&s[..8], b"TestBlk1");
+        assert_eq!(s[8], 0, "name NUL-terminated within the slot");
+        assert_eq!(u32::from_le_bytes([s[36], s[37], s[38], s[39]]), 0x000b_0008);
+        assert_eq!(u16::from_le_bytes([s[156], s[157]]), 0x9703);
+        assert_eq!(fw_type_const("FWIP"), Some(0x000b_0008));
+        assert_eq!(fw_type_const("Nope"), None);
+    }
+
+    #[test]
+    fn fw_datagram_event() {
+        // datagram_ev carries the given event (sync flag set), not 0x2401.
+        let d = datagram_ev(0x0003_aa01, FW_MODULE, FW_DEL, 1, &[0u8; 428]);
+        assert_eq!(u32::from_le_bytes([d[4], d[5], d[6], d[7]]), FW_MODULE);
+        assert_eq!(u32::from_le_bytes([d[8], d[9], d[10], d[11]]), FW_DEL | SYN_REQ);
+        assert_eq!(u16::from_le_bytes([d[12], d[13]]), 428);
     }
 
     #[test]

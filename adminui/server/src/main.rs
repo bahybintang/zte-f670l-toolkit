@@ -101,6 +101,22 @@ fn main() {
                 }
             }
         }
+        // Re-register a firewall rule (delete+add) so it applies without reboot.
+        "oss-fwreg" => {
+            let spec = args.arg.clone().unwrap_or_default();
+            let (table, vn) = spec
+                .split_once(':')
+                .map(|(t, v)| (t.to_string(), v.to_string()))
+                .unwrap_or((spec, String::new()));
+            let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime");
+            match rt.block_on(oss::fw_register(&table, &vn)) {
+                Ok((del, add)) => println!("{table}/{vn}: firewall del iRet={del} add iRet={add}"),
+                Err(e) => {
+                    eprintln!("{table}/{vn}: {e}");
+                    std::process::exit(1);
+                }
+            }
+        }
         // Probe an arbitrary module/subid with a table's view (RE mapping tool).
         "oss-probe" => {
             let a = args.arg.clone().unwrap_or_default();
