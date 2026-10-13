@@ -422,26 +422,33 @@ Targets for all 34 libpmapi setters that send `0x2401`: `notes/pm-targets.json`.
 --------------------------------------------------------------------------------
 ## 9. Live-apply coverage (2026-10-13, verified on device)
 
-Live via the generic view-notify (`oss.rs` TARGETS, each `iRet 0` on device unless noted):
-SNTP, DNSSettings, ARPDETECTConfig, IGMPProxy, MLDProxyCfg, FWALG, RIPConf, RIPIf,
-PortControl, QOSRule, QOSType, QOSBasic, QOSQueue, DDNSService, DDNSClient, LoopbackEthConf,
-MLDWan, RaCfg, TUNNEL46CFG, VLANBIND, WLANBANDSTEERING, WLANROAMING, WLANWMM, WLANWEP, WLANWPS,
-WlanTimeCfg, FWBase, FWLevel, SambaCfg, DHCPSHostCfg, DHCPSPool, WANCPPP, L3ForwardingRT.
-Plus Wi-Fi SSID/PSK via the iwpriv hook. **29 of 82 writable pages apply live** (plus the read-only status pages); the DHCP server pool and host config, WAN PPPoE, firewall level/attack and static routes are among them.
+**41 of 82 writable pages apply live.** The enabled build-macro set was solved from every view's
+length (ENABLED_MACROS in oss.rs), so views the all-or-none rule could not size — LAN, admin
+users, log, WAN, DHCP host/pool/bind — now build correctly; `layout_for` filters DMs by that set
+and still length-checks, so a wrong pick is impossible.
+
+Live targets (each iRet 0 on device, or a safe no-row fallback here): SNTP, DNSSettings,
+ARPDETECTConfig, IGMPProxy, MLDProxyCfg, MLDWan, FWALG, FWBase, FWLevel, RIPConf, RIPIf,
+PortControl, PrefixCfg, QOSRule, QOSType, QOSBasic, QOSQueue, QOSPolicer, DDNSService, DDNSClient,
+DNSHostsList, DHCPSHostCfg, DHCPSPool, DHCPSBind, DHCPCComm, LAND, DevAuthInfo, Log, TelnetCfg,
+TelnetUser, WANC, WANCIP, WANCPPP, LoopbackEthConf, L3ForwardingRT, RaCfg, TUNNEL46CFG, VLANBIND,
+FWURL, SambaCfg, WLANBANDSTEERING, WLANROAMING, WLANWMM, WLANWEP, WLANWPS, WlanTimeCfg. Plus Wi-Fi
+SSID/PSK via the iwpriv hook.
 
 **Restart-only, and why** (so a later session does not re-walk these):
-- **Firewall rule lists** — MacFilter (244), FWSC (189), FWDMZ, FWIP, FWPM (port forwarding),
-  FWURL rows. Their setters (`pm_mac_filterset`, `pm_fw_set_sc`, `pm_fwset_dmz/ip`) do **not**
-  send `0x2401`; they call `plib_fw_schudle_register_api`, which `SSEND`s a **fixed 0x1AC
-  per-rule struct** (event = caller arg, e.g. `0x9703`/`0x9722`, receiver is a libplib
-  constant), not a DB view. Replicating needs that struct's field layout; a wrong one can crash
-  the firewall. [V: libplib decompile]
-- **LAN bridge / WAN / DHCP pool** — LAND (241), WANC/WANCIP (WANCIP got no manager reply; WANCPPP applies), DHCPSPool, DHCPSBind.
-  Their views are written by `pm_br_grp_set_land` / `pm_wanc_set_*` / `pm_dhcps_set_pool*`,
-  each of which notifies **several modules with several subids** (ambiguous), and the WAN views
-  have **no row** on a spare with no uplink (untestable here). High blast radius.
-- **No 0x2401 sender** — most VoIP tables, DDNSHostname (gdbus), MgtServer/TR-069, DevInfo,
-  LoopbackGlobalConf (manager returned `iRet -1`), MultiWancd (`iRet -5`).
-- **Length never matches** (partial macro inclusion) — DevInfo, VLAN, DevAccInfo, WLANBase,
-  FWPCMAC, FWPCTP, DHCP6SHostCfg. The dual-layout rule (§ `layout_for`) resolves FWBase,
-  FWLevel, SambaCfg, MgtServer, UserIF; these six it cannot.
+- **Firewall rule lists** — MacFilter (244), FWSC (189), FWDMZ (238), FWIP (239), FWPM port
+  forwarding (27). Their setters (`pm_mac_filterset`, `pm_fw_set_sc`, `pm_fwset_ip`,
+  `pm_fwset_dmz`, `pm_fw_set_pm`) do **not** send `0x2401`. They translate the DB row into a fixed
+  **0x1AC (428-byte) per-rule struct** and hand it to `plib_fw_schudle_register_api`, which
+  `SSEND`s it (events 0x9703/0x9722, receiver = a libplib global) to the firewall module, which
+  then shells out to `/bin/iptables`. A firewall notify (0xb0004) does **not** rebuild the rule
+  lists (verified: iptables unchanged after an FWBase notify). Porting them requires RE-ing the
+  0x1AC field layout per table (protocol, src/dst IP ranges and masks, ports, in/out interface
+  view names, action), validated by diffing `iptables -L -n` after a live apply against a reboot
+  rebuild of the same DB. Left restart-only: the firewall rebuilds them correctly from DB at boot.
+- **No 0x2401 sender / no sync reply** — MultiWancd (iRet -5), LoopbackGlobalConf (iRet -1),
+  DMSCfg / CltLmt / UPnPCfg / WANCIP-via-IP-manager (no reply), DDNSHostname (gdbus),
+  WANCD/WANCEXT/WANCServList/WANCPPPComm, DevInfo, MonitorCollectorCfg, MirrorConf, UsbBakRst,
+  DHCP6SHostCfg and DWQOSQueue (view-id collisions). The 0x10111 telnet-user subid **crashed** the
+  box, so the 0x3d0101 telnet node is used instead.
+- **VoIP and TR-069** — excluded by request.
