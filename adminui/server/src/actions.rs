@@ -26,6 +26,7 @@ pub fn routes() -> Router<Arc<crate::state::App>> {
         .route("/wifi/survey", get(wifi_survey))
         .route("/clients", get(clients))
         .route("/backup/download", get(backup_download))
+        .route("/log/download", get(log_download))
         .route("/flash/partitions", get(flash_partitions))
         .route("/tools/wol", post(wol))
         .route("/flash/dump/{n}", get(flash_dump))
@@ -208,6 +209,21 @@ async fn backup_download(State(_app): S) -> Result<Response, ApiError> {
             (header::CONTENT_DISPOSITION, "attachment; filename=\"db_user_cfg.xml\""),
         ],
         Body::from(data),
+    )
+        .into_response())
+}
+
+/// Downloadable system log. This firmware runs no syslogd ring, so the kernel
+/// ring (`dmesg`) is what's available.
+async fn log_download() -> Result<Response, ApiError> {
+    let out = crate::exec::run_raw("dmesg", &[], Duration::from_secs(10)).await.map(|o| o.stdout).unwrap_or_default();
+    let body = if out.trim().is_empty() { "No kernel log is available on this unit.\n".to_string() } else { out };
+    Ok((
+        [
+            (header::CONTENT_TYPE, "text/plain; charset=utf-8"),
+            (header::CONTENT_DISPOSITION, "attachment; filename=\"router-log.txt\""),
+        ],
+        Body::from(body),
     )
         .into_response())
 }

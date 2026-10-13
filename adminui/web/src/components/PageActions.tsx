@@ -24,10 +24,17 @@ const ENDPOINTS: Record<string, { path: string; confirmWord?: string }> = {
 // ping/traceroute run live from the Network tools page (they take a target).
 const TOOLS_ACTIONS = new Set(['ping', 'traceroute', 'traceroute-stop'])
 
+// Actions that download a file rather than POST + toast.
+const DOWNLOADS: Record<string, string> = {
+  'backup-download': '/api/backup/download',
+  'log-download': '/api/log/download',
+}
+
 export function PageActions({ page }: { page: Page }) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [ask, setAsk] = useState<Action | null>(null)
+  const [result, setResult] = useState<string | null>(null)
   const actions = (page.actions ?? []).filter((a) => a.id !== 'refresh')
   const hasRefresh = page.actions?.some((a) => a.id === 'refresh')
   const run = async (a: Action) => {
@@ -37,20 +44,34 @@ export function PageActions({ page }: { page: Page }) {
     }
     const ep = ENDPOINTS[a.id]
     if (!ep) return
+    setResult(null)
     try {
       const r = await api.post<{ message?: string }>(ep.path, ep.confirmWord ? { confirm: ep.confirmWord } : {})
-      toast.success(r.message ?? `${a.label}: done.`)
+      const msg = r.message ?? `${a.label}: done.`
+      toast.success(msg)
+      setResult(msg) // keep the outcome visible on the page, not just a transient toast
     } catch (e) {
-      toast.error((e as Error).message)
+      const msg = (e as Error).message
+      toast.error(msg)
+      setResult(msg)
     }
   }
   if (!actions.length && !hasRefresh) return null
   return (
-    <div className="mt-10 flex flex-wrap gap-2 border-t border-border pt-5">
+    <div className="mt-10 border-t border-border pt-5">
+      <div className="flex flex-wrap gap-2">
       {hasRefresh && (
         <Button variant="outline" onClick={() => qc.invalidateQueries({ queryKey: ['page', page.id] })}>Refresh</Button>
       )}
       {actions.map((a) => {
+        const dl = DOWNLOADS[a.id]
+        if (dl) {
+          return (
+            <Button key={a.id} variant="outline" render={<a href={dl} download />}>
+              {a.label}
+            </Button>
+          )
+        }
         const available = !!ENDPOINTS[a.id] || TOOLS_ACTIONS.has(a.id)
         return (
           <Button
@@ -64,6 +85,10 @@ export function PageActions({ page }: { page: Page }) {
           </Button>
         )
       })}
+      </div>
+      {result && (
+        <p className="mt-4 rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">{result}</p>
+      )}
       <AlertDialog open={!!ask} onOpenChange={(o) => !o && setAsk(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
