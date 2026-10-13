@@ -418,3 +418,30 @@ an SNTP view built from `db_tbl_def.xml` + `sidbg` values is accepted by `sntp_m
 `iRet 0` and applies it live (`sidbg 1 sntp_mgr getGlobalVar` → `g_dwpoll_time` follows the DB
 value). Setting 0x0E to 1 made the module apply the change but drop its reply.
 Targets for all 34 libpmapi setters that send `0x2401`: `notes/pm-targets.json`.
+
+--------------------------------------------------------------------------------
+## 9. Live-apply coverage (2026-10-13, verified on device)
+
+Live via the generic view-notify (`oss.rs` TARGETS, each `iRet 0` on device unless noted):
+SNTP, DNSSettings, ARPDETECTConfig, IGMPProxy, MLDProxyCfg, FWALG, RIPConf, RIPIf,
+PortControl, QOSRule, QOSType, QOSBasic, QOSQueue, DDNSService, DDNSClient, LoopbackEthConf,
+MLDWan, RaCfg, TUNNEL46CFG, VLANBIND, WLANBANDSTEERING, WLANROAMING, WLANWMM, WLANWEP, WLANWPS,
+WlanTimeCfg, FWBase, FWLevel, SambaCfg, DHCPSHostCfg, L3ForwardingRT. Plus Wi-Fi SSID/PSK via
+the iwpriv hook. **62 of 125 pages apply live.**
+
+**Restart-only, and why** (so a later session does not re-walk these):
+- **Firewall rule lists** — MacFilter (244), FWSC (189), FWDMZ, FWIP, FWPM (port forwarding),
+  FWURL rows. Their setters (`pm_mac_filterset`, `pm_fw_set_sc`, `pm_fwset_dmz/ip`) do **not**
+  send `0x2401`; they call `plib_fw_schudle_register_api`, which `SSEND`s a **fixed 0x1AC
+  per-rule struct** (event = caller arg, e.g. `0x9703`/`0x9722`, receiver is a libplib
+  constant), not a DB view. Replicating needs that struct's field layout; a wrong one can crash
+  the firewall. [V: libplib decompile]
+- **LAN bridge / WAN / DHCP pool** — LAND (241), WANC/WANCIP/WANCPPP, DHCPSPool, DHCPSBind.
+  Their views are written by `pm_br_grp_set_land` / `pm_wanc_set_*` / `pm_dhcps_set_pool*`,
+  each of which notifies **several modules with several subids** (ambiguous), and the WAN views
+  have **no row** on a spare with no uplink (untestable here). High blast radius.
+- **No 0x2401 sender** — most VoIP tables, DDNSHostname (gdbus), MgtServer/TR-069, DevInfo,
+  LoopbackGlobalConf (manager returned `iRet -1`), MultiWancd (`iRet -5`).
+- **Length never matches** (partial macro inclusion) — DevInfo, VLAN, DevAccInfo, WLANBase,
+  FWPCMAC, FWPCTP, DHCP6SHostCfg. The dual-layout rule (§ `layout_for`) resolves FWBase,
+  FWLevel, SambaCfg, MgtServer, UserIF; these six it cannot.

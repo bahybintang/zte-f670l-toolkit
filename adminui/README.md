@@ -19,8 +19,15 @@ on port 80. The stock UI stays as a fallback.
 | Snapshot | `/userconfig/cfg/db_user_cfg.xml` is copied to `backups/` (the last 5 are kept). |
 | Write | Each value goes through `sidbg 1 DB set`, then is read back. `sidbg` exits 0 even on failure, so a mismatch rolls back everything already written. |
 | Save | `sidbg 1 DB save` persists the change to flash. |
-| Apply | Wi-Fi applies live through `iwpriv`. Other settings take effect at the next restart, because raw DB writes don't notify the firmware's daemons. A banner offers **Restart now**. |
+| Apply | Most pages apply **live**: adminui sends the firmware's own change notification (OSS event `0x2401`) to the manager that owns the setting, the same message the stock UI sends, and treats the change as live only when the manager confirms. Wi-Fi SSIDs and passwords also go through `iwpriv`. Pages the firmware has no live path for are saved and take effect at the next restart; a banner offers **Restart now**. |
 | Record | Each change goes into the change history, with undo and backup restore. |
+
+adminui builds the `0x2401` message itself from the firmware's settings definition
+(`/etc/db_tbl_def.xml`) and the values it reads back, with no vendor libraries and no shared
+memory, and refuses to send if the message size differs from what the firmware's own database
+reports. 62 of the 125 pages apply live this way (see [`notes/oss-protocol.md`](notes/oss-protocol.md)
+§9 for the list and for why the rest — the firewall rule lists, WAN, the LAN bridge and most
+VoIP — still need a restart). Each page states whether it applies live, partly live, or on restart.
 
 **WAN, LAN address, routing and firewall pages are commit-confirm.** After the change takes
 effect (live, or at the next boot), you have **3 minutes** to keep it. If you don't, adminui
