@@ -41,8 +41,226 @@ pub async fn read(app: &App, name: &str) -> Result<Value, String> {
         "lan_ports" | "eth_ports" => cached("lan_ports", || lan_ports(app)).await,
         "hosts" | "dhcp_leases" => cached("hosts", || hosts(app)).await,
         "device_info" => device_info(app).await,
-        other => Err(format!("live data '{other}' is not available yet")),
+        // Status & Network live readouts (notes: the firmware's own tools / DB).
+        "route_table" => cached(name, || route_table(app)).await,
+        "mac_table" => cached(name, || mac_table(app)).await,
+        "usb_devices" => cached(name, || usb_devices(app)).await,
+        "wan_status" | "wan_ipv4" => cached("wan_ipv4", || wan_ipv4(app)).await,
+        "lan_bridge" => cached(name, || lan_bridge(app)).await,
+        "dslite_tunnels" => dslite_tunnels(app).await,
+        "sntp_status" => sntp_status(app).await,
+        // Present on the firmware but not on this disconnected spare / not exposed
+        // by this clone's drivers — a calm "not available" rather than an error.
+        "wan_ipv6" => Ok(unavailable("No IPv6 WAN connection on this unit.")),
+        "dhcp6_leases" => Ok(unavailable("No DHCPv6 leases — IPv6 is not active on this unit.")),
+        "pon_counters" | "pon_gemports" | "pon_link" => Ok(unavailable("PON counters need the GPON driver device, which this unit doesn’t expose.")),
+        "alarms" => Ok(unavailable("No active alarms are reported on this unit.")),
+        "service_config" | "smart_gateway" => Ok(unavailable("Operator-provisioned data; not populated on a retail unit.")),
+        "wlan_ssid_stats" => Ok(unavailable("Per-SSID traffic counters aren’t exposed by this Wi-Fi driver.")),
+        "qos_queue_stats" => Ok(unavailable("Per-queue statistics aren’t exposed on this unit.")),
+        "wan_port_binding" | "qos_app" | "mtu_change" => Ok(unavailable("Edit this on its settings page; there is no separate live view.")),
+        // Admin / Application / VoIP / TR-069 readouts.
+        "tr069_status" => tr069_status(app).await,
+        "dhcp_dns_hosts" => cached(name, dns_hosts).await,
+        "voip_lines" | "voip_line_status" => voip_lines(app).await,
+        // `leds` calls back into `read`, so box to break the async recursion.
+        "led_control" => Ok(json!({ "rows": Box::pin(leds(app)).await })),
+        "usb_backup_storage" => usb_backup_storage(app).await,
+        "syslog" => Ok(unavailable("System logging isn’t enabled on this unit (no syslogd buffer).")),
+        "upgrade_status" => Ok(unavailable("No firmware upgrade is in progress.")),
+        "ftp_client" => Ok(unavailable("No FTP download job is active.")),
+        other => Ok(unavailable(&format!("The ‘{other}’ live view isn’t available on this firmware."))),
     }
+}
+
+/// TR-069 management server state from the MgtServer view.
+async fn tr069_status(app: &App) -> Result<Value, String> {
+    let t = app.db.read("MgtServer").await?;
+    let r = t.row(0);
+    let g = |dm: &str| r.and_then(|r| r.get(dm)).unwrap_or("").to_string();
+    Ok(json!({
+        "enabled": g("Tr069Enable") == "1",
+        "acsUrl": g("URL"),
+        "periodicInform": g("PeriodicInformEnable") == "1",
+        "connectionRequestUrl": g("ConnectionRequestURL"),
+        "connectionRequestUser": g("ConnectionRequestUsername"),
+    }))
+}
+
+/// DNS host overrides the resolver serves, from `/var/hosts`.
+async fn dns_hosts() -> Result<Value, String> {
+    let s = std::fs::read_to_string("/var/hosts").unwrap_or_default();
+    let rows: Vec<Value> = s
+        .lines()
+        .filter_map(|l| {
+            let l = l.trim();
+            if l.is_empty() || l.starts_with('#') {
+                return None;
+            }
+            let mut it = l.split_whitespace();
+            let ip = it.next()?;
+            let host = it.next()?;
+            Some(json!({ "ipAddress": ip, "hostname": host }))
+        })
+        .collect();
+    if rows.is_empty() {
+        return Ok(unavailable("No DNS host entries are configured."));
+    }
+    Ok(json!({ "rows": rows }))
+}
+
+/// Configured VoIP lines from VoIPSIPLine (registration state isn't exposed by
+/// this clone's voice stack, so this shows the line config).
+async fn voip_lines(app: &App) -> Result<Value, String> {
+    let t = app.db.read("VoIPSIPLine").await?;
+    if t.rows.is_empty() {
+        return Ok(unavailable("No VoIP line is configured on this unit."));
+    }
+    let rows: Vec<Value> = t
+        .rows
+        .iter()
+        .map(|r| {
+            let g = |dm: &str| r.get(dm).unwrap_or("");
+            json!({
+                "line": g("ViewName"),
+                "number": if !g("DirectoryNumber").is_empty() { g("DirectoryNumber") } else { g("AuthUserName") },
+                "enabled": r.get("Enable") == Some("1"),
+            })
+        })
+        .collect();
+    Ok(json!({ "rows": rows }))
+}
+
+/// Mounted USB storage (for config backup/restore); empty when nothing is plugged in.
+async fn usb_backup_storage(app: &App) -> Result<Value, String> {
+    let o = app.db.exec.run("mount", &[], T).await.map(|o| o.stdout).unwrap_or_default();
+    let rows: Vec<Value> = o
+        .lines()
+        .filter(|l| l.contains("/mnt") || l.contains("/tmp/mnt") || l.contains("usb"))
+        .map(|l| {
+            let w: Vec<&str> = l.split_whitespace().collect();
+            json!({ "device": w.first().copied().unwrap_or(""), "mountPoint": w.get(2).copied().unwrap_or(""), "fsType": w.get(4).copied().unwrap_or("") })
+        })
+        .collect();
+    if rows.is_empty() {
+        return Ok(unavailable("No USB storage is connected."));
+    }
+    Ok(json!({ "rows": rows }))
+}
+
+/// A calm placeholder a section renders instead of an error when a live source
+/// has no data path on this firmware (the web NotAvailable component).
+fn unavailable(note: &str) -> Value {
+    json!({ "unavailable": true, "unavailableNote": note })
+}
+
+/// `ip route show` -> one row per route.
+async fn route_table(app: &App) -> Result<Value, String> {
+    let o = app.db.exec.run("ip", &["route", "show"], T).await?;
+    let rows: Vec<Value> = o
+        .stdout
+        .lines()
+        .filter_map(|l| {
+            let w: Vec<&str> = l.split_whitespace().collect();
+            let dest = w.first()?;
+            let field = |k: &str| w.iter().position(|x| *x == k).and_then(|i| w.get(i + 1)).copied();
+            Some(json!({
+                "destination": if *dest == "default" { "0.0.0.0/0" } else { dest },
+                "gateway": field("via").unwrap_or("–"),
+                "interface": field("dev").unwrap_or("–"),
+                "source": field("src").unwrap_or("–"),
+            }))
+        })
+        .collect();
+    Ok(json!({ "rows": rows }))
+}
+
+/// `brctl showmacs br0` -> the bridge forwarding table.
+async fn mac_table(app: &App) -> Result<Value, String> {
+    let o = app.db.exec.run("brctl", &["showmacs", "br0"], T).await?;
+    let rows: Vec<Value> = o
+        .stdout
+        .lines()
+        .skip(1)
+        .filter_map(|l| {
+            let c: Vec<&str> = l.split_whitespace().collect();
+            if c.len() < 4 {
+                return None;
+            }
+            Some(json!({ "port": c[0], "mac": c[1].to_lowercase(), "local": c[3] == "yes", "ageingSec": c.get(4).and_then(|s| s.parse::<f64>().ok()) }))
+        })
+        .collect();
+    Ok(json!({ "rows": rows }))
+}
+
+/// `lsusb`, minus the root hubs (vendor 1d6b). Empty when nothing is plugged in.
+async fn usb_devices(app: &App) -> Result<Value, String> {
+    let o = app.db.exec.run("lsusb", &[], T).await?;
+    let rows: Vec<Value> = o
+        .stdout
+        .lines()
+        .filter_map(|l| {
+            let rest = &l[l.find("ID ")? + 3..];
+            let (id, name) = rest.split_once(' ').unwrap_or((rest, ""));
+            (!id.starts_with("1d6b")).then(|| json!({ "id": id, "name": name.trim() }))
+        })
+        .collect();
+    Ok(json!({ "rows": rows }))
+}
+
+/// IPv4 WAN state from the WANCIP view (the connection manager's running copy).
+async fn wan_ipv4(app: &App) -> Result<Value, String> {
+    let t = app.db.read("WANCIP").await?;
+    let r = t.row(0);
+    let g = |dm: &str| r.and_then(|r| r.get(dm)).unwrap_or("").to_string();
+    let connected = g("ConnStatus") == "1";
+    Ok(json!({
+        "status": if connected { "Connected" } else { "Disconnected" },
+        "ipAddress": g("IPAddress"),
+        "dns1": g("DNS1"),
+        "dns2": g("DNS2"),
+        "dns3": g("DNS3"),
+    }))
+}
+
+/// Members of the LAN bridge, from `brctl show br0`.
+async fn lan_bridge(app: &App) -> Result<Value, String> {
+    let o = app.db.exec.run("brctl", &["show", "br0"], T).await?;
+    let ifaces: Vec<String> = o
+        .stdout
+        .lines()
+        .skip(1)
+        .flat_map(|l| l.split_whitespace().map(String::from).collect::<Vec<_>>())
+        .filter(|w| w.starts_with("eth") || w.starts_with("wlan") || w.starts_with("nas"))
+        .collect();
+    Ok(json!({ "bridge": "br0", "members": ifaces.join(", "), "portCount": ifaces.len() }))
+}
+
+/// DS-Lite tunnels from TUNNEL46CFG; empty on a unit with no tunnel configured.
+async fn dslite_tunnels(app: &App) -> Result<Value, String> {
+    let t = app.db.read("TUNNEL46CFG").await?;
+    if t.rows.is_empty() {
+        return Ok(unavailable("No DS-Lite tunnel is configured."));
+    }
+    let rows: Vec<Value> = t
+        .rows
+        .iter()
+        .map(|r| json!({ "name": r.get("ViewName").unwrap_or(""), "enabled": r.get("Enable") == Some("1") }))
+        .collect();
+    Ok(json!({ "rows": rows }))
+}
+
+/// Current router time (the `date` the clock tool reports) plus SNTP enable.
+async fn sntp_status(app: &App) -> Result<Value, String> {
+    let now = app.db.exec.run("date", &[], T).await.map(|o| o.stdout.trim().to_string()).unwrap_or_default();
+    let enabled = app
+        .db
+        .read("SNTP")
+        .await
+        .ok()
+        .and_then(|t| t.row(0).and_then(|r| r.get("Enable").map(|v| v == "1")))
+        .unwrap_or(false);
+    Ok(json!({ "currentTime": now, "sntpEnabled": enabled }))
 }
 
 /// `key = value` / `key: value` lines -> map.
