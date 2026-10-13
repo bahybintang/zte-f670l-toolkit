@@ -25,9 +25,11 @@ on port 80. The stock UI stays as a fallback.
 adminui builds the `0x2401` message itself from the firmware's settings definition
 (`/etc/db_tbl_def.xml`) and the values it reads back, with no vendor libraries and no shared
 memory, and refuses to send if the message size differs from what the firmware's own database
-reports. 62 of the 125 pages apply live this way (see [`notes/oss-protocol.md`](notes/oss-protocol.md)
-§9 for the list and for why the rest — the firewall rule lists, WAN, the LAN bridge and most
-VoIP — still need a restart). Each page states whether it applies live, partly live, or on restart.
+reports. 29 of the 82 writable pages apply live this way — the DHCP server, WAN PPPoE, firewall
+level and attack protection, static routes and Wi-Fi among them. See
+[`notes/oss-protocol.md`](notes/oss-protocol.md) §9 for the full list and for why the rest — the
+firewall rule lists, WAN IPoE, the LAN bridge and most VoIP — still need a restart. Each page
+states whether it applies live, partly live, or on restart.
 
 **WAN, LAN address, routing and firewall pages are commit-confirm.** After the change takes
 effect (live, or at the next boot), you have **3 minutes** to keep it. If you don't, adminui

@@ -426,8 +426,8 @@ Live via the generic view-notify (`oss.rs` TARGETS, each `iRet 0` on device unle
 SNTP, DNSSettings, ARPDETECTConfig, IGMPProxy, MLDProxyCfg, FWALG, RIPConf, RIPIf,
 PortControl, QOSRule, QOSType, QOSBasic, QOSQueue, DDNSService, DDNSClient, LoopbackEthConf,
 MLDWan, RaCfg, TUNNEL46CFG, VLANBIND, WLANBANDSTEERING, WLANROAMING, WLANWMM, WLANWEP, WLANWPS,
-WlanTimeCfg, FWBase, FWLevel, SambaCfg, DHCPSHostCfg, L3ForwardingRT. Plus Wi-Fi SSID/PSK via
-the iwpriv hook. **62 of 125 pages apply live.**
+WlanTimeCfg, FWBase, FWLevel, SambaCfg, DHCPSHostCfg, DHCPSPool, WANCPPP, L3ForwardingRT.
+Plus Wi-Fi SSID/PSK via the iwpriv hook. **29 of 82 writable pages apply live** (plus the read-only status pages); the DHCP server pool and host config, WAN PPPoE, firewall level/attack and static routes are among them.
 
 **Restart-only, and why** (so a later session does not re-walk these):
 - **Firewall rule lists** — MacFilter (244), FWSC (189), FWDMZ, FWIP, FWPM (port forwarding),
@@ -436,7 +436,7 @@ the iwpriv hook. **62 of 125 pages apply live.**
   per-rule struct** (event = caller arg, e.g. `0x9703`/`0x9722`, receiver is a libplib
   constant), not a DB view. Replicating needs that struct's field layout; a wrong one can crash
   the firewall. [V: libplib decompile]
-- **LAN bridge / WAN / DHCP pool** — LAND (241), WANC/WANCIP/WANCPPP, DHCPSPool, DHCPSBind.
+- **LAN bridge / WAN / DHCP pool** — LAND (241), WANC/WANCIP (WANCIP got no manager reply; WANCPPP applies), DHCPSPool, DHCPSBind.
   Their views are written by `pm_br_grp_set_land` / `pm_wanc_set_*` / `pm_dhcps_set_pool*`,
   each of which notifies **several modules with several subids** (ambiguous), and the WAN views
   have **no row** on a spare with no uplink (untestable here). High blast radius.

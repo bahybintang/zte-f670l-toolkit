@@ -68,6 +68,8 @@ pub const TARGETS: &[Target] = &[
     Target { table: "FWBase", view: 185, module: 0x10102, subid: 0xb0004, identity: "IGD" },
     Target { table: "FWLevel", view: 236, module: 0x10102, subid: 0xb0006, identity: "IGD" },
     Target { table: "SambaCfg", view: 144, module: 0x11401, subid: 0x260001, identity: "IGD" },
+    Target { table: "DHCPSPool", view: 173, module: 0x620101, subid: 0x150003, identity: "" },
+    Target { table: "WANCPPP", view: 20, module: 0x10122, subid: 0x4a0001, identity: "" },
 ];
 
 pub fn target(table: &str) -> Option<&'static Target> {
