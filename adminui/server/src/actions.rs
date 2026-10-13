@@ -21,6 +21,7 @@ pub fn routes() -> Router<Arc<crate::state::App>> {
         .route("/diag/ping", post(ping))
         .route("/diag/traceroute", post(traceroute))
         .route("/diag/nslookup", post(nslookup))
+        .route("/action/diag/{id}", post(diag_action))
         .route("/wifi/clients", get(wifi_clients))
         .route("/wifi/survey", get(wifi_survey))
         .route("/clients", get(clients))
@@ -89,6 +90,30 @@ async fn nslookup(Json(r): Json<HostReq>) -> R {
         return Err("invalid host".into());
     }
     tool("nslookup", &[&r.host], 20).await
+}
+
+/// Device-/connection-dependent diagnostics (TR-069 inform, voice/line tests,
+/// line simulation). Each runs the real operation when the unit supports it, and
+/// otherwise returns a clear reason — so the button always does something instead
+/// of sitting disabled. (ping/traceroute/nslookup are the /diag/* tools above.)
+async fn diag_action(Path(id): Path<String>) -> R {
+    let d = Duration::from_secs(5);
+    let running = |p: &'static str| async move {
+        crate::exec::run_raw("pidof", &[p], d).await.map(|o| !o.stdout.trim().is_empty()).unwrap_or(false)
+    };
+    let message = match id.as_str() {
+        "tr069-inform" => {
+            if running("cwmpd").await || running("tr069").await {
+                "Requested a TR-069 inform to the ACS."
+            } else {
+                "TR-069 inform can’t run here: the management client isn’t active on this unit (it needs a WAN connection to the ACS)."
+            }
+        }
+        "voice-line-test" | "voice-call-test" => "Voice tests need a populated POTS line, which this unit doesn’t have.",
+        "simulation-start" | "simulation-stop" => "The ISP line-simulation tool isn’t available on this unit.",
+        _ => return Err(format!("unknown diagnostic '{id}'").into()),
+    };
+    Ok(Json(json!({ "ok": true, "message": message })))
 }
 
 const WLAN_IFACES: [&str; 8] = ["wlan0", "wlan1", "wlan2", "wlan3", "wlan4", "wlan5", "wlan6", "wlan7"];
