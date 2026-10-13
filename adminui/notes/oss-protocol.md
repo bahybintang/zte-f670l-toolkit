@@ -437,15 +437,19 @@ SSID/PSK via the iwpriv hook.
 
 **Restart-only, and why** (so a later session does not re-walk these):
 - **Firewall rule lists** — MacFilter (244), FWSC (189), FWDMZ (238), FWIP (239), FWPM port
-  forwarding (27). Their setters (`pm_mac_filterset`, `pm_fw_set_sc`, `pm_fwset_ip`,
-  `pm_fwset_dmz`, `pm_fw_set_pm`) do **not** send `0x2401`. They translate the DB row into a fixed
-  **0x1AC (428-byte) per-rule struct** and hand it to `plib_fw_schudle_register_api`, which
-  `SSEND`s it (events 0x9703/0x9722, receiver = a libplib global) to the firewall module, which
-  then shells out to `/bin/iptables`. A firewall notify (0xb0004) does **not** rebuild the rule
-  lists (verified: iptables unchanged after an FWBase notify). Porting them requires RE-ing the
-  0x1AC field layout per table (protocol, src/dst IP ranges and masks, ports, in/out interface
-  view names, action), validated by diffing `iptables -L -n` after a live apply against a reboot
-  rebuild of the same DB. Left restart-only: the firewall rebuilds them correctly from DB at boot.
+  forwarding (27). Transport is fully mapped: their setters (`pm_fwset_ip` etc.) write the rule to
+  the DB, then call `plib_fw_schudle_register_api(event, struct428)`, which is
+  **`SSEND(event, struct, 428, 5000, replybuf, &seq, receiver=0x10102)`** — the firewall module,
+  reachable on cspd's socket exactly like the 0x2401 targets. Events: **0x9704 deletes** the old
+  rule, **0x9703 adds** the new one (all five tables use the same pair). A firewall `0x2401` notify
+  does **not** rebuild these (verified: iptables unchanged after an FWBase notify), so the rule
+  events are required. The 428-byte struct (offsets, from `pm_fwset_ip`): name@0 (35B, the rule's
+  ViewName), type-const@36, name@76, name@112, byte@148, type-const@156 (2B), word@160, 259B
+  descriptor@164; the firewall re-reads the rule's fields from the DB by the ViewName. **Remaining
+  to implement:** the per-table type constants (`DAT_*` in each setter) and the field sources for
+  the name/descriptor slots, then validate each rule by diffing `iptables -L -n` after a live apply
+  against a reboot rebuild of the same DB (a mismatch = reject, so it cannot ship a wrong rule).
+  Left restart-only until then: the firewall rebuilds them correctly from DB at boot.
 - **No 0x2401 sender / no sync reply** — MultiWancd (iRet -5), LoopbackGlobalConf (iRet -1),
   DMSCfg / CltLmt / UPnPCfg / WANCIP-via-IP-manager (no reply), DDNSHostname (gdbus),
   WANCD/WANCEXT/WANCServList/WANCPPPComm, DevInfo, MonitorCollectorCfg, MirrorConf, UsbBakRst,
