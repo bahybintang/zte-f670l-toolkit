@@ -47,7 +47,6 @@ pub const TARGETS: &[Target] = &[
     Target { table: "FWURL", view: 240, module: 0x10102, subid: 0xb000c, identity: "" },
     Target { table: "LoopbackEthConf", view: 191, module: 0x10140, subid: 0x340002, identity: "" },
     Target { table: "MLDWan", view: 294, module: 0x1013a, subid: 0x280001, identity: "" },
-    Target { table: "MultiWancd", view: 217, module: 0x101a7, subid: 0x470000, identity: "" },
     Target { table: "PortControl", view: 186, module: 0x10102, subid: 0xb0015, identity: "" },
     Target { table: "PrefixCfg", view: 160, module: 0x10134, subid: 0x290004, identity: "" },
     Target { table: "QOSRule", view: 284, module: 0x10103, subid: 0x70002, identity: "" },
@@ -59,6 +58,16 @@ pub const TARGETS: &[Target] = &[
     Target { table: "WLANBANDSTEERING", view: 382, module: 0x11201, subid: 0x10018, identity: "" },
     Target { table: "WLANROAMING", view: 381, module: 0x11201, subid: 0x10013, identity: "" },
     Target { table: "WLANWMM", view: 203, module: 0x11201, subid: 0x10007, identity: "" },
+    Target { table: "WLANWEP", view: 204, module: 0x11201, subid: 0x10002, identity: "" },
+    Target { table: "WLANWPS", view: 234, module: 0x11201, subid: 0x10004, identity: "" },
+    Target { table: "QOSBasic", view: 277, module: 0x10103, subid: 0x70001, identity: "IGD" },
+    Target { table: "QOSQueue", view: 282, module: 0x10103, subid: 0x70004, identity: "" },
+    Target { table: "L3ForwardingRT", view: 7, module: 0x1010e, subid: 0x90001, identity: "" },
+    Target { table: "DDNSClient", view: 260, module: 0x10114, subid: 0xd0001, identity: "" },
+    Target { table: "DHCPSHostCfg", view: 172, module: 0x620101, subid: 0x150002, identity: "" },
+    Target { table: "FWBase", view: 185, module: 0x10102, subid: 0xb0004, identity: "IGD" },
+    Target { table: "FWLevel", view: 236, module: 0x10102, subid: 0xb0006, identity: "IGD" },
+    Target { table: "SambaCfg", view: 144, module: 0x11401, subid: 0x260001, identity: "IGD" },
 ];
 
 pub fn target(table: &str) -> Option<&'static Target> {
@@ -112,6 +121,9 @@ fn slot_len(k: Kind) -> usize {
 pub struct Dm {
     pub name: String,
     pub ty: String,
+    /// True when the DMDEF is guarded by a build macro; such DMs may be
+    /// compiled out of the running view (so the view is shorter than the XML).
+    pub macro_gated: bool,
 }
 
 /// The `<DMDEF>`s of one table, in definition order.
@@ -119,8 +131,33 @@ pub fn table_dms(xml: &str, table: &str) -> Option<Vec<Dm>> {
     let start = xml.find(&format!("<Tbl name=\"{table}\""))?;
     let body = &xml[start..];
     let end = body.find("</TblDef>")?;
-    let re = regex_lite::Regex::new(r#"<DMDEF\s+name="([^"]+)"[^>]*?\stype="([^"]+)""#).ok()?;
-    Some(re.captures_iter(&body[..end]).map(|c| Dm { name: c[1].to_string(), ty: c[2].to_string() }).collect())
+    let re = regex_lite::Regex::new(r#"<DMDEF\s+name="([^"]+)"[^>]*?\stype="([^"]+)"[^>]*?macroNeed="([^"]*)""#).ok()?;
+    Some(
+        re.captures_iter(&body[..end])
+            .map(|c| Dm { name: c[1].to_string(), ty: c[2].to_string(), macro_gated: !c[3].is_empty() })
+            .collect(),
+    )
+}
+
+/// Pick the DM layout whose view length matches the DB's: either every DMDEF,
+/// or (when macro-gated DMs are compiled out on this build) only the ungated
+/// ones. Returns None when neither matches, so the caller falls back to reboot.
+pub fn layout_for<'a>(dms: &'a [Dm], expect_len: usize) -> Option<Vec<&'a Dm>> {
+    let all: Vec<&Dm> = dms.iter().collect();
+    if view_len(&all) == Some(expect_len) {
+        return Some(all);
+    }
+    let ungated: Vec<&Dm> = dms.iter().filter(|d| !d.macro_gated).collect();
+    (view_len(&ungated) == Some(expect_len)).then_some(ungated)
+}
+
+/// Total view length for a DM list, or None if a type is unsupported.
+fn view_len(dms: &[&Dm]) -> Option<usize> {
+    let mut n = 8;
+    for d in dms {
+        n += slot_len(kind(&d.ty)?.1);
+    }
+    Some(n)
 }
 
 /// The DB's own length for a view id, from `sidbg 1 DB pv` (ID, Dsc, RDsc, Len, Max).
@@ -179,7 +216,7 @@ fn encode_value(k: Kind, v: &str, out: &mut [u8]) -> Result<(), String> {
 
 /// Build the view struct (8-byte header + one slot per DM) from a row.
 /// `changed` marks the DMs this apply wrote, as webd's setters do.
-pub fn build_view(dms: &[Dm], row: &Row, changed: &[&str], expect_len: usize) -> Result<Vec<u8>, String> {
+pub fn build_view(dms: &[&Dm], row: &Row, changed: &[&str], expect_len: usize) -> Result<Vec<u8>, String> {
     let mut kinds = Vec::with_capacity(dms.len());
     for d in dms {
         let k = kind(&d.ty).ok_or_else(|| format!("{}: type {} not supported for live apply", d.name, d.ty))?;
@@ -300,9 +337,10 @@ pub async fn send(t: &Target, payload: &[u8]) -> Result<i32, String> {
 pub async fn reapply(db: &crate::db::Db, table: &str, row_no: u32, changed: &[&str]) -> Result<i32, String> {
     let t = target(table).ok_or_else(|| format!("{table} has no live-apply target"))?;
     let xml = tokio::fs::read_to_string(TBL_DEF).await.map_err(|e| format!("{TBL_DEF}: {e}"))?;
-    let dms = table_dms(&xml, table).ok_or_else(|| format!("{table} not in {TBL_DEF}"))?;
+    let all_dms = table_dms(&xml, table).ok_or_else(|| format!("{table} not in {TBL_DEF}"))?;
     let pv = db.exec.run("sidbg", &["1", "DB", "pv"], Duration::from_secs(10)).await?;
     let len = pv_len(&pv.stdout, t.view).ok_or_else(|| format!("view {} not listed by the DB", t.view))?;
+    let dms = layout_for(&all_dms, len).ok_or_else(|| format!("{table}: view layout does not match the DB length {len}"))?;
     let rows = db.read_fresh(table).await?;
     let row = rows.row(row_no).ok_or_else(|| format!("{table} has no row {row_no}"))?;
     let identity = if dms.iter().any(|d| d.name == VIEW_NAME_DM) {
@@ -319,25 +357,25 @@ mod tests {
     use super::*;
 
     const XML: &str = r#"<Tbl name="SNTP" RowCount="-1"><TblDef>
- <DMDEF name="Enable" dmId="0" type="BOOL" bKey="0"/>
- <DMDEF name="NtpServer1" dmId="0" type="STR64" bKey="0"/>
- <DMDEF name="NtpServer2" dmId="0" type="STR64" bKey="0"/>
- <DMDEF name="NtpServer3" dmId="0" type="STR64" bKey="0"/>
- <DMDEF name="NtpServer4" dmId="0" type="STR64" bKey="0"/>
- <DMDEF name="NtpServer5" dmId="0" type="STR64" bKey="0"/>
- <DMDEF name="LocalTimeZone" dmId="0" type="STR16" bKey="0"/>
- <DMDEF name="LocalTimeZoneName" dmId="0" type="STR64" bKey="0"/>
- <DMDEF name="DaylightSavingsUsed" dmId="0" type="BOOL" bKey="0"/>
- <DMDEF name="DaylightSavingsStart" dmId="0" type="STR64" bKey="0"/>
- <DMDEF name="DaylightSavingsEnd" dmId="0" type="STR64" bKey="0"/>
- <DMDEF name="PollTimeInterval" dmId="0" type="DWORD" bKey="0"/>
- <DMDEF name="isSynchronized" dmId="0" type="BOOL" bKey="0"/>
- <DMDEF name="SupportAccessRefuse" dmId="0" type="BOOL" bKey="0"/>
- <DMDEF name="Dscp" dmId="0" type="INT32" bKey="0"/>
- <DMDEF name="QueueNum" dmId="0" type="INT32" bKey="0"/>
- <DMDEF name="iZoneIndex" dmId="0" type="INT32" bKey="0"/>
- <DMDEF name="sPosixTimeZoneName" dmId="0" type="STR64" bKey="0"/>
- <DMDEF name="NTPServerType" dmId="0" type="INT32" bKey="0"/>
+ <DMDEF name="Enable" dmId="0" type="BOOL" bKey="0" macroNeed=""/>
+ <DMDEF name="NtpServer1" dmId="0" type="STR64" bKey="0" macroNeed=""/>
+ <DMDEF name="NtpServer2" dmId="0" type="STR64" bKey="0" macroNeed=""/>
+ <DMDEF name="NtpServer3" dmId="0" type="STR64" bKey="0" macroNeed=""/>
+ <DMDEF name="NtpServer4" dmId="0" type="STR64" bKey="0" macroNeed=""/>
+ <DMDEF name="NtpServer5" dmId="0" type="STR64" bKey="0" macroNeed=""/>
+ <DMDEF name="LocalTimeZone" dmId="0" type="STR16" bKey="0" macroNeed=""/>
+ <DMDEF name="LocalTimeZoneName" dmId="0" type="STR64" bKey="0" macroNeed=""/>
+ <DMDEF name="DaylightSavingsUsed" dmId="0" type="BOOL" bKey="0" macroNeed=""/>
+ <DMDEF name="DaylightSavingsStart" dmId="0" type="STR64" bKey="0" macroNeed=""/>
+ <DMDEF name="DaylightSavingsEnd" dmId="0" type="STR64" bKey="0" macroNeed=""/>
+ <DMDEF name="PollTimeInterval" dmId="0" type="DWORD" bKey="0" macroNeed=""/>
+ <DMDEF name="isSynchronized" dmId="0" type="BOOL" bKey="0" macroNeed=""/>
+ <DMDEF name="SupportAccessRefuse" dmId="0" type="BOOL" bKey="0" macroNeed=""/>
+ <DMDEF name="Dscp" dmId="0" type="INT32" bKey="0" macroNeed=""/>
+ <DMDEF name="QueueNum" dmId="0" type="INT32" bKey="0" macroNeed=""/>
+ <DMDEF name="iZoneIndex" dmId="0" type="INT32" bKey="0" macroNeed=""/>
+ <DMDEF name="sPosixTimeZoneName" dmId="0" type="STR64" bKey="0" macroNeed=""/>
+ <DMDEF name="NTPServerType" dmId="0" type="INT32" bKey="0" macroNeed=""/>
 </TblDef></Tbl>"#;
 
     fn row(f: &[(&str, &str)]) -> Row {
@@ -348,8 +386,9 @@ mod tests {
     fn sntp_view_matches_firmware_offsets() {
         let dms = table_dms(XML, "SNTP").unwrap();
         assert_eq!(dms.len(), 19);
+        let lay = layout_for(&dms, 0x4b8).unwrap();
         let r = row(&[("NtpServer1", "pool.example"), ("PollTimeInterval", "86401"), ("Dscp", "-1"), ("Enable", "1")]);
-        let v = build_view(&dms, &r, &["PollTimeInterval"], 0x4b8).unwrap();
+        let v = build_view(&lay, &r, &["PollTimeInterval"], 0x4b8).unwrap();
         assert_eq!(v.len(), 0x4b8);
         assert_eq!(&v[4..8], &VIEW_MAGIC.to_le_bytes());
         // pm_sntp_get_config view offsets (+8 header): Enable 0, NtpServer1 32, Poll 880, Dscp 976.
@@ -381,11 +420,12 @@ mod tests {
     #[test]
     fn view_name_slot() {
         let x = r#"<Tbl name="RIPIf"><TblDef>
- <DMDEF name="ViewName" dmId="0" type="STR32" bKey="1"/>
- <DMDEF name="Enable" dmId="0" type="BOOL" bKey="0"/>
+ <DMDEF name="ViewName" dmId="0" type="STR32" bKey="1" macroNeed=""/>
+ <DMDEF name="Enable" dmId="0" type="BOOL" bKey="0" macroNeed=""/>
 </TblDef></Tbl>"#;
         let dms = table_dms(x, "RIPIf").unwrap();
-        let v = build_view(&dms, &row(&[("ViewName", "IGD.RIPIf2"), ("Enable", "1")]), &[], 8 + 64 + 32).unwrap();
+        let lay: Vec<&Dm> = dms.iter().collect();
+        let v = build_view(&lay, &row(&[("ViewName", "IGD.RIPIf2"), ("Enable", "1")]), &[], 8 + 64 + 32).unwrap();
         assert_eq!(u16::from_le_bytes([v[8], v[9]]), 2, "STR32 code");
         assert_eq!(&v[8 + 4..8 + 12], b"ViewName");
         assert_eq!(&v[8 + 0x1c..8 + 0x1c + 10], b"IGD.RIPIf2");
@@ -394,7 +434,23 @@ mod tests {
     #[test]
     fn length_guard_refuses_mismatch() {
         let dms = table_dms(XML, "SNTP").unwrap();
-        assert!(build_view(&dms, &row(&[]), &[], 0x4b0).is_err());
+        assert!(layout_for(&dms, 0x4b0).is_none());
+        let lay: Vec<&Dm> = dms.iter().collect();
+        assert!(build_view(&lay, &row(&[]), &[], 0x4b0).is_err());
+    }
+
+    #[test]
+    fn layout_drops_macro_gated_dms_to_match_db() {
+        let x = r#"<Tbl name="T"><TblDef>
+ <DMDEF name="A" type="DWORD" macroNeed=""/>
+ <DMDEF name="B" type="DWORD" macroNeed="CONFIG_X"/>
+ <DMDEF name="C" type="BOOL" macroNeed=""/>
+</TblDef></Tbl>"#;
+        let dms = table_dms(x, "T").unwrap();
+        // All three = 8 + 96; without the gated B = 8 + 64.
+        assert_eq!(layout_for(&dms, 8 + 96).unwrap().len(), 3);
+        assert_eq!(layout_for(&dms, 8 + 64).unwrap().len(), 2);
+        assert!(layout_for(&dms, 8 + 50).is_none());
     }
 
     #[test]
