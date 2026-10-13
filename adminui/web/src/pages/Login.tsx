@@ -27,18 +27,37 @@ export function Login() {
     }
   }
 
+  const PANEL = ['PON', 'LOS', 'Net', 'LAN', '2.4G', '5G', 'USB']
   return (
-    <div className="grid min-h-dvh place-items-center px-4">
-      <div className="w-full max-w-[380px]">
-        <div className="mb-8 flex items-center gap-3">
-          <div className="flex gap-1.5" aria-hidden>
-            <span className="led" data-state="ok" />
-            <span className="led" />
-            <span className="led" data-state="ok" />
+    <div className="relative grid min-h-dvh place-items-center overflow-hidden px-4">
+      {/* Faint equipment-rack grid + a soft glow, so the page reads as a device, not a void. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 opacity-[0.5]"
+        style={{
+          backgroundImage:
+            'radial-gradient(60rem 40rem at 50% -10%, color-mix(in oklab, var(--ring) 10%, transparent), transparent 70%), linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)',
+          backgroundSize: '100% 100%, 44px 44px, 44px 44px',
+          maskImage: 'radial-gradient(70% 60% at 50% 40%, black, transparent)',
+        }}
+      />
+      <div className="relative w-full max-w-[380px]">
+        <div className="mb-7">
+          <div className="flex items-center gap-2.5">
+            <span className="font-heading text-[26px] font-semibold tracking-tight">F670L</span>
+            <span className="text-[15px] text-muted-foreground">admin</span>
           </div>
-          <h1 className="font-heading text-2xl font-semibold tracking-tight">F670L admin</h1>
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5" aria-hidden>
+            {PANEL.map((l, i) => (
+              <span key={l} className="flex items-center gap-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                <span className="led" data-state={i === 1 ? 'err' : i < 5 ? 'ok' : undefined} />
+                {l}
+              </span>
+            ))}
+          </div>
         </div>
-        <form onSubmit={submit} className="space-y-4 rounded-xl border border-border bg-card p-6 shadow-[0_1px_2px_rgb(22_32_46/0.06),0_12px_32px_-16px_rgb(22_32_46/0.18)]">
+        <form onSubmit={submit} className="space-y-4 rounded-xl border border-border bg-card/90 p-6 shadow-[0_1px_2px_rgb(22_32_46/0.06),0_18px_48px_-20px_rgb(22_32_46/0.30)] backdrop-blur">
+          <p className="text-sm text-muted-foreground">Sign in to manage this router.</p>
           <div className="space-y-1.5">
             <Label htmlFor="user">User name</Label>
             <Input id="user" autoComplete="username" value={user} onChange={(e) => setUser(e.target.value)} />

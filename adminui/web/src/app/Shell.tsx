@@ -1,11 +1,11 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import { Link, useRouterState } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { HardDrive, History, QrCode, LayoutDashboard, LogOut, Menu, Monitor, Moon, Search, Sun, Table2, Users, Wrench, X } from 'lucide-react'
+import { ChevronRight, HardDrive, History, QrCode, LayoutDashboard, LogOut, Menu, Monitor, Moon, Search, Sun, Table2, Users, Wrench, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { api } from '@/lib/api'
 import { useSchema, useSession } from '@/lib/queries'
-import { GROUPS, type Page } from '@/lib/schema'
+import { GROUPS, groupSections, sectionWritable, type Page } from '@/lib/schema'
 import { getTheme, setTheme, type Theme } from '@/lib/theme'
 import { GROUP_ICON } from '@/components/icons'
 import { LedStrip } from '@/components/LedStrip'
@@ -98,23 +98,26 @@ function Sidebar({ onNavigate }: { onNavigate: () => void }) {
   const { data } = useSchema()
   const [q, setQ] = useState('')
   const path = useRouterState({ select: (s) => s.location.pathname })
+  const activeId = path.startsWith('/p/') ? path.slice(3) : null
+  const needle = q.trim().toLowerCase()
+
   const groups = useMemo(() => {
     const pages = (data?.pages ?? []).filter((p) => p.applicable !== false && !p.id.startsWith('seed-'))
-    const needle = q.trim().toLowerCase()
     const match = (p: Page) =>
       !needle || p.title.toLowerCase().includes(needle) || (p.description ?? '').toLowerCase().includes(needle)
-    return GROUPS.map((g) => ({
-      ...g,
-      pages: pages
+    return GROUPS.map((g) => {
+      const gp = pages
         .filter((p) => p.group === g.id && match(p))
-        .sort((a, b) => (a.order ?? 100) - (b.order ?? 100) || a.title.localeCompare(b.title)),
-    })).filter((g) => g.pages.length)
-  }, [data, q])
+        .sort((a, b) => (a.order ?? 100) - (b.order ?? 100) || a.title.localeCompare(b.title))
+      return { ...g, sections: groupSections(g.id, gp) }
+    }).filter((g) => g.sections.length)
+  }, [data, needle])
 
   return (
     <nav aria-label="Main" className="flex h-full flex-col">
       <div className="flex h-14 items-center justify-between gap-2 border-b border-border px-5">
-        <Link to="/" onClick={onNavigate} className="flex items-baseline gap-2">
+        <Link to="/" onClick={onNavigate} className="flex items-center gap-2">
+          <span className="led" data-state="ok" aria-hidden />
           <span className="font-heading text-[19px] font-semibold tracking-tight">F670L</span>
           <span className="text-[13px] text-muted-foreground">admin</span>
         </Link>
@@ -134,7 +137,7 @@ function Sidebar({ onNavigate }: { onNavigate: () => void }) {
         </label>
       </div>
       <div className="flex-1 overflow-y-auto px-3 pt-3 pb-6 [scrollbar-width:thin]">
-        <ul className="mb-4 space-y-px">
+        <ul className="mb-5 space-y-px">
           {TOOLS.map((t) => (
             <li key={t.to}>
               <NavItem to={t.to} active={path === t.to} onClick={onNavigate} icon={<t.icon className="size-4" />}>
@@ -145,26 +148,24 @@ function Sidebar({ onNavigate }: { onNavigate: () => void }) {
         </ul>
         {groups.map((g) => {
           const Icon = GROUP_ICON[g.id]
+          const groupActive = g.sections.some((s) => s.pages.some((p) => p.id === activeId))
           return (
-            <section key={g.id} className="mb-4">
-              <h2 className="flex items-center gap-2 px-2.5 pb-1 font-heading text-[13px] font-semibold text-muted-foreground">
+            <section key={g.id} className="mb-5">
+              <h2 className="flex items-center gap-2 px-2.5 pb-1.5 font-heading text-[12px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                 {Icon && <Icon className="size-3.5" />}
                 {g.label}
               </h2>
-              <ul className="space-y-px">
-                {g.pages.map((p) => (
-                  <li key={p.id}>
-                    <NavItem
-                      to={`/p/${p.id}`}
-                      active={path === `/p/${p.id}`}
-                      onClick={onNavigate}
-                      muted={p.applicable === 'unknown'}
-                    >
-                      {p.title}
-                    </NavItem>
-                  </li>
-                ))}
-              </ul>
+              {g.sections.map((sec, i) => (
+                <NavSection
+                  key={sec.label ?? i}
+                  label={sec.label}
+                  pages={sec.pages}
+                  activeId={activeId}
+                  onNavigate={onNavigate}
+                  // Expanded while searching, when it holds the active page, or when the group is flat.
+                  forceOpen={!!needle || (sec.label === null) || (groupActive && sec.pages.some((p) => p.id === activeId))}
+                />
+              ))}
             </section>
           )
         })}
@@ -174,16 +175,61 @@ function Sidebar({ onNavigate }: { onNavigate: () => void }) {
   )
 }
 
+function applyDot(apply?: string): 'ok' | 'warn' | undefined {
+  return apply === 'live' ? 'ok' : apply === 'reboot' ? 'warn' : undefined
+}
+
+/** A collapsible sub-section. Named sections collapse; the unnamed one is flat. */
+function NavSection({
+  label, pages, activeId, onNavigate, forceOpen,
+}: { label: string | null; pages: Page[]; activeId: string | null; onNavigate: () => void; forceOpen: boolean }) {
+  const [userOpen, setUserOpen] = useState<boolean | null>(null)
+  const open = label === null ? true : (userOpen ?? forceOpen)
+  const list = (
+    <ul className={cn('space-y-px', label && 'ml-2 border-l border-border/70 pl-2')}>
+      {pages.map((p) => (
+        <li key={p.id}>
+          <NavItem
+            to={`/p/${p.id}`}
+            active={activeId === p.id}
+            onClick={onNavigate}
+            muted={p.applicable === 'unknown'}
+            dot={p.sections.some(sectionWritable) ? applyDot(p.apply) : undefined}
+          >
+            {p.title}
+          </NavItem>
+        </li>
+      ))}
+    </ul>
+  )
+  if (label === null) return list
+  return (
+    <div className="mb-0.5">
+      <button
+        type="button"
+        onClick={() => setUserOpen(!open)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-1.5 rounded-md px-2.5 py-1 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-foreground"
+      >
+        <ChevronRight className={cn('size-3.5 transition-transform duration-200', open && 'rotate-90')} />
+        <span className="truncate">{label}</span>
+        <span className="ml-auto text-[11px] tabular-nums opacity-60">{pages.length}</span>
+      </button>
+      {open && <div className="mt-px">{list}</div>}
+    </div>
+  )
+}
+
 function NavItem({
-  to, active, children, icon, onClick, muted,
-}: { to: string; active: boolean; children: ReactNode; icon?: ReactNode; onClick: () => void; muted?: boolean }) {
+  to, active, children, icon, onClick, muted, dot,
+}: { to: string; active: boolean; children: ReactNode; icon?: ReactNode; onClick: () => void; muted?: boolean; dot?: 'ok' | 'warn' }) {
   return (
     <Link
       to={to}
       onClick={onClick}
       aria-current={active ? 'page' : undefined}
       className={cn(
-        'relative flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[14px] transition-colors hover:bg-sidebar-accent',
+        'group relative flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-[14px] transition-colors hover:bg-sidebar-accent',
         active && 'bg-card font-medium shadow-[0_1px_0_var(--border),0_0_0_1px_var(--border)]',
         muted && !active && 'text-muted-foreground',
       )}
@@ -191,6 +237,13 @@ function NavItem({
       {active && <span aria-hidden className="absolute top-1.5 bottom-1.5 left-0 w-[3px] rounded-full bg-foreground" />}
       {icon}
       <span className="truncate">{children}</span>
+      {dot && (
+        <span
+          className="led ml-auto opacity-55 transition-opacity group-hover:opacity-90"
+          data-state={dot}
+          title={dot === 'ok' ? 'Applies instantly' : 'Needs a restart'}
+        />
+      )}
     </Link>
   )
 }

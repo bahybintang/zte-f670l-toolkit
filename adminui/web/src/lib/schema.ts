@@ -80,6 +80,62 @@ export const GROUPS: { id: string; label: string }[] = [
   { id: 'diagnostics', label: 'Diagnostics' },
 ]
 
+/**
+ * Sub-sections within a group, in display order, each an explicit list of page
+ * ids. A page not listed here falls into the group's "More" bucket, so the nav
+ * degrades gracefully if the page map ever drifts from the schema.
+ */
+export const SUBGROUPS: Record<string, { label: string; ids: string[] }[]> = {
+  network: [
+    { label: 'Internet', ids: ['wan', 'wan-user-pppoe', 'dslite', 'mtu', 'dhcp-client', 'wan-client-limit', 'arp-detect', 'vlan-binding'] },
+    { label: 'LAN & DHCP', ids: ['lan', 'dhcp-server', 'dhcp-static', 'dhcp-device-pools', 'dhcp-port'] },
+    { label: 'IPv6', ids: ['ipv6-ra', 'dhcpv6-server', 'ipv6-lan-prefix', 'prefix'] },
+    { label: 'Routing', ids: ['static-routes', 'route-table', 'rip'] },
+    { label: 'Traffic & QoS', ids: ['qos', 'qos-queues', 'qos-rules', 'qos-app', 'qos-policers', 'qos-template'] },
+    { label: 'Remote management', ids: ['tr069', 'tr069-cert'] },
+    { label: 'Time', ids: ['sntp'] },
+  ],
+  wlan: [
+    { label: 'Radio', ids: ['wlan-radio', 'wlan-radio-user', 'wlan-schedule', 'wlan-wmm', 'wlan-mesh', 'wlan-steering'] },
+    { label: 'Networks', ids: ['wlan-ssids', 'wlan-security', 'wlan-wps', 'wlan-mac-acl'] },
+  ],
+  security: [
+    { label: 'Firewall', ids: ['sec-firewall-level', 'sec-firewall-attack', 'sec-service-control', 'sec-service-ports'] },
+    { label: 'Filters', ids: ['sec-url-filter', 'sec-mac-filter', 'sec-ip-filter'] },
+    { label: 'Access', ids: ['sec-telnet'] },
+  ],
+  application: [
+    { label: 'Sharing', ids: ['usb-ftp-download', 'usb-iptv', 'samba', 'dms'] },
+    { label: 'Port forwarding & NAT', ids: ['app-port-forwarding', 'app-dmz', 'app-alg', 'app-upnp'] },
+    { label: 'DNS', ids: ['dns-domain', 'dns-hosts', 'app-ddns'] },
+    { label: 'Multicast', ids: ['igmp-snooping', 'igmp-proxy', 'mld-snooping', 'mld-proxy'] },
+    { label: 'Voice (VoIP)', ids: ['voip-sip', 'voip-accounts', 'voip-register', 'voip-services', 'voip-media', 'voip-timers', 'voip-digitmap', 'voip-callerid', 'voip-line-interface', 'voip-qos', 'voip-advanced'] },
+  ],
+  admin: [
+    { label: 'System', ids: ['admin-system', 'admin-users', 'admin-business', 'admin-led', 'help'] },
+    { label: 'Backup & firmware', ids: ['admin-upgrade', 'admin-usb-backup', 'admin-usb-restore', 'admin-maintenance-report'] },
+    { label: 'Logs & monitoring', ids: ['admin-log', 'admin-monitor', 'admin-loopback'] },
+    { label: 'Access', ids: ['admin-telnet', 'admin-voip-protocol'] },
+  ],
+}
+
+/** The ordered sub-sections for a group's pages; a single unnamed section when the group has no taxonomy. */
+export function groupSections(groupId: string, pages: Page[]): { label: string | null; pages: Page[] }[] {
+  const subs = SUBGROUPS[groupId]
+  if (!subs) return [{ label: null, pages }]
+  const byId = new Map(pages.map((p) => [p.id, p]))
+  const used = new Set<string>()
+  const out: { label: string | null; pages: Page[] }[] = []
+  for (const s of subs) {
+    const list = s.ids.map((id) => byId.get(id)).filter((p): p is Page => !!p)
+    list.forEach((p) => used.add(p.id))
+    if (list.length) out.push({ label: s.label, pages: list })
+  }
+  const rest = pages.filter((p) => !used.has(p.id))
+  if (rest.length) out.push({ label: 'More', pages: rest })
+  return out
+}
+
 export function fieldType(f: Field): FieldType {
   return f.type ?? 'string'
 }
