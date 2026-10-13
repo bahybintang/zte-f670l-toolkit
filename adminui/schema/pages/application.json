@@ -3161,7 +3161,7 @@
      "app_iptv_js.gch"
     ]
    },
-   "applicable": "unknown",
+   "applicable": true,
    "applicableNote": "Meant for an Ethernet uplink; may not apply on this fiber router.",
    "apply": "reboot",
    "danger": "commit-confirm",

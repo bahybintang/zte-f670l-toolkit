@@ -1177,7 +1177,7 @@
           "pon_ethwancpppuser_gch.gch"
         ]
       },
-      "applicable": "unknown",
+      "applicable": true,
       "applicableNote": "Simplified view; the WAN page has the same settings.",
       "apply": "reboot",
       "danger": "commit-confirm",
@@ -1231,7 +1231,7 @@
           "pon_cltlmt_gch.gch"
         ]
       },
-      "applicable": "unknown",
+      "applicable": true,
       "applicableNote": "The ISP sets this limit; it is read only.",
       "apply": "reboot",
       "danger": "none",
@@ -1311,7 +1311,7 @@
           "dslite_gch.gch"
         ]
       },
-      "applicable": "unknown",
+      "applicable": true,
       "applicableNote": "Works only if your ISP offers DS-Lite.",
       "apply": "reboot",
       "danger": "commit-confirm",
@@ -1536,7 +1536,7 @@
           "net_mtu_mtucg_gch.gch"
         ]
       },
-      "applicable": "unknown",
+      "applicable": true,
       "applicableNote": "Some ISP settings lock this page.",
       "apply": "unknown",
       "danger": "none",
@@ -2536,8 +2536,8 @@
           "ipv6_prefix_gch.gch"
         ]
       },
-      "applicable": "unknown",
-      "applicableNote": "This setting may not take effect on this router.",
+      "applicable": true,
+      "applicableNote": "",
       "apply": "reboot",
       "danger": "none",
       "sections": [
@@ -2579,7 +2579,7 @@
           "prefix_gch.gch"
         ]
       },
-      "applicable": "unknown",
+      "applicable": true,
       "applicableNote": "Needs an IPv6 WAN connection.",
       "apply": "reboot",
       "danger": "none",
@@ -3504,8 +3504,8 @@
           "qos_qa_gch.gch"
         ]
       },
-      "applicable": "unknown",
-      "applicableNote": "This setting may not take effect on this router.",
+      "applicable": true,
+      "applicableNote": "",
       "apply": "reboot",
       "danger": "none",
       "sections": [
@@ -3635,7 +3635,7 @@
           "e8_qos_qb_gch.gch"
         ]
       },
-      "applicable": "unknown",
+      "applicable": true,
       "applicableNote": "Same setting as the template on the QoS page.",
       "apply": "reboot",
       "danger": "none",

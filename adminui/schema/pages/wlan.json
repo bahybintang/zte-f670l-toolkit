@@ -1679,8 +1679,8 @@
         "page": null,
         "handler": []
       },
-      "applicable": "unknown",
-      "applicableNote": "Not yet supported on this router.",
+      "applicable": true,
+      "applicableNote": "Per-SSID MAC allow/deny list. Takes effect after a restart.",
       "apply": "reboot",
       "danger": "confirm",
       "selector": {
@@ -1787,7 +1787,7 @@
         "page": null,
         "handler": []
       },
-      "applicable": "unknown",
+      "applicable": true,
       "applicableNote": "May not take effect on this router.",
       "apply": "reboot",
       "danger": "none",
@@ -1988,8 +1988,8 @@
         "page": null,
         "handler": []
       },
-      "applicable": "unknown",
-      "applicableNote": "Not yet supported on this router.",
+      "applicable": true,
+      "applicableNote": "Scheduled Wi-Fi on/off times. Takes effect after a restart.",
       "apply": "reboot",
       "danger": "none",
       "sections": [
@@ -2446,8 +2446,8 @@
         "page": null,
         "handler": []
       },
-      "applicable": "unknown",
-      "applicableNote": "Mesh is not confirmed to work on this router.",
+      "applicable": true,
+      "applicableNote": "EasyMesh controller settings; a mesh forms only with a compatible agent.",
       "apply": "unknown",
       "danger": "confirm",
       "sections": [

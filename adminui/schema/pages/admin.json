@@ -452,7 +452,7 @@
      "manager_test_over_js.gch"
     ]
    },
-   "applicable": "unknown",
+   "applicable": true,
    "applicableNote": "Operator (ITMS/TR-069) maintenance workflow; no effect expected without an ACS.",
    "apply": "live",
    "danger": "none",
@@ -483,7 +483,7 @@
      "manager_buss_mgr_js.gch"
     ]
    },
-   "applicable": "unknown",
+   "applicable": true,
    "applicableNote": "Operator provisioning data; informational on a retail unit.",
    "apply": "reboot",
    "danger": "none",
@@ -851,7 +851,7 @@
      "pon_monitor_config_js.gch"
     ]
    },
-   "applicable": "unknown",
+   "applicable": true,
    "applicableNote": "Operator monitoring feature used by some ISPs only.",
    "apply": "reboot",
    "danger": "none",

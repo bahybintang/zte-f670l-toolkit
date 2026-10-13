@@ -576,7 +576,7 @@
           "vlan_if_query.gch"
         ]
       },
-      "applicable": "unknown",
+      "applicable": true,
       "applicableNote": "ISP test tool; it may not work on this router.",
       "apply": "live",
       "danger": "none",
@@ -879,7 +879,7 @@
           "diagnose_voice_js.gch"
         ]
       },
-      "applicable": "unknown",
+      "applicable": true,
       "applicableNote": "Needs a populated POTS port and SLIC test support.",
       "apply": "live",
       "danger": "none",
@@ -1196,7 +1196,7 @@
           "pon_monitor_config_js.gch"
         ]
       },
-      "applicable": "unknown",
+      "applicable": true,
       "applicableNote": "China Telecom \"intelligent diagnosis\" collector; only useful if the ISP runs a collector.",
       "apply": "unknown",
       "danger": "confirm",

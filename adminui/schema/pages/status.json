@@ -779,7 +779,7 @@
           "status_dslite_if_t.gch"
         ]
       },
-      "applicable": "unknown",
+      "applicable": true,
       "applicableNote": "Only used if your ISP provides a DS-Lite tunnel.",
       "apply": "live",
       "danger": "none",
@@ -1094,7 +1094,7 @@
         "page": "pon_status_stat_info_t.gch",
         "handler": []
       },
-      "applicable": "unknown",
+      "applicable": true,
       "applicableNote": "Off-menu page; only linked from the EPON link page. May be empty in GPON mode.",
       "apply": "live",
       "danger": "none",
@@ -2116,7 +2116,7 @@
         "page": "status_voip_4less_t.gch",
         "handler": []
       },
-      "applicable": "unknown",
+      "applicable": true,
       "applicableNote": "Depends on whether the POTS port is populated/used on this unit.",
       "apply": "live",
       "danger": "none",
@@ -2178,7 +2178,7 @@
         "page": "status_voip_phoneNumber_t.gch",
         "handler": []
       },
-      "applicable": "unknown",
+      "applicable": true,
       "applicableNote": "Depends on whether the POTS port is used.",
       "apply": "live",
       "danger": "none",
