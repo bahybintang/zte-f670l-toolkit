@@ -359,8 +359,17 @@ async fn hosts(app: &App) -> Result<Value, String> {
         .into_iter()
         .map(|mut h| {
             let mac = h["MAC"].as_str().unwrap_or("").to_lowercase();
-            if let Some(a) = arp.iter().find(|a| a.mac == mac) {
-                h["arpIp"] = json!(a.ip);
+            let arp_ip = arp.iter().find(|a| a.mac == mac).map(|a| a.ip.clone());
+            if let Some(ip) = &arp_ip {
+                h["arpIp"] = json!(ip);
+            }
+            // The adev table shows 0.0.0.0 for a host it hasn't leased; prefer the
+            // address ARP currently has for it so the IP column is useful.
+            let ip_blank = h["IP"].as_str().map(|s| s.is_empty() || s == "0.0.0.0").unwrap_or(true);
+            if ip_blank {
+                if let Some(ip) = arp_ip {
+                    h["IP"] = json!(ip);
+                }
             }
             h["MAC"] = json!(mac);
             h

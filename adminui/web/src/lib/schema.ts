@@ -178,8 +178,8 @@ export function validate(f: Field, v: string): string | null {
     case 'int': {
       if (!/^-?\d+$/.test(v)) return `${name} must be a whole number`
       const n = Number(v)
-      if (f.min !== undefined && n < f.min) return `${name} must be at least ${f.min}`
-      if (f.max !== undefined && n > f.max) return `${name} must be at most ${f.max}`
+      if (f.min != null && n < f.min) return `${name} must be at least ${f.min}`
+      if (f.max != null && n > f.max) return `${name} must be at most ${f.max}`
       break
     }
     case 'ipv4':
@@ -199,8 +199,8 @@ export function validate(f: Field, v: string): string | null {
     default: {
       const len = [...v].length
       if (t === 'password' && v === '') return null
-      if (f.min !== undefined && len < f.min) return `${name} needs at least ${f.min} characters`
-      if (f.max !== undefined && len > f.max) return `${name} allows at most ${f.max} characters`
+      if (f.min != null && len < f.min) return `${name} needs at least ${f.min} characters`
+      if (f.max != null && len > f.max) return `${name} allows at most ${f.max} characters`
     }
   }
   if (f.pattern && v !== '') {

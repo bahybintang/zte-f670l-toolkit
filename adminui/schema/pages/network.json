@@ -1935,29 +1935,33 @@
           "fields": [
             {
               "dm": "HostName",
-              "label": "Host name",
-              "type": "string"
+              "label": "Client name",
+              "column": true
             },
             {
-              "dm": "MACAddr",
-              "label": "MAC address",
-              "type": "mac"
-            },
-            {
-              "dm": "IPAddr",
+              "dm": "IP",
               "label": "IP address",
-              "type": "ipv4"
+              "column": true
             },
             {
-              "dm": "ExpiredTime",
-              "label": "Remaining",
-              "type": "string",
-              "unit": "s"
+              "dm": "MAC",
+              "label": "MAC address",
+              "column": true
             },
             {
-              "dm": "PhyPortName",
-              "label": "Port",
-              "type": "string"
+              "dm": "If",
+              "label": "Interface",
+              "column": true
+            },
+            {
+              "dm": "AddrSrc",
+              "label": "Source",
+              "column": true
+            },
+            {
+              "dm": "LastConn",
+              "label": "Last seen",
+              "column": true
             }
           ]
         }

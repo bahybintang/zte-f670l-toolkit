@@ -1753,83 +1753,31 @@
             {
               "dm": "HostName",
               "label": "Client name",
-              "type": "string",
               "column": true
             },
             {
-              "dm": "MACAddr",
-              "label": "MAC address",
-              "type": "mac",
-              "column": true
-            },
-            {
-              "dm": "IPAddr",
+              "dm": "IP",
               "label": "IP address",
-              "type": "string",
-              "column": true,
-              "help": "IPv4 lease or IPv6 address."
+              "column": true
             },
             {
-              "dm": "ExpiredTime",
-              "label": "Lease remaining",
-              "type": "int",
-              "unit": "s",
-              "column": true,
-              "help": "-1 = never expires."
+              "dm": "MAC",
+              "label": "MAC address",
+              "column": true
             },
             {
-              "dm": "PhyPortName",
-              "label": "Port",
-              "type": "string",
-              "column": true,
-              "help": "eth0–eth3 = LAN1–LAN4, wlan0–wlan7 = SSID1–8."
+              "dm": "If",
+              "label": "Interface",
+              "column": true
             },
             {
-              "dm": "PhyType",
-              "label": "Device type",
-              "type": "enum",
-              "options": [
-                {
-                  "value": "0",
-                  "label": "Unknown"
-                },
-                {
-                  "value": "1",
-                  "label": "Phone"
-                },
-                {
-                  "value": "2",
-                  "label": "Tablet"
-                },
-                {
-                  "value": "3",
-                  "label": "PC"
-                },
-                {
-                  "value": "4",
-                  "label": "Set-top box"
-                },
-                {
-                  "value": "5",
-                  "label": "Router"
-                },
-                {
-                  "value": "6",
-                  "label": "Smart device"
-                },
-                {
-                  "value": "7",
-                  "label": "Access point"
-                },
-                {
-                  "value": "8",
-                  "label": "PLC"
-                },
-                {
-                  "value": "9",
-                  "label": "Other"
-                }
-              ],
+              "dm": "AddrSrc",
+              "label": "Source",
+              "column": true
+            },
+            {
+              "dm": "LastConn",
+              "label": "Last seen",
               "column": true
             }
           ]
