@@ -104,15 +104,16 @@ fn main() {
         // Re-register a firewall rule (delete+add) so it applies without reboot.
         "oss-fwreg" => {
             let spec = args.arg.clone().unwrap_or_default();
-            let (table, vn) = spec
+            let (table, row) = spec
                 .split_once(':')
-                .map(|(t, v)| (t.to_string(), v.to_string()))
-                .unwrap_or((spec, String::new()));
+                .map(|(t, r)| (t.to_string(), r.parse().unwrap_or(0)))
+                .unwrap_or((spec, 0));
             let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime");
-            match rt.block_on(oss::fw_register(&table, &vn)) {
-                Ok((del, add)) => println!("{table}/{vn}: firewall del iRet={del} add iRet={add}"),
+            let db = db::Db::new(Arc::new(exec::Executor::default()));
+            match rt.block_on(oss::fw_register(&db, &table, row)) {
+                Ok((del, add)) => println!("{table}:{row}: firewall del iRet={del} add iRet={add}"),
                 Err(e) => {
-                    eprintln!("{table}/{vn}: {e}");
+                    eprintln!("{table}:{row}: {e}");
                     std::process::exit(1);
                 }
             }

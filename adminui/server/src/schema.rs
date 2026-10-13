@@ -119,9 +119,6 @@ pub struct Schema {
 
 impl Schema {
     pub fn load() -> Self {
-        // Rule-list tables programmed by the vendor OBJ instance manager, which
-        // adminui cannot drive from a DB write (notes §9).
-        const OBJ_RULE_TABLES: &[&str] = &["FWIP", "MacFilter", "FWSC", "FWDMZ", "FWPM"];
         let mut pages = Vec::new();
         let mut names: Vec<_> = SchemaFiles::iter().filter(|n| n.ends_with(".json")).collect();
         names.sort();
@@ -141,45 +138,25 @@ impl Schema {
             if w.is_empty() {
                 continue;
             }
-            // Firewall rule lists are programmed by the vendor OBJ instance
-            // manager (webd -> pm_fwset_*), which resolves the interface names
-            // and builds the ~259-byte rule descriptor the firewall consumes.
-            // A raw `sidbg DB set` of the rule table does NOT render an iptables
-            // rule — verified on device, neither via the firewall register event
-            // (0x9703, which replies iRet=0 but programs nothing without the
-            // descriptor) nor after a full reboot. So adminui cannot apply these
-            // from a DB write; the rule list is display-only until the OBJ path
-            // is implemented or delegated to the stock UI. See notes §9.
-            let rule_sections = w.iter().filter(|s| OBJ_RULE_TABLES.contains(&s.table.as_str())).count();
-            let all_rules = rule_sections == w.len();
-            let oss = w.iter().filter(|s| crate::oss::target(&s.table).is_some()).count();
+            // A writable section applies live when its manager takes a 0x2401
+            // notify (oss::target) or it is a firewall rule list driven by the
+            // register event (oss::is_fw_rule_table). Both are confirmed live
+            // on device: the firewall re-reads a rule's match fields from the DB
+            // after a 0x9703/0x9704 register (notes §9).
+            let covered = w
+                .iter()
+                .filter(|s| crate::oss::target(&s.table).is_some() || crate::oss::is_fw_rule_table(&s.table))
+                .count();
             p.apply = Some(
-                if all_rules {
-                    // No working apply path for the whole page.
-                    "unknown"
-                } else if p.hook.as_deref() == Some("wifi") || oss == w.len() {
+                if p.hook.as_deref() == Some("wifi") || covered == w.len() {
                     "live"
-                } else if oss > 0 || rule_sections > 0 {
+                } else if covered > 0 {
                     "unknown"
                 } else {
                     "reboot"
                 }
                 .into(),
             );
-            if rule_sections > 0 {
-                // Overwrite any hand-written placeholder note.
-                let note = if all_rules {
-                    "Editing here writes the configuration but does not take effect: these firewall \
-                     rules are programmed by the router's object manager, which adminui does not \
-                     drive. Change them from the router's built-in firewall pages."
-                } else {
-                    "The rule list on this page is programmed by the router's object manager, which \
-                     adminui does not drive, so rules added or edited here do not take effect; change \
-                     them from the router's built-in firewall pages. Other settings on this page \
-                     apply as stated."
-                };
-                p.rest.insert("applicableNote".into(), serde_json::Value::String(note.into()));
-            }
         }
         let mut by_id = HashMap::new();
         for (i, p) in pages.iter().enumerate() {

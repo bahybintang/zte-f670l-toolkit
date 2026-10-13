@@ -25,17 +25,20 @@ on port 80. The stock UI stays as a fallback.
 adminui builds the `0x2401` message itself from the firmware's settings definition
 (`/etc/db_tbl_def.xml`) and the values it reads back, with no vendor libraries and no shared
 memory, and refuses to send if the message size differs from what the firmware's own database
-reports. 41 of the 82 writable pages apply live this way — the DHCP server, WAN PPPoE, firewall
-level and attack protection, static routes and Wi-Fi among them. See
+reports. Most writable pages apply live this way — the DHCP server, WAN PPPoE, firewall level and
+attack protection, static routes and Wi-Fi among them (the firewall rule lists apply live too, by a
+different event — see below). In all, 46 of the 77 writable pages apply live. See
 [`notes/oss-protocol.md`](notes/oss-protocol.md) §9 for the full list and for why the rest — WAN
 IPoE, the LAN bridge and most VoIP — still need a restart. Each page states whether it applies
 live, partly live, or on restart.
 
-The **firewall rule lists** (IP/MAC filters, service control, DMZ, port forwarding) are a separate
-case: on this firmware the router programs iptables from its own object manager, not from the
-config table adminui writes, so a rule edited here does not take effect even after a reboot. Those
-pages are marked accordingly and point to the router's built-in firewall pages; see §9 for the two
-ways to wire them up properly.
+The **firewall rule lists** (IP/MAC filters, service control, DMZ, port forwarding) do not take a
+0x2401 notify and a raw DB write never renders a rule — the firewall applies them through its own
+**register event**. adminui sends that event (delete + add) after the write, generating the rule's
+identity and resolving its interface the way the stock UI does, so rules added, edited and deleted
+here take effect immediately. IP filtering, service control and MAC filtering are verified live on
+device; DMZ and port forwarding use the same path but need an active WAN connection to appear in the
+NAT table. See [`notes/oss-protocol.md`](notes/oss-protocol.md) §9 for the register protocol.
 
 **WAN, LAN address, routing and firewall pages are commit-confirm.** After the change takes
 effect (live, or at the next boot), you have **3 minutes** to keep it. If you don't, adminui

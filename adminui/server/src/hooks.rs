@@ -72,6 +72,50 @@ pub async fn oss(app: &App, changes: &[Applied]) -> (Vec<String>, Vec<String>) {
     (warn, live)
 }
 
+/// A firewall rule-list operation to replay to the firewall after the DB save.
+pub enum FwOp {
+    /// An added or edited rule row: re-register it (delete+add) from the DB.
+    Apply { table: String, row: u32 },
+    /// A deleted rule row: remove it from iptables by its captured identity.
+    Remove { table: String, view: String, inc: String, out: String },
+}
+
+/// Replay firewall rule-list changes to the firewall module (register event
+/// 0x9703/0x9704). The firewall re-reads each rule's match fields from the DB,
+/// so this just tells it which rules changed. Returns warnings and the tables
+/// whose every operation the firewall accepted (iRet 0), which are then live.
+pub async fn firewall(app: &App, ops: &[FwOp]) -> (Vec<String>, Vec<String>) {
+    let mut warn = Vec::new();
+    let mut failed: Vec<String> = Vec::new();
+    let mut tables: Vec<String> = Vec::new();
+    for op in ops {
+        let (table, res) = match op {
+            FwOp::Apply { table, row } => (table.clone(), crate::oss::fw_register(&app.db, table, *row).await.map(|(_d, a)| a)),
+            FwOp::Remove { table, view, inc, out } => (table.clone(), crate::oss::fw_delete(table, view, inc, out).await),
+        };
+        if !tables.contains(&table) {
+            tables.push(table.clone());
+        }
+        match res {
+            Ok(0) => {}
+            Ok(code) => {
+                if !failed.contains(&table) {
+                    failed.push(table.clone());
+                }
+                warn.push(format!("{table}: the router did not apply the rule live (code {code}); takes effect after a restart"));
+            }
+            Err(e) => {
+                if !failed.contains(&table) {
+                    failed.push(table.clone());
+                }
+                warn.push(format!("{table}: firewall live apply unavailable ({e}); takes effect after a restart"));
+            }
+        }
+    }
+    let live = tables.into_iter().filter(|t| !failed.contains(t)).collect();
+    (warn, live)
+}
+
 pub async fn run(app: &App, hook: &str, changes: &[Applied]) -> Vec<String> {
     match hook {
         "wifi" => wifi(app, changes).await,

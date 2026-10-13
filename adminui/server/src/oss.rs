@@ -383,23 +383,77 @@ pub const FW_MODULE: u32 = 0x10102;
 const FW_DEL: u32 = 0x9704;
 const FW_ADD: u32 = 0x9703;
 
-/// Per-table firewall rule type constant (struct +36), read from each pm setter's
-/// literal pool (FWIP: `pm_fwset_ip` @0x5bfd0 = 0x000b0008).
-pub fn fw_type_const(table: &str) -> Option<u32> {
+/// Per firewall rule-list table: the type constant copied to struct +36 (read
+/// from each pm setter's literal pool), and the DM names whose values go to the
+/// interface slots +76/+112. The firewall re-reads the match fields from the DB
+/// by ViewName, so only the identity, interfaces and Enable travel in the struct.
+pub struct FwTable {
+    pub type_const: u32,
+    /// DM for the IN/primary connection view name (struct +76); "" if none.
+    pub inc_dm: &'static str,
+    /// DM for the OUT/secondary connection view name (struct +112); "" if none.
+    pub out_dm: &'static str,
+}
+
+pub fn fw_table(table: &str) -> Option<FwTable> {
     Some(match table {
-        "FWIP" => 0x000b_0008,
+        // type consts from each pm_*set literal pool; inc/out DMs from db_tbl_def.
+        "FWIP" => FwTable { type_const: 0x000b_0008, inc_dm: "INCViewName", out_dm: "OUTCViewName" },
+        "FWSC" => FwTable { type_const: 0x000b_000e, inc_dm: "INCViewName", out_dm: "" },
+        "FWDMZ" => FwTable { type_const: 0x000b_0003, inc_dm: "WANCViewName", out_dm: "" },
+        "FWPM" => FwTable { type_const: 0x000b_000a, inc_dm: "WANCViewName", out_dm: "" },
+        "MacFilter" => FwTable { type_const: 0x000b_0011, inc_dm: "", out_dm: "" },
         _ => return None,
     })
 }
 
-/// The 428-byte firewall rule-register struct. Minimal form: ViewName at +0
-/// (strncpy, ≤34 bytes + NUL), the type constant at +36, and the event at +156.
-pub fn fw_struct(view_name: &str, type_const: u32, event: u16) -> Vec<u8> {
+/// Whether `table` is a firewall rule list applied via the register event.
+pub fn is_fw_rule_table(table: &str) -> bool {
+    fw_table(table).is_some()
+}
+
+/// Resolve a connection ViewName (an `OBJ_WANLAN_ID` member) to its interface
+/// Name, as the stock OBJ layer does: a LAN bridge (LAND, e.g. IGD.LD1 -> br0)
+/// or a WAN connection (WANC, its runtime device name). A firewall rule needs
+/// the resolved Name in the DB to be scoped to that interface; without it the
+/// rule matches on any interface.
+pub async fn resolve_conn_name(db: &crate::db::Db, view: &str) -> Option<String> {
+    for table in ["LAND", "WANC"] {
+        if let Ok(t) = db.read(table).await {
+            if let Some(name) = t
+                .rows
+                .iter()
+                .find(|r| r.get(VIEW_NAME_DM) == Some(view))
+                .and_then(|r| r.get("Name"))
+                .filter(|n| !n.is_empty())
+            {
+                return Some(name.to_string());
+            }
+        }
+    }
+    None
+}
+
+/// The 428-byte firewall rule-register struct. `pm_fwset_ip` copies these from
+/// the getFwipParam view (1480 bytes, 20 §8 slots): ViewName (slot0) -> +0,
+/// INCViewName (slot5) -> +76, OUTCViewName (slot7) -> +112, Enable (slot2, one
+/// byte) -> +148, the type constant -> +36, the event -> +156. The trailing
+/// region it copies into +160/+164 is past the last slot, i.e. zero — the
+/// firewall re-reads the match fields (IP/port/protocol/target) from the DB by
+/// ViewName, so the struct carries only the identity, interfaces, and enable.
+/// All name fields are strncpy'd (≤34 bytes + NUL within their slot).
+pub fn fw_struct(view_name: &str, inc_view: &str, out_view: &str, enable: bool, type_const: u32, event: u16) -> Vec<u8> {
     let mut s = vec![0u8; 428];
-    let nb = view_name.as_bytes();
-    let n = nb.len().min(34);
-    s[..n].copy_from_slice(&nb[..n]);
+    let put = |s: &mut [u8], at: usize, v: &str| {
+        let b = v.as_bytes();
+        let n = b.len().min(34);
+        s[at..at + n].copy_from_slice(&b[..n]);
+    };
+    put(&mut s, 0, view_name);
     s[36..40].copy_from_slice(&type_const.to_le_bytes());
+    put(&mut s, 76, inc_view);
+    put(&mut s, 112, out_view);
+    s[148] = enable as u8;
     s[156..158].copy_from_slice(&event.to_le_bytes());
     s
 }
@@ -452,13 +506,31 @@ pub async fn send_raw(module: u32, event: u32, payload: &[u8]) -> Result<i32, St
     r
 }
 
-/// Re-register a firewall rule by ViewName: delete (0x9704) then add (0x9703),
-/// so the firewall rebuilds it from the DB with no reboot. Returns (del, add) iRet.
-pub async fn fw_register(table: &str, view_name: &str) -> Result<(i32, i32), String> {
-    let tc = fw_type_const(table).ok_or_else(|| format!("no firewall type const for {table}"))?;
-    let del = send_raw(FW_MODULE, FW_DEL, &fw_struct(view_name, tc, FW_DEL as u16)).await?;
-    let add = send_raw(FW_MODULE, FW_ADD, &fw_struct(view_name, tc, FW_ADD as u16)).await?;
+/// Re-register a firewall rule row: delete (0x9704) then add (0x9703), so the
+/// firewall rebuilds it from the DB with no reboot. Reads the row's identity and
+/// interface fields (the firewall re-reads the match fields from the DB itself).
+/// Returns (del, add) iRet; 0 = accepted.
+pub async fn fw_register(db: &crate::db::Db, table: &str, row_no: u32) -> Result<(i32, i32), String> {
+    let cfg = fw_table(table).ok_or_else(|| format!("{table} is not a firewall rule table"))?;
+    let t = db.read(table).await?;
+    let row = t.row(row_no).ok_or_else(|| format!("{table} has no row {row_no}"))?;
+    let view_name = row.get(VIEW_NAME_DM).unwrap_or("");
+    if view_name.is_empty() {
+        return Err(format!("{table} row {row_no} has no {VIEW_NAME_DM}"));
+    }
+    let inc = if cfg.inc_dm.is_empty() { "" } else { row.get(cfg.inc_dm).unwrap_or("") };
+    let out = if cfg.out_dm.is_empty() { "" } else { row.get(cfg.out_dm).unwrap_or("") };
+    let enable = row.get("Enable").map(|v| v != "0").unwrap_or(true);
+    let del = send_raw(FW_MODULE, FW_DEL, &fw_struct(view_name, inc, out, enable, cfg.type_const, FW_DEL as u16)).await?;
+    let add = send_raw(FW_MODULE, FW_ADD, &fw_struct(view_name, inc, out, enable, cfg.type_const, FW_ADD as u16)).await?;
     Ok((del, add))
+}
+
+/// Remove a firewall rule from iptables after its DB row is deleted. The
+/// identity and interface fields are captured from the row before deletion.
+pub async fn fw_delete(table: &str, view_name: &str, inc: &str, out: &str) -> Result<i32, String> {
+    let cfg = fw_table(table).ok_or_else(|| format!("{table} is not a firewall rule table"))?;
+    send_raw(FW_MODULE, FW_DEL, &fw_struct(view_name, inc, out, false, cfg.type_const, FW_DEL as u16)).await
 }
 
 /// Rebuild one row of `table`'s view from the DB and notify its manager.
@@ -596,14 +668,19 @@ mod tests {
     fn fw_struct_offsets() {
         // The firewall register struct: 428 bytes, ViewName at +0 (≤34 + NUL),
         // type constant at +36, event halfword at +156 (pm_fwset_ip @0x5bfc8..).
-        let s = fw_struct("TestBlk1", 0x000b_0008, FW_ADD as u16);
+        let s = fw_struct("TestBlk1", "IGD.LD1", "", true, 0x000b_0008, FW_ADD as u16);
         assert_eq!(s.len(), 428);
         assert_eq!(&s[..8], b"TestBlk1");
         assert_eq!(s[8], 0, "name NUL-terminated within the slot");
         assert_eq!(u32::from_le_bytes([s[36], s[37], s[38], s[39]]), 0x000b_0008);
+        assert_eq!(&s[76..83], b"IGD.LD1", "INCViewName at +76");
+        assert_eq!(s[112], 0, "empty OUTCViewName at +112");
+        assert_eq!(s[148], 1, "Enable byte at +148");
         assert_eq!(u16::from_le_bytes([s[156], s[157]]), 0x9703);
-        assert_eq!(fw_type_const("FWIP"), Some(0x000b_0008));
-        assert_eq!(fw_type_const("Nope"), None);
+        assert_eq!(fw_table("FWIP").unwrap().type_const, 0x000b_0008);
+        assert_eq!(fw_table("MacFilter").unwrap().type_const, 0x000b_0011);
+        assert!(fw_table("Nope").is_none());
+        assert!(is_fw_rule_table("FWDMZ"));
     }
 
     #[test]

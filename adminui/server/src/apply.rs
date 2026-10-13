@@ -326,11 +326,38 @@ pub async fn apply(app: Arc<App>, schema: &Schema, page_id: &str, req: ApplyReq)
 
     let mut warnings = Vec::new();
     let structural = !req.adds.is_empty() || !req.deletes.is_empty();
+    // Firewall rule-list operations to replay after the save (register events).
+    let mut fw_ops: Vec<crate::hooks::FwOp> = Vec::new();
     // Deletes first (descending so row numbers stay valid), then adds.
     let mut dels: Vec<&DelReq> = req.deletes.iter().collect();
     dels.sort_by(|a, b| b.row.cmp(&a.row));
+    let mut fw_del_warn: Vec<String> = Vec::new();
+    let mut fw_del_tables: Vec<String> = Vec::new();
     for d in dels {
         let s = section(page, &d.section)?;
+        // A firewall rule must be removed from iptables while its DB row still
+        // exists: the firewall re-reads the rule's match fields by ViewName to
+        // find the iptables entry to drop. So fire the 0x9704 delete now, before
+        // the row disappears.
+        if crate::oss::is_fw_rule_table(&s.table) {
+            if let Ok(t) = app.db.read(&s.table).await {
+                if let Some(r) = t.row(d.row) {
+                    let view = r.get("ViewName").unwrap_or("").to_string();
+                    if !view.is_empty() {
+                        let cfg = crate::oss::fw_table(&s.table).unwrap();
+                        let g = |dm: &str| if dm.is_empty() { String::new() } else { r.get(dm).unwrap_or("").to_string() };
+                        if !fw_del_tables.contains(&s.table) {
+                            fw_del_tables.push(s.table.clone());
+                        }
+                        match crate::oss::fw_delete(&s.table, &view, &g(cfg.inc_dm), &g(cfg.out_dm)).await {
+                            Ok(0) => {}
+                            Ok(code) => fw_del_warn.push(format!("{}: the router did not remove the rule live (code {code}); takes effect after a restart", s.table)),
+                            Err(e) => fw_del_warn.push(format!("{}: firewall live remove unavailable ({e}); takes effect after a restart", s.table)),
+                        }
+                    }
+                }
+            }
+        }
         app.db.delete_row(&s.table, d.row).await.map_err(|e| format!("delete failed: {e}"))?;
     }
     for a in &req.adds {
@@ -340,6 +367,30 @@ pub async fn apply(app: Arc<App>, schema: &Schema, page_id: &str, req: ApplyReq)
             if let Err(e) = app.db.set_verified(&s.table, row, dm, v).await {
                 warnings.push(format!("new row {row}: {e}"));
             }
+        }
+        if crate::oss::is_fw_rule_table(&s.table) {
+            // The OBJ layer gives each rule a ViewName identity and resolves the
+            // interface Name from the chosen connection view. adminui's raw add
+            // does neither, so do it server-side (bypassing the read-only guard,
+            // which only blocks client input) before registering the rule.
+            let vn = format!("au{:x}", now());
+            let _ = app.db.set_verified(&s.table, row, "ViewName", &vn).await;
+            for (view_dm, name_dm) in [("INCViewName", "INCName"), ("OUTCViewName", "OUTCName"), ("WANCViewName", "WANCName")] {
+                if let Some(view) = a.values.get(view_dm).filter(|v| !v.is_empty()) {
+                    if let Some(name) = crate::oss::resolve_conn_name(&app.db, view).await {
+                        let _ = app.db.set_verified(&s.table, row, name_dm, &name).await;
+                    }
+                }
+            }
+            fw_ops.push(crate::hooks::FwOp::Apply { table: s.table.clone(), row });
+        }
+    }
+    // Edited (non-added) firewall rule rows re-register from their current DB values.
+    for c in &applied {
+        if crate::oss::is_fw_rule_table(&c.table)
+            && !fw_ops.iter().any(|o| matches!(o, crate::hooks::FwOp::Apply { table, row } if table == &c.table && *row == c.row))
+        {
+            fw_ops.push(crate::hooks::FwOp::Apply { table: c.table.clone(), row: c.row });
         }
     }
 
@@ -351,6 +402,22 @@ pub async fn apply(app: Arc<App>, schema: &Schema, page_id: &str, req: ApplyReq)
     }
     let (oss_warn, oss_live) = crate::hooks::oss(&app, &applied).await;
     warnings.extend(oss_warn);
+    let (fw_warn, fw_live) = crate::hooks::firewall(&app, &fw_ops).await;
+    warnings.extend(fw_warn);
+    warnings.extend(fw_del_warn.iter().cloned());
+    // A firewall rule page applies live when every add/edit it registered was
+    // accepted and every delete it removed succeeded.
+    let apply_tables: Vec<&str> = fw_ops
+        .iter()
+        .map(|o| match o {
+            crate::hooks::FwOp::Apply { table, .. } => table.as_str(),
+            crate::hooks::FwOp::Remove { table, .. } => table.as_str(),
+        })
+        .collect();
+    let touched_fw = !fw_ops.is_empty() || !fw_del_tables.is_empty();
+    let fw_all_live = touched_fw
+        && fw_del_warn.is_empty()
+        && apply_tables.iter().all(|t| fw_live.iter().any(|l| l == t));
     drop(_g);
 
     let entry = HistoryEntry {
@@ -370,10 +437,13 @@ pub async fn apply(app: Arc<App>, schema: &Schema, page_id: &str, req: ApplyReq)
     // manager over OSS; anything else is read by the firmware at boot (a raw
     // DB write sends no change notification).
     let wifi = page.hook.as_deref() == Some("wifi");
-    let live = !structural
-        && planned.iter().all(|p| {
-            (wifi && (p.field.live_key.is_some() || p.field.dm == "Enable")) || oss_live.iter().any(|t| *t == p.sec.table)
-        });
+    // Firewall rule lists apply live through the register event even though the
+    // change is structural (add/delete of a rule row).
+    let live = fw_all_live
+        || (!structural
+            && planned.iter().all(|p| {
+                (wifi && (p.field.live_key.is_some() || p.field.dm == "Enable")) || oss_live.iter().any(|t| *t == p.sec.table)
+            }));
     let apply_mode = if live { "live" } else { "reboot" };
     if !live {
         let mut rp = app.restart_pending.lock().unwrap();
@@ -421,6 +491,20 @@ pub async fn undo(app: &App, id: u64) -> Result<u64, String> {
     }
     for w in crate::hooks::oss(app, &reverted).await.0 {
         eprintln!("undo oss: {w}");
+    }
+    // Re-register any firewall rule rows whose values were reverted, so iptables
+    // follows the undo without a reboot. (Structural add/delete undo restores a
+    // snapshot and takes effect at the next restart.)
+    let mut fw_ops: Vec<crate::hooks::FwOp> = Vec::new();
+    for a in &reverted {
+        if crate::oss::is_fw_rule_table(&a.table)
+            && !fw_ops.iter().any(|o| matches!(o, crate::hooks::FwOp::Apply { table, row } if table == &a.table && *row == a.row))
+        {
+            fw_ops.push(crate::hooks::FwOp::Apply { table: a.table.clone(), row: a.row });
+        }
+    }
+    for w in crate::hooks::firewall(app, &fw_ops).await.0 {
+        eprintln!("undo firewall: {w}");
     }
     drop(_g);
     let mut h = app.history.lock().await;
