@@ -486,3 +486,32 @@ removed (the firewall re-reads the row to find the iptables entry).
   DHCP6SHostCfg and DWQOSQueue (view-id collisions). The 0x10111 telnet-user subid **crashed** the
   box, so the 0x3d0101 telnet node is used instead.
 - **VoIP and TR-069** — excluded by request.
+
+## 10. WAN manual control (PPPoE connect/disconnect, DHCP renew/release)
+
+The stock WAN pages call `dev_action` with `CmdId=cmd_pppconnect | cmd_pppdisconnect |
+cmd_dhcpconnect | cmd_dhcpdisconnect` and `Identity=<WAN ViewName>` (`ethwancppp_gch.gch`,
+`ethwancip_gch.gch`). webd's dispatch table (httpd literal pool @0xb1738, `{name, handler}` pairs)
+maps them to libpmapi exports, each a single `pm_send_msg_2mm`: **[V: disassembly]**
+
+| CmdId | libpmapi | module | event | subid | data |
+|---|---|---|---|---|---|
+| cmd_pppconnect | `pm_wanc_ppp_manual_connect` @0x126944 | 0x10109 | 0x2801 | 0 | WANCPPP view (`zxicDbGetView(20, id)`), len 0x708 |
+| cmd_pppdisconnect | `pm_wanc_ppp_manual_disconnect` @0x126aa4 | 0x10109 | 0x2802 | 0 | same |
+| cmd_dhcpconnect | `pm_wanc_ip_manual_connect` @0x126c04 | 0x10c01 | 0x2801 | 0 | none (len 0) |
+| cmd_dhcpdisconnect | `pm_wanc_ip_manual_disconnect` @0x126ce4 | 0x10c01 | 0x2802 | 0 | none |
+
+The message is the §2 application message (subid, 32-byte identity, len, data) under a different
+event. On this build the WANCPPP view (id 20) is exactly 1800 = 0x708 bytes, so adminui's rebuilt
+view equals the stock buffer. Both modules live in cspd (socket `/var/tmp/0X00000001`).
+DHCP renew/release go through the 0x10c01 manager; there is no udhcpc signal path.
+
+adminui: `oss::wan_manual`, CLI `adminui oss-wan <cmd>,<ViewName>`, HTTP `GET /api/action/wan/state`
+and `POST /api/action/wan/{ppp-connect|ppp-disconnect|dhcp-renew|dhcp-release}`.
+
+Observed on the spare (2026-10-17; no fiber, so no WAN interface: `WANC.RealIFName` empty):
+both managers reply; PPP connect/disconnect → iRet **-641** with the row in bridge mode
+(ConnType 4) *and* temporarily switched to routed (ConnType 1); DHCP renew on a WANCIP row with
+no WANC → **-3**, release → 0. No crash (cspd PID unchanged). -641's meaning is not decoded:
+the PPP manager's handler is not in the firmware extract. A real connect/disconnect (pppd
+dialing, link up/down) still needs a unit with a live PON link.

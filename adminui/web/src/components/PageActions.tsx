@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { useNavigate } from '@tanstack/react-router'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '@/lib/api'
 import type { Action, Page } from '@/lib/schema'
 import { Button } from '@/components/ui/button'
@@ -19,7 +19,15 @@ const ENDPOINTS: Record<string, { path: string; confirmWord?: string }> = {
   'voice-call-test': { path: '/action/diag/voice-call-test' },
   'simulation-start': { path: '/action/diag/simulation-start' },
   'simulation-stop': { path: '/action/diag/simulation-stop' },
+  'ppp-connect': { path: '/action/wan/ppp-connect' },
+  'ppp-disconnect': { path: '/action/wan/ppp-disconnect' },
+  'dhcp-renew': { path: '/action/wan/dhcp-renew' },
+  'dhcp-release': { path: '/action/wan/dhcp-release' },
 }
+
+// WAN controls: whether each can run right now depends on the live connection.
+const WAN_ACTIONS = new Set(['ppp-connect', 'ppp-disconnect', 'dhcp-renew', 'dhcp-release'])
+type WanState = { actions: Record<string, { available: boolean; reason?: string | null; connection?: string; connected?: boolean }> }
 
 // ping/traceroute run live from the Network tools page (they take a target).
 const TOOLS_ACTIONS = new Set(['ping', 'traceroute', 'traceroute-stop'])
@@ -37,6 +45,13 @@ export function PageActions({ page }: { page: Page }) {
   const [result, setResult] = useState<string | null>(null)
   const actions = (page.actions ?? []).filter((a) => a.id !== 'refresh')
   const hasRefresh = page.actions?.some((a) => a.id === 'refresh')
+  const hasWan = actions.some((a) => WAN_ACTIONS.has(a.id))
+  const wan = useQuery({
+    queryKey: ['wan-state'],
+    queryFn: () => api.get<WanState>('/action/wan/state'),
+    enabled: hasWan,
+    refetchInterval: 10_000,
+  })
   const run = async (a: Action) => {
     if (TOOLS_ACTIONS.has(a.id)) {
       navigate({ to: '/tools' })
@@ -50,6 +65,13 @@ export function PageActions({ page }: { page: Page }) {
       const msg = r.message ?? `${a.label}: done.`
       toast.success(msg)
       setResult(msg) // keep the outcome visible on the page, not just a transient toast
+      if (WAN_ACTIONS.has(a.id)) {
+        // The manager acts asynchronously; re-read the state once it has had time.
+        setTimeout(() => {
+          qc.invalidateQueries({ queryKey: ['wan-state'] })
+          qc.invalidateQueries({ queryKey: ['page', page.id] })
+        }, 3000)
+      }
     } catch (e) {
       const msg = (e as Error).message
       toast.error(msg)
@@ -72,13 +94,18 @@ export function PageActions({ page }: { page: Page }) {
             </Button>
           )
         }
-        const available = !!ENDPOINTS[a.id] || TOOLS_ACTIONS.has(a.id)
+        const ws = WAN_ACTIONS.has(a.id) ? wan.data?.actions[a.id] : undefined
+        const wanBlocked = WAN_ACTIONS.has(a.id) && !ws?.available
+        const available = (!!ENDPOINTS[a.id] || TOOLS_ACTIONS.has(a.id)) && !wanBlocked
+        const why = WAN_ACTIONS.has(a.id)
+          ? ws?.reason ?? (ws ? `On ${ws.connection}` : wan.isError ? 'Could not read the connection state' : 'Checking the connection…')
+          : 'Not available in this version yet'
         return (
           <Button
             key={a.id}
             variant={a.danger && a.danger !== 'none' ? 'destructive' : 'outline'}
             disabled={!available}
-            title={available ? (TOOLS_ACTIONS.has(a.id) ? 'Opens Network tools' : undefined) : 'Not available in this version yet'}
+            title={available ? (TOOLS_ACTIONS.has(a.id) ? 'Opens Network tools' : ws ? `On ${ws.connection}` : undefined) : why}
             onClick={() => (a.danger && a.danger !== 'none' ? setAsk(a) : run(a))}
           >
             {a.label}
@@ -86,6 +113,7 @@ export function PageActions({ page }: { page: Page }) {
         )
       })}
       </div>
+      {hasWan && wan.data && <WanNote state={wan.data} />}
       {result && (
         <p className="mt-4 rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">{result}</p>
       )}
@@ -103,4 +131,13 @@ export function PageActions({ page }: { page: Page }) {
       </AlertDialog>
     </div>
   )
+}
+
+// One line under the WAN buttons: which connection they act on, or why they can't.
+function WanNote({ state }: { state: WanState }) {
+  const notes = [...new Set(Object.values(state.actions).map((s) =>
+    s.connection ? `${s.connection}: ${s.connected ? 'connected' : 'not connected'}` : s.reason ?? '',
+  ))].filter(Boolean)
+  if (!notes.length) return null
+  return <p className="mt-3 text-sm text-muted-foreground">{notes.join(' · ')}</p>
 }

@@ -17,6 +17,7 @@ mod runtime;
 mod schema;
 mod state;
 mod status;
+mod wan;
 
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
@@ -135,6 +136,23 @@ fn main() {
                 Ok(r) => println!("{table}:{row} {module:#x}/{subid:#x}: iRet={r}"),
                 Err(e) => {
                     eprintln!("{table}: {e}");
+                    std::process::exit(1);
+                }
+            }
+        }
+        // WAN manual control, as the stock buttons: <ppp-connect|ppp-disconnect|dhcp-renew|dhcp-release>,<ViewName>.
+        "oss-wan" => {
+            let a = args.arg.clone().unwrap_or_default();
+            let Some((cmd, view)) = a.split_once(',').and_then(|(c, v)| Some((oss::WanCmd::parse(c)?, v.to_string()))) else {
+                eprintln!("usage: adminui oss-wan <ppp-connect|ppp-disconnect|dhcp-renew|dhcp-release>,<ViewName>");
+                std::process::exit(2);
+            };
+            let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime");
+            let db = db::Db::new(Arc::new(exec::Executor::default()));
+            match rt.block_on(oss::wan_manual(&db, cmd, &view)) {
+                Ok(r) => println!("{cmd:?} {view}: iRet={r}"),
+                Err(e) => {
+                    eprintln!("{cmd:?} {view}: {e}");
                     std::process::exit(1);
                 }
             }

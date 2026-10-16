@@ -564,6 +564,14 @@ async fn view_of(db: &crate::db::Db, table: &str) -> Result<u32, String> {
 }
 
 async fn send_view(db: &crate::db::Db, t: &Target, table: &str, row_no: u32, changed: &[&str]) -> Result<i32, String> {
+    let (identity, view) = row_view(db, t, table, row_no, changed).await?;
+    send(t, &mm_msg(t.subid, &identity, &view)).await
+}
+
+/// Rebuild one row's view struct from the DB, length-checked against the DB's
+/// own view length. Returns the identity (the row's ViewName, or the target's
+/// fixed identity for a single-row view) and the struct.
+async fn row_view(db: &crate::db::Db, t: &Target, table: &str, row_no: u32, changed: &[&str]) -> Result<(String, Vec<u8>), String> {
     let xml = tokio::fs::read_to_string(TBL_DEF).await.map_err(|e| format!("{TBL_DEF}: {e}"))?;
     let all_dms = table_dms(&xml, table).ok_or_else(|| format!("{table} not in {TBL_DEF}"))?;
     let pv = db.exec.run("sidbg", &["1", "DB", "pv"], Duration::from_secs(10)).await?;
@@ -576,8 +584,104 @@ async fn send_view(db: &crate::db::Db, t: &Target, table: &str, row_no: u32, cha
     } else {
         t.identity
     };
-    let view = build_view(&dms, row, changed, len)?;
-    send(t, &mm_msg(t.subid, identity, &view)).await
+    Ok((identity.to_string(), build_view(&dms, row, changed, len)?))
+}
+
+// --- WAN manual connect / disconnect ------------------------------------------
+//
+// The stock buttons are `dev_action CmdId=cmd_{ppp,dhcp}{connect,disconnect}`;
+// webd's dispatch table (httpd @0xb1738) maps them to libpmapi
+// `pm_wanc_{ppp,ip}_manual_{connect,disconnect}`, which are plain
+// `pm_send_msg_2mm(module, event, subid=0, identity=<WAN ViewName>, data, len)`:
+//
+//   ppp connect     0x10109 / 0x2801, data = WANCPPP view (zxicDbGetView 20) in a 0x708 buffer
+//   ppp disconnect  0x10109 / 0x2802, same data
+//   ip  connect     0x10c01 / 0x2801, no data  (DHCP renew)
+//   ip  disconnect  0x10c01 / 0x2802, no data  (DHCP release)
+//
+// Same message format as the 0x2401 notify, only the event differs. See
+// notes/oss-protocol.md §10.
+
+/// PPP connection manager (pm_wanc_ppp_manual_*).
+pub const PPP_MODULE: u32 = 0x10109;
+/// IPoE / DHCP client manager (pm_wanc_ip_manual_*; also the DHCPCComm target).
+pub const IPC_MODULE: u32 = 0x10c01;
+pub const WAN_CONNECT: u32 = 0x2801;
+pub const WAN_DISCONNECT: u32 = 0x2802;
+/// The stock PPP path always ships its full 0x708-byte view buffer.
+const PPP_VIEW_BUF: usize = 0x708;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum WanCmd {
+    PppConnect,
+    PppDisconnect,
+    DhcpRenew,
+    DhcpRelease,
+}
+
+impl WanCmd {
+    pub fn parse(s: &str) -> Option<Self> {
+        Some(match s {
+            "ppp-connect" => Self::PppConnect,
+            "ppp-disconnect" => Self::PppDisconnect,
+            "dhcp-renew" => Self::DhcpRenew,
+            "dhcp-release" => Self::DhcpRelease,
+            _ => return None,
+        })
+    }
+
+    pub fn is_ppp(self) -> bool {
+        matches!(self, Self::PppConnect | Self::PppDisconnect)
+    }
+
+    /// (module, event) the stock pm_wanc_*_manual_* sends.
+    pub fn route(self) -> (u32, u32) {
+        match self {
+            Self::PppConnect => (PPP_MODULE, WAN_CONNECT),
+            Self::PppDisconnect => (PPP_MODULE, WAN_DISCONNECT),
+            Self::DhcpRenew => (IPC_MODULE, WAN_CONNECT),
+            Self::DhcpRelease => (IPC_MODULE, WAN_DISCONNECT),
+        }
+    }
+}
+
+/// Payload for a WAN manual command: the IPoE path carries only the identity;
+/// the PPP path carries the WANCPPP view, zero-padded to the stock buffer size.
+pub fn wan_payload(identity: &str, ppp_view: Option<&[u8]>) -> Result<Vec<u8>, String> {
+    if identity.is_empty() || identity.len() > 31 {
+        return Err(format!("bad WAN connection name {identity:?}"));
+    }
+    Ok(match ppp_view {
+        None => mm_msg(0, identity, &[]),
+        Some(v) => {
+            if v.len() > PPP_VIEW_BUF {
+                return Err(format!("WANCPPP view is {} bytes, more than the {PPP_VIEW_BUF}-byte stock buffer", v.len()));
+            }
+            let mut buf = v.to_vec();
+            buf.resize(PPP_VIEW_BUF, 0);
+            mm_msg(0, identity, &buf)
+        }
+    })
+}
+
+/// Send a WAN manual command for the connection named `view` (its ViewName,
+/// e.g. IGD.WD1.WCD2.WCPPP1). Returns the manager's iRet (0 = accepted).
+pub async fn wan_manual(db: &crate::db::Db, cmd: WanCmd, view: &str) -> Result<i32, String> {
+    let (module, event) = cmd.route();
+    let payload = if cmd.is_ppp() {
+        let t = target("WANCPPP").ok_or("no WANCPPP view target")?;
+        let rows = db.read_fresh("WANCPPP").await?;
+        let row = rows
+            .rows
+            .iter()
+            .find(|r| r.get(VIEW_NAME_DM) == Some(view))
+            .ok_or_else(|| format!("no PPPoE connection {view}"))?;
+        let (identity, v) = row_view(db, t, "WANCPPP", row.no, &[]).await?;
+        wan_payload(&identity, Some(&v))?
+    } else {
+        wan_payload(view, None)?
+    };
+    send_raw(module, event, &payload).await
 }
 
 pub async fn reapply(db: &crate::db::Db, table: &str, row_no: u32, changed: &[&str]) -> Result<i32, String> {
@@ -690,6 +794,27 @@ mod tests {
         assert_eq!(u32::from_le_bytes([d[4], d[5], d[6], d[7]]), FW_MODULE);
         assert_eq!(u32::from_le_bytes([d[8], d[9], d[10], d[11]]), FW_DEL | SYN_REQ);
         assert_eq!(u16::from_le_bytes([d[12], d[13]]), 428);
+    }
+
+    #[test]
+    fn wan_manual_messages() {
+        // pm_wanc_ip_manual_*: subid 0, identity, no data -> 40-byte message.
+        let ip = wan_payload("IGD.WD1.WCD1.WCIP1", None).unwrap();
+        assert_eq!(ip.len(), 0x28);
+        assert_eq!(&ip[0..4], &0u32.to_le_bytes());
+        assert_eq!(&ip[4..22], b"IGD.WD1.WCD1.WCIP1");
+        assert_eq!(&ip[36..40], &0u32.to_le_bytes());
+        // pm_wanc_ppp_manual_*: the view padded to the 0x708 stock buffer.
+        let ppp = wan_payload("IGD.WD1.WCD2.WCPPP1", Some(&[7u8; 100])).unwrap();
+        assert_eq!(ppp.len(), 0x28 + 0x708);
+        assert_eq!(&ppp[36..40], &0x708u32.to_le_bytes());
+        assert_eq!(ppp[0x28 + 99], 7);
+        assert_eq!(ppp[0x28 + 100], 0);
+        assert!(wan_payload("", None).is_err());
+        assert!(wan_payload("x", Some(&[0u8; 0x709])).is_err());
+        assert_eq!(WanCmd::parse("dhcp-renew").unwrap().route(), (IPC_MODULE, WAN_CONNECT));
+        assert_eq!(WanCmd::parse("ppp-disconnect").unwrap().route(), (PPP_MODULE, WAN_DISCONNECT));
+        assert!(WanCmd::parse("nope").is_none());
     }
 
     #[test]

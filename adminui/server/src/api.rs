@@ -59,6 +59,7 @@ pub fn router(app: Arc<App>) -> Router {
         .route("/db/table/{name}", get(db_table))
         .route("/db/set", post(db_set))
         .merge(crate::actions::routes())
+        .merge(crate::wan::routes())
         .layer(middleware::from_fn_with_state(app.clone(), guard));
     Router::new()
         .nest("/api", api)
