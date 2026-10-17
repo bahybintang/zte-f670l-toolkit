@@ -1,5 +1,6 @@
 export interface MeshNode {
   almac: string
+  name?: string | null
   via: string
   radios: string[]
   clients: number
@@ -109,10 +110,11 @@ export function MeshMap({ nodes, role }: { nodes: MeshNode[]; role: 'controller'
               <rect width={NODE_W} height={NODE_H} rx={12} className="fill-card stroke-border" strokeWidth={1.5} />
               <circle cx={22} cy={NODE_H / 2} r={14} className="[fill:var(--mesh)] [fill-opacity:0.15]" />
               <RouterGlyph x={22} y={NODE_H / 2 + 2} small />
-              <text x={44} y={25} className="fill-foreground font-mono text-[11.5px]">
-                {n.almac}
+              <title>{`${n.name ?? 'Mesh device'} — ${n.almac}`}</title>
+              <text x={44} y={24} className={n.name ? 'fill-foreground text-[12.5px] font-semibold' : 'fill-foreground font-mono text-[11.5px]'}>
+                {n.name ?? n.almac}
               </text>
-              <text x={44} y={44} className="fill-muted-foreground text-[11px]">
+              <text x={44} y={43} className="fill-muted-foreground text-[11px]">
                 {n.radios.length ? bands(n.radios) : 'Mesh device'}
               </text>
               <Clients x={NODE_W - 14} y={40} count={n.clients} />

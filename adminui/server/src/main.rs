@@ -17,6 +17,7 @@ mod runtime;
 mod schema;
 mod state;
 mod mesh;
+mod meshid;
 mod status;
 mod wan;
 
@@ -216,6 +217,7 @@ fn serve(args: Args) {
     rt.block_on(async move {
         apply::resume_on_boot(app.clone()).await;
         tokio::spawn(mesh::resume_on_boot(app.dir.clone()));
+        meshid::spawn_listener("br0");
         let s = app.clone();
         tokio::spawn(async move {
             let mut iv = tokio::time::interval(status::SAMPLE_EVERY);

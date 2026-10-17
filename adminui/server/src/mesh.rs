@@ -407,6 +407,8 @@ pub fn onboarding(log: &str) -> Onboarding {
 #[derive(Debug, Clone, PartialEq, Serialize)]
 pub struct Node {
     pub almac: String,
+    /// "Archer AX12 · TP-Link", from its WSC M1/M2 (meshid); None if unseen.
+    pub name: Option<String>,
     /// How it reaches this router, e.g. "LAN4" (from the discovery section).
     pub via: String,
     pub radios: Vec<String>,
@@ -465,7 +467,7 @@ pub fn parse_nodes(dump: &str) -> Vec<Node> {
                 if line.contains("AL MAC(") {
                     if let Some(m) = m {
                         let v = via.iter().find(|(a, _)| *a == m).map(|(_, v)| v.clone()).unwrap_or_else(|| "Wi-Fi".into());
-                        nodes.push(Node { almac: m, via: v, radios: Vec::new(), clients: 0 });
+                        nodes.push(Node { almac: m, name: None, via: v, radios: Vec::new(), clients: 0 });
                     }
                 } else if let Some(code) = line.strip_prefix("media type = ") {
                     on_wifi = false;
@@ -525,7 +527,11 @@ async fn status_value(role: Role) -> Value {
     let topo = if all { topology(role).await } else { String::new() };
     let log = std::fs::read(format!("{RUN_DIR}/p1905.log")).map(|b| strip_ansi(&String::from_utf8_lossy(&b))).unwrap_or_default();
     let agent = (all && role == Role::Agent).then(|| onboarding(&log));
-    json!({ "running": all, "daemons": procs, "nodes": parse_nodes(&topo), "topology": topo, "agent": agent })
+    let mut nodes = parse_nodes(&topo);
+    for n in &mut nodes {
+        n.name = crate::meshid::lookup(&n.almac).map(|i| i.label());
+    }
+    json!({ "running": all, "daemons": procs, "nodes": nodes, "topology": topo, "agent": agent })
 }
 
 async fn read(State(app): S) -> R {

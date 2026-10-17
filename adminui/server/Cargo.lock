@@ -9,6 +9,7 @@ dependencies = [
  "argon2",
  "axum",
  "getrandom",
+ "libc",
  "regex-lite",
  "rust-embed",
  "serde",

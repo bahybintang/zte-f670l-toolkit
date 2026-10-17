@@ -189,7 +189,18 @@ function StatusCard({ status, enabled, role }: { status?: Status; enabled: boole
         <p className="mt-3 text-[13px] text-muted-foreground">
           {status.agent.controller ? (
             <>
-              Joined controller <span className="font-mono text-foreground">{status.agent.controller}</span>
+              Joined{' '}
+              {(() => {
+                const name = status.nodes?.find((n) => n.almac === status.agent?.controller)?.name
+                return name ? (
+                  <>
+                    <span className="font-medium text-foreground">{name}</span>{' '}
+                    <span className="font-mono">({status.agent.controller})</span>
+                  </>
+                ) : (
+                  <span className="font-mono text-foreground">controller {status.agent.controller}</span>
+                )
+              })()}
               {status.agent.configured ? ' · Wi-Fi settings received from it' : ' · waiting for its Wi-Fi settings'}
             </>
           ) : (
