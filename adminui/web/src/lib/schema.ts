@@ -199,8 +199,8 @@ export function validate(f: Field, v: string): string | null {
     default: {
       const len = [...v].length
       if (t === 'password' && v === '') return null
-      if (f.min != null && len < f.min) return `${name} needs at least ${f.min} characters`
-      if (f.max != null && len > f.max) return `${name} allows at most ${f.max} characters`
+      if (f.min != null && len < f.min) return `${name} needs at least ${f.min} character${f.min === 1 ? '' : 's'}`
+      if (f.max != null && len > f.max) return `${name} allows at most ${f.max} character${f.max === 1 ? '' : 's'}`
     }
   }
   if (f.pattern && v !== '') {
