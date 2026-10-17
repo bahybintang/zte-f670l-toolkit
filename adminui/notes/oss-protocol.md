@@ -540,3 +540,14 @@ stay *Initializing*, no WAN interface is created and PPP connect still gets -641
 `EV_EPONOAM_ETH_SFU_HGU_PORT_CHANGE_CONFIG`, set from the OLT over OAM), which is the next suspect:
 an SFU ONU bridges and does not run routed WAN connections. `sidbg 1 -l 8` raises cspd's log
 level; its user logs did not appear in dmesg (likely the serial console).
+
+**Update 2026-10-17 — the async flag.** The tries above sent the event with no request flag and
+had no effect. liboss `ASEND` (@0x4b58) writes `event | 0x10000` at header +8 (async request;
+`SSEND` uses 0x20000). With that flag, `oss-ponlink up` moves both `WANCD` rows from Status 2 to
+**1**, and `oss-ponlink down` returns them to 2; cspd and eoam stay up. The SFU lead above was a
+red herring: the LAN ports are all `EthPortConf.IsSfuMode=0`; only the shipped bridge WAN row has
+`WANC.IsSFUMode=1`. The multi-WCD manager (`e8_multiwcd_mgr.c`, module 0x101a7) is what writes
+WANCD Up: its event table (@0x2686bc) maps `0xa401`/`0xa60c` to the up handler (@0x61df8) and
+`0xa402`/`0xa60d` to down; `adminui oss-ethlink up|down` sends 0xa401/0xa402 to it directly.
+With the WANCD up, the WAN connection rows still have no `RealIFName` and PPP connect still
+returns -641 (row is bridge mode).

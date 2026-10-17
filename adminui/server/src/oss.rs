@@ -15,6 +15,7 @@ use tokio::net::UnixDatagram;
 pub const TBL_DEF: &str = "/etc/db_tbl_def.xml";
 const EVENT_SET: u32 = 0x2401;
 const SYN_REQ: u32 = 0x20000;
+const ASYN_REQ: u32 = 0x10000;
 const VIEW_MAGIC: u32 = 0x0102_0304;
 const SLOT_HDR: usize = 0x1c;
 /// The DM that names a row of a multi-instance view (libdb dbViewCommOp).
@@ -511,7 +512,8 @@ pub async fn send_async(module: u32, event: u32, payload: &[u8]) -> Result<(), S
     let (sender, path) = free_sender()?;
     let sock = UnixDatagram::bind(&path).map_err(|e| format!("bind {path}: {e}"))?;
     let mut d = datagram_ev(sender, module, event, 1, payload);
-    d[8..12].copy_from_slice(&event.to_le_bytes()); // async: clear SYN_REQ
+    // liboss ASEND @0x4b58 writes event | ASYN_REQ at +8 (SSEND uses SYN_REQ).
+    d[8..12].copy_from_slice(&(event | ASYN_REQ).to_le_bytes());
     let r = sock.send_to(&d, request_sock(module)).await.map(|_| ()).map_err(|e| format!("send: {e}"));
     let _ = std::fs::remove_file(&path);
     r
@@ -531,6 +533,19 @@ pub const XPON_LINK_DOWN: u32 = 0xa456;
 /// Tell cspd the PON link went up or down, exactly as eoam does.
 pub async fn pon_link(up: bool) -> Result<(), String> {
     send_async(XPON_MODULE, if up { XPON_LINK_UP } else { XPON_LINK_DOWN }, &[]).await
+}
+
+/// The multi-WCD manager (e8_multiwcd_mgr.c) and the events si_xpon_link_event
+/// forwards to it. Its handler (@0x61df8, table @0x2686bc) marks every WANCD
+/// available and writes Status Up on 0xa401 without checking the PON, which
+/// skips the GetPonMode gate in the xpon handler.
+pub const MULTIWCD_MODULE: u32 = 0x101a7;
+pub const ETH_LINK_UP: u32 = 0xa401;
+pub const ETH_LINK_DOWN: u32 = 0xa402;
+
+/// Send EV_ETH_LINKUP / EV_ETH_LINKDOWN straight to the multi-WCD manager.
+pub async fn eth_link(up: bool) -> Result<(), String> {
+    send_async(MULTIWCD_MODULE, if up { ETH_LINK_UP } else { ETH_LINK_DOWN }, &[]).await
 }
 
 /// Re-register a firewall rule row: delete (0x9704) then add (0x9703), so the

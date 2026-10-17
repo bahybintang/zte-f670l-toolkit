@@ -158,18 +158,19 @@ fn main() {
             }
         }
         // Spoof the PON link event eoam sends (testing WAN on a unit with no fiber).
-        "oss-ponlink" => {
+        "oss-ponlink" | "oss-ethlink" => {
             let up = match args.arg.as_deref() {
                 Some("up") => true,
                 Some("down") => false,
                 _ => {
-                    eprintln!("usage: adminui oss-ponlink <up|down>");
+                    eprintln!("usage: adminui {} <up|down>", args.cmd);
                     std::process::exit(2);
                 }
             };
             let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime");
-            match rt.block_on(oss::pon_link(up)) {
-                Ok(()) => println!("sent PON link {}", if up { "up (0xa455)" } else { "down (0xa456)" }),
+            let r = if args.cmd == "oss-ethlink" { rt.block_on(oss::eth_link(up)) } else { rt.block_on(oss::pon_link(up)) };
+            match r {
+                Ok(()) => println!("sent {} {}", args.cmd, if up { "up" } else { "down" }),
                 Err(e) => {
                     eprintln!("{e}");
                     std::process::exit(1);
