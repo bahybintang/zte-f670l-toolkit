@@ -543,6 +543,15 @@ pub const MULTIWCD_MODULE: u32 = 0x101a7;
 pub const ETH_LINK_UP: u32 = 0xa401;
 pub const ETH_LINK_DOWN: u32 = 0xa402;
 
+/// The multi-WCD manager's other up/down pair: on 0xa60c its up handler also
+/// calls plib_ifs_register_netif for every MultiWancd row (0xa401 does not).
+pub const WCD_NETIF_UP: u32 = 0xa60c;
+
+/// Ask the multi-WCD manager to register the WAN netifs (event 0xa60c).
+pub async fn wcd_netif_up() -> Result<(), String> {
+    send_async(MULTIWCD_MODULE, WCD_NETIF_UP, &[]).await
+}
+
 /// Send EV_ETH_LINKUP / EV_ETH_LINKDOWN straight to the multi-WCD manager.
 pub async fn eth_link(up: bool) -> Result<(), String> {
     send_async(MULTIWCD_MODULE, if up { ETH_LINK_UP } else { ETH_LINK_DOWN }, &[]).await

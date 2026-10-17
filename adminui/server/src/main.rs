@@ -158,6 +158,16 @@ fn main() {
             }
         }
         // Spoof the PON link event eoam sends (testing WAN on a unit with no fiber).
+        "oss-ethlink" if args.arg.as_deref() == Some("netif") => {
+            let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().expect("runtime");
+            match rt.block_on(oss::wcd_netif_up()) {
+                Ok(()) => println!("sent oss-ethlink netif (0xa60c)"),
+                Err(e) => {
+                    eprintln!("{e}");
+                    std::process::exit(1);
+                }
+            }
+        }
         "oss-ponlink" | "oss-ethlink" => {
             let up = match args.arg.as_deref() {
                 Some("up") => true,

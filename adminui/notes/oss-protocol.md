@@ -562,3 +562,9 @@ state (connect needs state 0 or 6). On the spare, with the row switched to route
 `RealIFName`: the WAN netdev is not built yet (the multi-WCD up handler only calls
 `plib_ifs_register_netif` on event 0xa60c, not on 0xa401). Spare restored afterwards.
 adminui now refuses PPP connect/disconnect unless the dial mode is Manual, with a reason.
+
+**Netif step (2026-10-17), no result.** `adminui oss-ethlink netif` sends 0xa60c to the multi-WCD
+manager after `oss-ponlink up`. It changed nothing visible: no new WAN netdev, `WANC.RealIFName`
+still empty, connect/disconnect still iRet 0 with no pppd. `nbif0` is torn down and recreated
+(new ifindex) whenever the WANC row is re-applied; it is UP while the row is routed and the link
+is up, DOWN otherwise. Building the per-connection WAN device is the open problem.
