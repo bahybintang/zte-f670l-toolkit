@@ -362,6 +362,90 @@ pub fn first_complete_dump(log: &str) -> Option<String> {
     Some(lines.join("\n"))
 }
 
+/// One mesh device from a topology dump.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Node {
+    pub almac: String,
+    /// How it reaches this router, e.g. "LAN4" (from the discovery section).
+    pub via: String,
+    pub radios: Vec<String>,
+    /// Non-1905 devices on its Wi-Fi interfaces, i.e. its clients.
+    pub clients: usize,
+}
+
+/// IEEE 1905.1 media types seen on this stack.
+fn media(code: &str) -> Option<&'static str> {
+    Some(match code {
+        "0x0100" | "0x0101" => "802.11b/g 2.4 GHz",
+        "0x0102" => "802.11a 5 GHz",
+        "0x0103" => "802.11n 2.4 GHz",
+        "0x0104" => "802.11n 5 GHz",
+        "0x0105" => "802.11ac 5 GHz",
+        "0x0106" | "0x0107" => "802.11ad 60 GHz",
+        "0x0108" => "802.11ax",
+        _ => return None,
+    })
+}
+
+/// The mesh devices in a topology dump (see `first_complete_dump`).
+pub fn parse_nodes(dump: &str) -> Vec<Node> {
+    let mac = regex_lite::Regex::new(r"([0-9a-f]{2}(?::[0-9a-f]{2}){5})").expect("regex");
+    let mut via: Vec<(String, String)> = Vec::new();
+    let mut nodes: Vec<Node> = Vec::new();
+    let mut section = "";
+    let mut pending_neighbor: Option<String> = None;
+    let mut want = "";
+    let mut on_wifi = false;
+    for line in dump.lines().map(str::trim) {
+        if line.starts_with("====") {
+            section = if line.contains("discovery") { "disc" } else if line.contains("response") { "resp" } else { "" };
+            continue;
+        }
+        let m = mac.captures(line).map(|c| c[1].to_string());
+        match section {
+            "disc" => {
+                if line.ends_with("AL MAC:") {
+                    want = "al";
+                } else if line.starts_with("receive ") {
+                    want = "port";
+                } else if let Some(m) = m {
+                    if want == "al" {
+                        pending_neighbor = Some(m);
+                    } else if want == "port" {
+                        let port = line.split("switch_port[").nth(1).and_then(|p| p.split(']').next()).and_then(|n| n.parse::<u32>().ok());
+                        if let Some(n) = pending_neighbor.take() {
+                            via.push((n, port.map_or("Ethernet".into(), |p| format!("LAN{}", p + 1))));
+                        }
+                    }
+                    want = "";
+                }
+            }
+            "resp" => {
+                if line.contains("AL MAC(") {
+                    if let Some(m) = m {
+                        let v = via.iter().find(|(a, _)| *a == m).map(|(_, v)| v.clone()).unwrap_or_else(|| "Wi-Fi".into());
+                        nodes.push(Node { almac: m, via: v, radios: Vec::new(), clients: 0 });
+                    }
+                } else if let Some(code) = line.strip_prefix("media type = ") {
+                    on_wifi = false;
+                    if let (Some(n), Some(r)) = (nodes.last_mut(), media(code.trim())) {
+                        on_wifi = true;
+                        if !n.radios.iter().any(|x| x == r) {
+                            n.radios.push(r.to_string());
+                        }
+                    }
+                } else if line.starts_with("non p1905 neighbor device") && on_wifi {
+                    if let Some(n) = nodes.last_mut() {
+                        n.clients += 1;
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    nodes
+}
+
 pub fn strip_ansi(s: &str) -> String {
     let re = regex_lite::Regex::new(r"\x1b\[[0-9;]*m").expect("regex");
     re.replace_all(s, "").trim().to_string()
@@ -397,7 +481,8 @@ async fn status_value() -> Value {
     trim_logs();
     let procs: serde_json::Map<String, Value> = running().await.into_iter().map(|(d, up)| (d.to_string(), json!(up))).collect();
     let all = procs.values().all(|v| v == true);
-    json!({ "running": all, "daemons": procs, "topology": if all { topology().await } else { String::new() } })
+    let topo = if all { topology().await } else { String::new() };
+    json!({ "running": all, "daemons": procs, "nodes": parse_nodes(&topo), "topology": topo })
 }
 
 async fn read(State(app): S) -> R {
@@ -526,6 +611,25 @@ mod tests {
         let two = format!("junk\n{one}{one}");
         let d = first_complete_dump(&two).unwrap();
         assert_eq!(d, "====================topology discovery====================\nno 1905.1 neighbors!!!");
+    }
+
+    #[test]
+    fn nodes_from_dump() {
+        let d = "====================topology discovery====================\nneighbor1 AL MAC:\n6c:4c:bc:4e:e4:50\n\
+                 neighbor1 connect interface MAC:\n6c:4c:bc:4e:e4:50\nreceive neighbor1 interface MAC:\n\
+                 00:11:41:3d:ca:28 switch_port[3]\n====================topology response====================\n\
+                 device1 AL MAC(6c:4c:bc:4e:e4:50)\ndevice1 interface1(6c:4c:bc:4e:e4:50)\nmedia type = 0x0001\n\
+                 p1905 neighbor device1(00:11:41:3d:ca:28)\ndevice1 interface2(6c:4c:bc:4e:e4:4e)\nmedia type = 0x0103\n\
+                 non p1905 neighbor device1(d4:f0:ea:3d:4b:65)\ndevice1 interface4(6c:4c:bc:4e:e4:4f)\nmedia type = 0x0105\n\
+                 non p1905 neighbor device1(1a:15:f4:56:1e:61)\nnon p1905 neighbor device2(f6:aa:05:6e:77:c6)\n\
+                 ====================local info====================\nlocal MAC 1(00:11:41:3d:ca:28) trx_config=0f\n";
+        let n = parse_nodes(d);
+        assert_eq!(n.len(), 1);
+        assert_eq!(n[0].almac, "6c:4c:bc:4e:e4:50");
+        assert_eq!(n[0].via, "LAN4");
+        assert_eq!(n[0].radios, vec!["802.11n 2.4 GHz", "802.11ac 5 GHz"]);
+        assert_eq!(n[0].clients, 3);
+        assert!(parse_nodes("").is_empty());
     }
 
     #[test]

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { MeshMap, type MeshNode } from '@/components/MeshMap'
 
 type Role = 'controller' | 'agent'
 type Backhaul = 'ethernet' | 'wifi'
@@ -25,6 +26,7 @@ interface Settings {
 interface Status {
   running: boolean
   daemons: Record<string, boolean>
+  nodes?: MeshNode[]
   topology: string
 }
 
@@ -86,7 +88,7 @@ export function Mesh() {
         network name and password to every device that joins, and steers phones and laptops to the best one.
       </p>
 
-      <StatusCard status={status} enabled={s.enabled} />
+      <StatusCard status={status} enabled={s.enabled} role={s.role} />
 
       <div className="mt-8 space-y-6">
         <Row label="EasyMesh" help="Starts the mesh service on this router.">
@@ -163,7 +165,7 @@ export function Mesh() {
   )
 }
 
-function StatusCard({ status, enabled }: { status?: Status; enabled: boolean }) {
+function StatusCard({ status, enabled, role }: { status?: Status; enabled: boolean; role: Role }) {
   const up = status?.running
   const tone = up ? 'bg-emerald-500' : enabled ? 'bg-amber-500' : 'bg-muted-foreground/40'
   const text = up ? 'Running' : enabled ? 'Enabled, not running' : 'Off'
@@ -180,12 +182,15 @@ function StatusCard({ status, enabled }: { status?: Status; enabled: boolean }) 
         )}
       </div>
       {up && (
-        <details className="mt-3">
-          <summary className="cursor-pointer text-[13px] text-muted-foreground">Mesh topology</summary>
-          <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap rounded-md bg-background p-3 font-mono text-[12px]">
-            {status?.topology || 'No other mesh devices yet.'}
-          </pre>
-        </details>
+        <div className="mt-4 rounded-lg bg-background/60 p-3">
+          <MeshMap nodes={status?.nodes ?? []} role={role} />
+          <details className="mt-3">
+            <summary className="cursor-pointer text-[13px] text-muted-foreground">Details</summary>
+            <pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap rounded-md bg-background p-3 font-mono text-[12px]">
+              {status?.topology || 'No topology reported yet.'}
+            </pre>
+          </details>
+        </div>
       )}
     </section>
   )
