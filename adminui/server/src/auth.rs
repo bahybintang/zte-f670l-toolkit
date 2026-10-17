@@ -1,5 +1,6 @@
-//! Single admin user, Argon2id hash in adminui.conf, in-memory sessions,
-//! CSRF header on state-changing requests, per-IP login backoff.
+//! Single admin user, Argon2id hash in adminui.conf, sessions in memory and
+//! mirrored to tmpfs (they survive an adminui restart, not a reboot), CSRF
+//! header on state-changing requests, per-IP login backoff.
 
 use argon2::password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString};
 use argon2::{Algorithm, Argon2, Params, Version};
@@ -91,6 +92,22 @@ struct Session {
 pub struct Auth {
     sessions: Mutex<HashMap<String, Session>>,
     fails: Mutex<HashMap<IpAddr, (u32, Instant)>>,
+    /// Where sessions are mirrored (tmpfs); None in tests.
+    store: Option<PathBuf>,
+}
+
+/// Default session mirror: tmpfs, so a reboot still logs everyone out.
+pub const SESSION_STORE: &str = "/var/run/adminui-sessions.json";
+/// Activity is written back at most this often.
+const SAVE_EVERY: Duration = Duration::from_secs(60);
+
+/// A session on disk: ages, not timestamps (Instant is per-process, and the
+/// router's wall clock resets at every boot).
+#[derive(Serialize, Deserialize)]
+struct Saved {
+    csrf: String,
+    age: u64,
+    idle: u64,
 }
 
 pub struct SessionInfo {
@@ -98,6 +115,40 @@ pub struct SessionInfo {
 }
 
 impl Auth {
+    /// Sessions mirrored to `path`, starting with whatever a previous run left.
+    pub fn with_store(path: PathBuf) -> Self {
+        let a = Auth { store: Some(path.clone()), ..Default::default() };
+        if let Some(saved) = std::fs::read(&path).ok().and_then(|b| serde_json::from_slice::<HashMap<String, Saved>>(&b).ok()) {
+            let now = Instant::now();
+            let mut s = a.sessions.lock().unwrap();
+            for (tok, v) in saved {
+                let (Some(created), Some(last)) = (now.checked_sub(Duration::from_secs(v.age)), now.checked_sub(Duration::from_secs(v.idle))) else {
+                    continue;
+                };
+                if v.idle < IDLE.as_secs() && v.age < MAX_AGE.as_secs() {
+                    s.insert(tok, Session { created, last, csrf: v.csrf });
+                }
+            }
+        }
+        a
+    }
+
+    fn save(&self, s: &HashMap<String, Session>) {
+        use std::os::unix::fs::PermissionsExt;
+        let Some(path) = &self.store else { return };
+        let out: HashMap<&String, Saved> = s
+            .iter()
+            .map(|(k, v)| (k, Saved { csrf: v.csrf.clone(), age: v.created.elapsed().as_secs(), idle: v.last.elapsed().as_secs() }))
+            .collect();
+        let tmp = path.with_extension("tmp");
+        if let Ok(b) = serde_json::to_vec(&out) {
+            if std::fs::write(&tmp, b).is_ok() {
+                let _ = std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o600));
+                let _ = std::fs::rename(&tmp, path);
+            }
+        }
+    }
+
     /// Returns Err(seconds to wait) when the IP is locked out.
     pub fn check_lockout(&self, ip: IpAddr) -> Result<(), u64> {
         let f = self.fails.lock().unwrap();
@@ -130,6 +181,7 @@ impl Auth {
         let mut s = self.sessions.lock().unwrap();
         s.retain(|_, v| v.last.elapsed() < IDLE && v.created.elapsed() < MAX_AGE);
         s.insert(token.clone(), Session { created: now, last: now, csrf: csrf.clone() });
+        self.save(&s);
         (token, csrf)
     }
 
@@ -138,14 +190,22 @@ impl Auth {
         let sess = s.get_mut(token)?;
         if sess.last.elapsed() > IDLE || sess.created.elapsed() > MAX_AGE {
             s.remove(token);
+            self.save(&s);
             return None;
         }
+        let stale = sess.last.elapsed() > SAVE_EVERY;
         sess.last = Instant::now();
-        Some(SessionInfo { csrf: sess.csrf.clone() })
+        let info = SessionInfo { csrf: sess.csrf.clone() };
+        if stale {
+            self.save(&s);
+        }
+        Some(info)
     }
 
     pub fn remove(&self, token: &str) {
-        self.sessions.lock().unwrap().remove(token);
+        let mut s = self.sessions.lock().unwrap();
+        s.remove(token);
+        self.save(&s);
     }
 }
 
@@ -171,6 +231,20 @@ mod tests {
     fn cookies() {
         assert_eq!(cookie_value(Some("a=1; adminui_session=xyz"), COOKIE), Some("xyz"));
         assert_eq!(cookie_value(None, COOKIE), None);
+    }
+
+    #[test]
+    fn sessions_survive_a_restart() {
+        let dir = std::env::temp_dir().join(format!("adminui-sess-{}", random_hex(4)));
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("s.json");
+        let a = Auth::with_store(path.clone());
+        let (tok, csrf) = a.create();
+        let b = Auth::with_store(path.clone());
+        assert_eq!(b.touch(&tok).map(|i| i.csrf), Some(csrf), "restored after restart");
+        b.remove(&tok);
+        assert!(Auth::with_store(path).touch(&tok).is_none(), "logout persisted");
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

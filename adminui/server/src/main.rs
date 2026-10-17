@@ -204,7 +204,7 @@ fn serve(args: Args) {
     let app = Arc::new(state::App {
         dir: args.dir.clone(),
         db: db::Db::new(exec),
-        auth: auth::Auth::default(),
+        auth: auth::Auth::with_store(auth::SESSION_STORE.into()),
         cfg: std::sync::Mutex::new(cfg),
         history: tokio::sync::Mutex::new(apply::History::load(args.dir.clone())),
         pending: Default::default(),
