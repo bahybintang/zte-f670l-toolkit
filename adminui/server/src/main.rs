@@ -16,6 +16,7 @@ mod oss;
 mod runtime;
 mod schema;
 mod state;
+mod mesh;
 mod status;
 mod wan;
 
@@ -214,6 +215,7 @@ fn serve(args: Args) {
     let rt = tokio::runtime::Builder::new_current_thread().enable_all().build().unwrap();
     rt.block_on(async move {
         apply::resume_on_boot(app.clone()).await;
+        tokio::spawn(mesh::resume_on_boot(app.dir.clone()));
         let s = app.clone();
         tokio::spawn(async move {
             let mut iv = tokio::time::interval(status::SAMPLE_EVERY);

@@ -19,6 +19,10 @@ const DIAG_TOOLS: Record<string, { tool: string; label: string }> = {
 }
 import { Skeleton } from '@/components/ui/skeleton'
 import { NotFound } from './NotFound'
+import { Mesh } from './Mesh'
+
+// Schema pages served by a dedicated component instead of generic sections.
+const CUSTOM: Record<string, () => React.JSX.Element> = { 'wlan-mesh': Mesh }
 
 export interface Edits {
   /** key "section|row|dm" -> new value */
@@ -39,6 +43,8 @@ export function SchemaPage() {
   const page = schema.data?.pages?.find((p) => p.id === pageId)
   if (schema.isPending) return <PageSkeleton />
   if (!page) return <NotFound />
+  const Custom = CUSTOM[page.id]
+  if (Custom) return <Custom key={page.id} />
   return <PageBody key={page.id} page={page} />
 }
 
