@@ -551,3 +551,14 @@ WANCD Up: its event table (@0x2686bc) maps `0xa401`/`0xa60c` to the up handler (
 `0xa402`/`0xa60d` to down; `adminui oss-ethlink up|down` sends 0xa401/0xa402 to it directly.
 With the WANCD up, the WAN connection rows still have no `RealIFName` and PPP connect still
 returns -641 (row is bridge mode).
+
+**Manual connect works (2026-10-17).** `si_ppp_manual_connect` / `_disconnect` (cspd
+`wancppp_mgr.c`, PPP manager event table @0x25cff0: 0x2801 -> 0x122e28, 0x2802 -> 0x1230a8)
+return **-641** "WANCPPP: not found statemachine" when the connection has no PPP state machine,
+**-931** when the state machine's ConnTrigger is not 2 (Manual), and -932/-933/-934 for a wrong
+state (connect needs state 0 or 6). On the spare, with the row switched to routed
+(`WANC.ConnType=1`, `IsSFUMode=0`), `WANCPPP.ConnTrigger=2` and `oss-ponlink up`, both
+`ppp-connect` and `ppp-disconnect` returned **iRet 0**. No pppd started and the row got no
+`RealIFName`: the WAN netdev is not built yet (the multi-WCD up handler only calls
+`plib_ifs_register_netif` on event 0xa60c, not on 0xa401). Spare restored afterwards.
+adminui now refuses PPP connect/disconnect unless the dial mode is Manual, with a reason.

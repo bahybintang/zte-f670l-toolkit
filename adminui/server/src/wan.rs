@@ -22,6 +22,8 @@ pub fn routes() -> Router<Arc<crate::state::App>> {
 
 /// WANC.ConnType for a routed connection (1 IP_Routed; 4 is PPPoE_Bridged).
 const ROUTED: &str = "1";
+/// WANCPPP.ConnTrigger 2 = Manual (0 Always on, 1 On demand).
+const MANUAL: &str = "2";
 /// WANCIP.Addressingtype 0 = DHCP (1 = static).
 const DHCP: &str = "0";
 
@@ -45,6 +47,14 @@ pub fn pick(cmd: WanCmd, wanc: &Table, wancppp: &Table, wancip: &Table) -> Resul
             let view = r.get("ViewName").unwrap_or("");
             let Some(c) = wanc_of(view) else { continue };
             if c.get("ConnType") == Some(ROUTED) {
+                // si_ppp_manual_{connect,disconnect} refuse (-931) unless the dial mode is Manual.
+                if r.get("ConnTrigger") != Some(MANUAL) {
+                    return Err(format!(
+                        "The PPPoE connection “{}” dials automatically (dial mode “{}”). Set the dial mode to Manual to connect and disconnect it by hand.",
+                        label(view),
+                        if r.get("ConnTrigger") == Some("1") { "On demand" } else { "Always on" }
+                    ));
+                }
                 return Ok(Conn { view: view.into(), name: label(view), connected: c.get("Status").is_some_and(|s| s != "0") });
             }
             bridged.get_or_insert_with(|| label(view));
@@ -160,7 +170,7 @@ mod tests {
             &[("ViewName", "IGD.WD1.WCD1.WCPPP1"), ("ConnType", "1"), ("WANCName", "1_INTERNET_R_VID_10"), ("Status", "1")],
             &[("ViewName", "IGD.WD1.WCD2.WCIP1"), ("ConnType", "1"), ("WANCName", "2_TR069_R_VID_20")],
         ]);
-        let ppp = t(&[&[("ViewName", "IGD.WD1.WCD1.WCPPP1")]]);
+        let ppp = t(&[&[("ViewName", "IGD.WD1.WCD1.WCPPP1"), ("ConnTrigger", "2")]]);
         let ip = t(&[&[("ViewName", "IGD.WD1.WCD2.WCIP1"), ("Addressingtype", "0"), ("ConnStatus", "0")]]);
         let p = pick(WanCmd::PppDisconnect, &wanc, &ppp, &ip).unwrap();
         assert_eq!((p.view.as_str(), p.name.as_str(), p.connected), ("IGD.WD1.WCD1.WCPPP1", "1_INTERNET_R_VID_10", true));
@@ -169,6 +179,13 @@ mod tests {
         assert!(!d.connected);
         assert!(applicable(WanCmd::DhcpRelease, &d).is_err());
         assert!(applicable(WanCmd::DhcpRenew, &d).is_ok());
+    }
+
+    #[test]
+    fn always_on_ppp_is_refused() {
+        let wanc = t(&[&[("ViewName", "V"), ("ConnType", "1"), ("WANCName", "P")]]);
+        let ppp = t(&[&[("ViewName", "V"), ("ConnTrigger", "0")]]);
+        assert!(pick(WanCmd::PppConnect, &wanc, &ppp, &t(&[])).unwrap_err().contains("Always on"));
     }
 
     #[test]
