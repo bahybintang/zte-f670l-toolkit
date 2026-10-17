@@ -515,3 +515,28 @@ both managers reply; PPP connect/disconnect → iRet **-641** with the row in br
 no WANC → **-3**, release → 0. No crash (cspd PID unchanged). -641's meaning is not decoded:
 the PPP manager's handler is not in the firmware extract. A real connect/disconnect (pppd
 dialing, link up/down) still needs a unit with a live PON link.
+
+## 11. PON link events (toward a virtual WAN on a unit with no fiber)
+
+Why the WAN never comes up on the spare: `WAND.WANDType=4` (GPON in libpmapi `tWandTypeTable`:
+DSL, Ethernet, 3GDongle, MoCA, GPON, …), both `WANCD` rows `Status=2` = *Initializing*
+(`tWandStatusTable`: Up, Down, Initializing, Unavailable), so no WAN connection ever gets a
+`RealIFName` and the PPP manager answers -641. The PON side of this unit is **EPON** (`eoam`
+daemon, `epondrv_*` kernel threads). `pon0` exists, is UP and has carrier.
+
+Link-up path **[V: disassembly]**: `eoam` @0x51540, on EPON link up, ASENDs
+`EV_XPON_LINK_UP 0xa455` (no data) to XPON_PID **0x10136** (cspd), to itself (0x850101) and
+optionally to the firewall (0x10102); link down is `EV_XPON_LINK_DOWN 0xa456`. In cspd the event
+table at 0x2689ec maps 0xa455/0xa456/0xa458/0xa459 to `si_xpon_link_event` (xpon_mgr.c,
+@0xb5730): with `GetPonMode` & 0x34 (EPON) it calls `plib_ifs_set_phylink_dev_up("IGD.WD1")` and
+ASENDs `EV_ETH_LINKUP 0xa401` to 0x101a7 (down: `_dev_down` + `EV_ETH_LINKDOWN 0xa402`).
+
+adminui: `oss::pon_link` / CLI `adminui oss-ponlink up|down` sends exactly that ASEND.
+
+Tried on the spare (2026-10-17): the event is delivered (kernel logs
+`[old_dev_ioctl]: dev->name = nbif0, is_sfu_mode=1`), cspd and eoam stay up, but the WANCD rows
+stay *Initializing*, no WAN interface is created and PPP connect still gets -641. The unit runs in
+**SFU mode** (`WANC.IsSFUMode=1`; cspd has `g_port_sfu_hgu_mode` and
+`EV_EPONOAM_ETH_SFU_HGU_PORT_CHANGE_CONFIG`, set from the OLT over OAM), which is the next suspect:
+an SFU ONU bridges and does not run routed WAN connections. `sidbg 1 -l 8` raises cspd's log
+level; its user logs did not appear in dmesg (likely the serial console).

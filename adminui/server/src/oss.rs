@@ -506,6 +506,33 @@ pub async fn send_raw(module: u32, event: u32, payload: &[u8]) -> Result<i32, St
     r
 }
 
+/// Send `event` to `module` asynchronously (ASEND: no sync flag, no reply).
+pub async fn send_async(module: u32, event: u32, payload: &[u8]) -> Result<(), String> {
+    let (sender, path) = free_sender()?;
+    let sock = UnixDatagram::bind(&path).map_err(|e| format!("bind {path}: {e}"))?;
+    let mut d = datagram_ev(sender, module, event, 1, payload);
+    d[8..12].copy_from_slice(&event.to_le_bytes()); // async: clear SYN_REQ
+    let r = sock.send_to(&d, request_sock(module)).await.map(|_| ()).map_err(|e| format!("send: {e}"));
+    let _ = std::fs::remove_file(&path);
+    r
+}
+
+// --- PON link events (test harness for a unit with no fiber) -----------------
+//
+// eoam, on EPON link up/down, ASENDs EV_XPON_LINK_UP 0xa455 / EV_XPON_LINK_DOWN
+// 0xa456 with no data to XPON_PID 0x10136 (cspd `si_xpon_link_event`, which
+// marks IGD.WD1 up/down via plib_ifs_set_phylink_dev_* and broadcasts
+// EV_ETH_LINKUP 0xa401 / EV_ETH_LINKDOWN 0xa402). eoam @0x51540. See notes §11.
+
+pub const XPON_MODULE: u32 = 0x10136;
+pub const XPON_LINK_UP: u32 = 0xa455;
+pub const XPON_LINK_DOWN: u32 = 0xa456;
+
+/// Tell cspd the PON link went up or down, exactly as eoam does.
+pub async fn pon_link(up: bool) -> Result<(), String> {
+    send_async(XPON_MODULE, if up { XPON_LINK_UP } else { XPON_LINK_DOWN }, &[]).await
+}
+
 /// Re-register a firewall rule row: delete (0x9704) then add (0x9703), so the
 /// firewall rebuilds it from the DB with no reboot. Reads the row's identity and
 /// interface fields (the firewall re-reads the match fields from the DB itself).
