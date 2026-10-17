@@ -216,6 +216,10 @@ pub fn wapp_list(run_dir: &str) -> String {
 // --- Running the stack -------------------------------------------------------
 
 pub const RUN_DIR: &str = "/var/mesh";
+/// LD_PRELOAD shim for wapp: realigns the driver's WAPP events (mesh/wappfix.c).
+const WAPPFIX_SO: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/wappfix.so"));
+/// What wapp runs to apply settings the controller sends (mesh/wifi_config_save).
+const WIFI_CONFIG_SAVE: &str = include_str!("../../mesh/wifi_config_save");
 const WLAN: &str = "/wlan";
 /// Files the daemons read from /wlan that the generated ones are bound over.
 const BOUND: [&str; 5] = ["map_cfg.txt", "wifi_info.txt", "mapd_cfg.txt", "wts_bss_info_config", "wapp_ap.conf"];
@@ -292,11 +296,24 @@ pub async fn start(s: &Settings) -> Result<(), String> {
             return Err(format!("bind {f}: {}", o.stderr.trim()));
         }
     }
+    if WAPPFIX_SO.is_empty() {
+        stop().await;
+        return Err("this build has no wapp compatibility shim (zig was missing at build time)".into());
+    }
+    std::fs::create_dir_all(format!("{RUN_DIR}/bin")).map_err(|e| e.to_string())?;
+    write_bytes(&format!("{RUN_DIR}/wappfix.so"), WAPPFIX_SO, 0o600)?;
+    write_bytes(&format!("{RUN_DIR}/bin/wifi_config_save"), WIFI_CONFIG_SAVE.as_bytes(), 0o700)?;
     let role = if s.role == Role::Controller { "0" } else { "1" };
     // Detached via `sh -c '… &'` so init reaps them; arguments are fixed strings.
-    let cmds = [("wapp", "wapp -d1".to_string()), ("p1905", format!("p1905_managerd -r{role}")), ("mapd", "mapd".to_string())];
-    for (log, c) in &cmds {
-        sh(&format!("cd {RUN_DIR} && {c} >{RUN_DIR}/{log}.log 2>&1 </dev/null &")).await?;
+    // wapp logs the Wi-Fi passphrases it receives, so its output is discarded;
+    // the other two logs carry no key material and back the topology view.
+    let cmds = [
+        (format!("PATH={RUN_DIR}/bin:$PATH LD_PRELOAD={RUN_DIR}/wappfix.so wapp -d1"), "/dev/null".to_string()),
+        (format!("p1905_managerd -r{role}"), format!("{RUN_DIR}/p1905.log")),
+        ("mapd".to_string(), format!("{RUN_DIR}/mapd.log")),
+    ];
+    for (c, log) in &cmds {
+        sh(&format!("cd {RUN_DIR} && umask 077 && {c} >{log} 2>&1 </dev/null &")).await?;
         tokio::time::sleep(std::time::Duration::from_secs(4)).await;
     }
     let down: Vec<&str> = running().await.into_iter().filter(|(_, up)| !up).map(|(d, _)| d).collect();
@@ -305,6 +322,12 @@ pub async fn start(s: &Settings) -> Result<(), String> {
         return Err(format!("{} exited right after start", down.join(", ")));
     }
     Ok(())
+}
+
+fn write_bytes(path: &str, body: &[u8], mode: u32) -> Result<(), String> {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::write(path, body).map_err(|e| format!("{path}: {e}"))?;
+    std::fs::set_permissions(path, std::fs::Permissions::from_mode(mode)).map_err(|e| format!("{path}: {e}"))
 }
 
 fn write_private(path: &str, body: &str) -> Result<(), String> {
@@ -317,7 +340,7 @@ fn write_private(path: &str, body: &str) -> Result<(), String> {
 const LOG_MAX: u64 = 256 * 1024;
 
 pub fn trim_logs() {
-    for l in ["wapp", "p1905", "mapd"] {
+    for l in ["p1905", "mapd"] {
         let p = format!("{RUN_DIR}/{l}.log");
         if std::fs::metadata(&p).is_ok_and(|m| m.len() > LOG_MAX) {
             let _ = std::fs::OpenOptions::new().write(true).truncate(true).open(&p);
@@ -329,11 +352,12 @@ pub fn trim_logs() {
 /// and that output is block-buffered (4 KiB), so a dump only reaches the log
 /// once more output follows it. Ask for dumps until one is complete, i.e. the
 /// next dump's header has arrived after it, and return that one.
-pub async fn topology() -> String {
+pub async fn topology(role: Role) -> String {
     let log = format!("{RUN_DIR}/p1905.log");
     let before = std::fs::metadata(&log).map(|m| m.len()).unwrap_or(0);
+    let ctrl = if role == Role::Controller { "controller" } else { "agent" };
     for _ in 0..6 {
-        let _ = crate::exec::run_raw("1905ctrl", &["controller", "dump_topology_info"], T).await;
+        let _ = crate::exec::run_raw("1905ctrl", &[ctrl, "dump_topology_info"], T).await;
         tokio::time::sleep(std::time::Duration::from_millis(300)).await;
         let all = std::fs::read(&log).unwrap_or_default();
         let new = String::from_utf8_lossy(all.get(before as usize..).unwrap_or(&[])).into_owned();
@@ -360,6 +384,23 @@ pub fn first_complete_dump(log: &str) -> Option<String> {
         .map(|l| l.split("[dump_topology_info] ").nth(1).unwrap_or(l).trim_end())
         .collect();
     Some(lines.join("\n"))
+}
+
+/// Agent onboarding as the 1905 daemon logs it: the controller it found, and
+/// whether every radio finished WSC autoconfiguration (M1/M2) with it.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct Onboarding {
+    pub controller: Option<String>,
+    pub configured: bool,
+}
+
+pub fn onboarding(log: &str) -> Onboarding {
+    let controller = log
+        .rsplit("find the conroller al_mac=")
+        .next()
+        .filter(|_| log.contains("find the conroller al_mac="))
+        .map(|t| t.chars().take(17).collect::<String>());
+    Onboarding { controller, configured: log.contains("auto configuration done of all radio") }
 }
 
 /// One mesh device from a topology dump.
@@ -477,12 +518,14 @@ fn public(s: &Settings) -> Value {
     v
 }
 
-async fn status_value() -> Value {
+async fn status_value(role: Role) -> Value {
     trim_logs();
     let procs: serde_json::Map<String, Value> = running().await.into_iter().map(|(d, up)| (d.to_string(), json!(up))).collect();
     let all = procs.values().all(|v| v == true);
-    let topo = if all { topology().await } else { String::new() };
-    json!({ "running": all, "daemons": procs, "nodes": parse_nodes(&topo), "topology": topo })
+    let topo = if all { topology(role).await } else { String::new() };
+    let log = std::fs::read(format!("{RUN_DIR}/p1905.log")).map(|b| strip_ansi(&String::from_utf8_lossy(&b))).unwrap_or_default();
+    let agent = (all && role == Role::Agent).then(|| onboarding(&log));
+    json!({ "running": all, "daemons": procs, "nodes": parse_nodes(&topo), "topology": topo, "agent": agent })
 }
 
 async fn read(State(app): S) -> R {
@@ -493,11 +536,12 @@ async fn read(State(app): S) -> R {
             s.ssid = t.row(0).and_then(|r| r.get("ESSID")).unwrap_or("").replace(' ', "-");
         }
     }
-    Ok(Json(json!({ "ok": true, "settings": public(&s), "status": status_value().await })))
+    Ok(Json(json!({ "ok": true, "settings": public(&s), "status": status_value(s.role).await })))
 }
 
-async fn status(State(_app): S) -> R {
-    Ok(Json(json!({ "ok": true, "status": status_value().await })))
+async fn status(State(app): S) -> R {
+    let role = Settings::load(&app.dir).role;
+    Ok(Json(json!({ "ok": true, "status": status_value(role).await })))
 }
 
 fn new_key() -> Result<String, String> {
@@ -518,12 +562,16 @@ async fn write(State(app): S, Json(mut s): Json<Settings>) -> R {
     s.save(&app.dir)?;
     let message = if s.enabled {
         start(&s).await?;
-        "EasyMesh is running. Other EasyMesh devices can join now."
+        if s.role == Role::Controller {
+            "EasyMesh is running. Other EasyMesh devices can join now."
+        } else {
+            "EasyMesh agent started. It joins the controller on the cabled LAN port within a minute."
+        }
     } else {
         stop().await;
         "EasyMesh is off."
     };
-    Ok(Json(json!({ "ok": true, "message": message, "settings": public(&s), "status": status_value().await })))
+    Ok(Json(json!({ "ok": true, "message": message, "settings": public(&s), "status": status_value(s.role).await })))
 }
 
 /// At boot: start the mesh if it was left on.
@@ -615,21 +663,30 @@ mod tests {
 
     #[test]
     fn nodes_from_dump() {
-        let d = "====================topology discovery====================\nneighbor1 AL MAC:\n6c:4c:bc:4e:e4:50\n\
-                 neighbor1 connect interface MAC:\n6c:4c:bc:4e:e4:50\nreceive neighbor1 interface MAC:\n\
-                 00:11:41:3d:ca:28 switch_port[3]\n====================topology response====================\n\
-                 device1 AL MAC(6c:4c:bc:4e:e4:50)\ndevice1 interface1(6c:4c:bc:4e:e4:50)\nmedia type = 0x0001\n\
-                 p1905 neighbor device1(00:11:41:3d:ca:28)\ndevice1 interface2(6c:4c:bc:4e:e4:4e)\nmedia type = 0x0103\n\
-                 non p1905 neighbor device1(d4:f0:ea:3d:4b:65)\ndevice1 interface4(6c:4c:bc:4e:e4:4f)\nmedia type = 0x0105\n\
-                 non p1905 neighbor device1(1a:15:f4:56:1e:61)\nnon p1905 neighbor device2(f6:aa:05:6e:77:c6)\n\
-                 ====================local info====================\nlocal MAC 1(00:11:41:3d:ca:28) trx_config=0f\n";
+        let d = "====================topology discovery====================\nneighbor1 AL MAC:\n02:00:00:00:0c:01\n\
+                 neighbor1 connect interface MAC:\n02:00:00:00:0c:01\nreceive neighbor1 interface MAC:\n\
+                 02:00:00:00:0a:28 switch_port[3]\n====================topology response====================\n\
+                 device1 AL MAC(02:00:00:00:0c:01)\ndevice1 interface1(02:00:00:00:0c:01)\nmedia type = 0x0001\n\
+                 p1905 neighbor device1(02:00:00:00:0a:28)\ndevice1 interface2(02:00:00:00:0c:02)\nmedia type = 0x0103\n\
+                 non p1905 neighbor device1(02:00:00:00:0d:01)\ndevice1 interface4(02:00:00:00:0c:03)\nmedia type = 0x0105\n\
+                 non p1905 neighbor device1(02:00:00:00:0d:02)\nnon p1905 neighbor device2(02:00:00:00:0d:03)\n\
+                 ====================local info====================\nlocal MAC 1(02:00:00:00:0a:28) trx_config=0f\n";
         let n = parse_nodes(d);
         assert_eq!(n.len(), 1);
-        assert_eq!(n[0].almac, "6c:4c:bc:4e:e4:50");
+        assert_eq!(n[0].almac, "02:00:00:00:0c:01");
         assert_eq!(n[0].via, "LAN4");
         assert_eq!(n[0].radios, vec!["802.11n 2.4 GHz", "802.11ac 5 GHz"]);
         assert_eq!(n[0].clients, 3);
         assert!(parse_nodes("").is_empty());
+    }
+
+    #[test]
+    fn agent_onboarding_from_log() {
+        let log = "[1905Daemon][parse_cmdu_message] find the conroller al_mac=02:00:00:00:0c:01\n\
+                   [1905Daemon][ap_autoconfig_enrolle_sm] send WSC M1 to 02:00:00:00:0c:01\n\
+                   [1905Daemon][triger_autoconfiguration] auto configuration done of all radio\n";
+        assert_eq!(onboarding(log), Onboarding { controller: Some("02:00:00:00:0c:01".into()), configured: true });
+        assert_eq!(onboarding("nothing"), Onboarding { controller: None, configured: false });
     }
 
     #[test]

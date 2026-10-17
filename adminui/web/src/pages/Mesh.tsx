@@ -28,6 +28,7 @@ interface Status {
   daemons: Record<string, boolean>
   nodes?: MeshNode[]
   topology: string
+  agent?: { controller: string | null; configured: boolean } | null
 }
 
 interface MeshResp {
@@ -95,7 +96,10 @@ export function Mesh() {
           <Switch checked={s.enabled} onCheckedChange={(v) => set('enabled', v)} aria-label="EasyMesh" />
         </Row>
 
-        <Row label="Role" help="Use Controller on the main router. Agent joins another controller's mesh.">
+        <Row
+          label="Role"
+          help="Controller on the main router. Agent joins another EasyMesh router (for example a TP-Link Archer or Deco): connect one of this router's LAN ports to it with a cable; no WPS needed."
+        >
           <Segmented<Role>
             value={s.role}
             onChange={(v) => set('role', v)}
@@ -181,6 +185,18 @@ function StatusCard({ status, enabled, role }: { status?: Status; enabled: boole
           </span>
         )}
       </div>
+      {up && status?.agent && (
+        <p className="mt-3 text-[13px] text-muted-foreground">
+          {status.agent.controller ? (
+            <>
+              Joined controller <span className="font-mono text-foreground">{status.agent.controller}</span>
+              {status.agent.configured ? ' · Wi-Fi settings received from it' : ' · waiting for its Wi-Fi settings'}
+            </>
+          ) : (
+            'Looking for an EasyMesh controller on the LAN…'
+          )}
+        </p>
+      )}
       {up && (
         <div className="mt-4 rounded-lg bg-background/60 p-3">
           <MeshMap nodes={status?.nodes ?? []} role={role} />
