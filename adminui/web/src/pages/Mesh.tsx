@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { MeshMap, type MeshNode } from '@/components/MeshMap'
+import { MeshMap, SIGNAL_WORD, signalLevel, type MeshNode } from '@/components/MeshMap'
 
 type Role = 'controller' | 'agent'
 type Backhaul = 'ethernet' | 'wifi'
@@ -299,6 +299,8 @@ function StatusCard({ status, enabled, role }: { status?: Status; enabled: boole
               })()}
               {status.agent.configured ? ' · Wi-Fi settings received from it' : ' · waiting for its Wi-Fi settings'}
             </>
+          ) : status.wifiBackhaul ? (
+            'Connected to the main router over Wi-Fi; not yet part of its EasyMesh network'
           ) : (
             'Looking for an EasyMesh controller on the LAN…'
           )}
@@ -310,6 +312,10 @@ function StatusCard({ status, enabled, role }: { status?: Status; enabled: boole
             <>
               Wi-Fi backhaul: {status.wifiBackhaul.band} link to{' '}
               <span className="font-mono">{status.wifiBackhaul.ap}</span>
+              {(() => {
+                const sig = status.nodes?.find((n) => n.link)?.link?.signal
+                return sig != null ? ` · ${SIGNAL_WORD[signalLevel(sig)].toLowerCase()} signal (${sig} dBm)` : null
+              })()}
               {status.uplink === 'bridged' && ' · in use'}
               {status.uplink === 'cabled' && ' · not in use yet: a cable to the main router is (or was just) connected'}
             </>

@@ -49,6 +49,19 @@ pub fn lookup(almac: &str) -> Option<Identity> {
     store().lock().ok()?.get(&almac.to_lowercase()).cloned()
 }
 
+/// The recorded device a MAC belongs to (an exact AL MAC, else one of the same
+/// device's addresses, e.g. a BSSID next to its AL MAC), with that AL MAC.
+pub fn lookup_device(mac: &str) -> Option<(String, Identity)> {
+    let s = store().lock().ok()?;
+    let mac = mac.to_lowercase();
+    if let Some(i) = s.get(&mac) {
+        return Some((mac, i.clone()));
+    }
+    let mut near: Vec<_> = s.iter().filter(|(k, _)| crate::backhaul::same_device(k, &mac)).collect();
+    near.sort_by_key(|(k, _)| k.as_str());
+    near.first().map(|(k, i)| (k.to_string(), (*i).clone()))
+}
+
 fn printable(v: &[u8]) -> String {
     String::from_utf8_lossy(v).chars().filter(|c| !c.is_control()).take(64).collect::<String>().trim().to_string()
 }

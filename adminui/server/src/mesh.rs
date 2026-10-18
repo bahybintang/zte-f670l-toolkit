@@ -462,6 +462,9 @@ pub struct Node {
     pub radios: Vec<String>,
     /// Non-1905 devices on its Wi-Fi interfaces, i.e. its clients.
     pub clients: usize,
+    /// This router's Wi-Fi backhaul to it (agent only): signal and rate.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub link: Option<crate::backhaul::LinkInfo>,
 }
 
 /// IEEE 1905.1 media types seen on this stack.
@@ -515,7 +518,7 @@ pub fn parse_nodes(dump: &str) -> Vec<Node> {
                 if line.contains("AL MAC(") {
                     if let Some(m) = m {
                         let v = via.iter().find(|(a, _)| *a == m).map(|(_, v)| v.clone()).unwrap_or_else(|| "Wi-Fi".into());
-                        nodes.push(Node { almac: m, name: None, via: v, radios: Vec::new(), clients: 0 });
+                        nodes.push(Node { almac: m, name: None, via: v, radios: Vec::new(), clients: 0, link: None });
                     }
                 } else if let Some(code) = line.strip_prefix("media type = ") {
                     on_wifi = false;
@@ -582,8 +585,15 @@ async fn status_value(role: Role) -> Value {
     let agent = (all && role == Role::Agent).then(|| onboarding_so_far(&log));
     let wifi_backhaul = if all && role == Role::Agent { crate::backhaul::backhaul_link().await } else { None };
     let mut nodes = parse_nodes(&topo);
+    if let Some((st, ap)) = &wifi_backhaul {
+        let link = crate::backhaul::link_info(st).await;
+        let controller = agent.as_ref().and_then(|a| a.controller.clone());
+        uplink_node(&mut nodes, st, ap, controller, link);
+    }
     for n in &mut nodes {
-        n.name = crate::meshid::lookup(&n.almac).map(|i| i.label());
+        if n.name.is_none() {
+            n.name = crate::meshid::lookup(&n.almac).map(|i| i.label());
+        }
     }
     json!({
         "uplink": match crate::backhaul::state() {
@@ -595,6 +605,23 @@ async fn status_value(role: Role) -> Value {
         "running": all, "daemons": procs, "nodes": nodes, "topology": topo, "agent": agent,
         "wifiBackhaul": wifi_backhaul.map(|(st, ap)| json!({ "station": st, "band": if st == "apcli1" { "5 GHz" } else { "2.4 GHz" }, "ap": ap })),
     })
+}
+
+/// Put the main router on the map as reached over the Wi-Fi backhaul: label its
+/// link when the 1905 topology lists it, add it when it does not (the topology
+/// can lag or miss a device that is only reached over the station).
+pub fn uplink_node(nodes: &mut Vec<Node>, st: &str, ap: &str, controller: Option<String>, link: Option<crate::backhaul::LinkInfo>) {
+    let via = format!("Wi-Fi {}", if st == "apcli1" { "5 GHz" } else { "2.4 GHz" });
+    let is_main = |n: &Node| crate::backhaul::same_device(&n.almac, ap) || controller.as_deref() == Some(n.almac.as_str());
+    if let Some(n) = nodes.iter_mut().find(|n| is_main(n)) {
+        n.via = via;
+        n.link = link;
+        return;
+    }
+    let known = crate::meshid::lookup_device(controller.as_deref().unwrap_or(ap));
+    let almac = controller.or_else(|| known.as_ref().map(|(k, _)| k.clone())).unwrap_or_else(|| ap.to_string());
+    let name = known.map(|(_, i)| i.label());
+    nodes.insert(0, Node { almac, name, via, radios: Vec::new(), clients: 0, link });
 }
 
 async fn read(State(app): S) -> R {
@@ -812,5 +839,20 @@ mod tests {
         assert!(Settings { enabled: true, password: "short".into(), ..settings() }.validate().is_err());
         assert!(Settings { enabled: true, role: Role::Agent, password: String::new(), ..settings() }.validate().is_ok());
         assert!(Settings { steer_rssi: -20, ..settings() }.validate().is_err());
+    }
+
+    #[test]
+    fn wifi_uplink_appears_on_the_map() {
+        let link = crate::backhaul::LinkInfo { ap: "02:00:00:00:e4:4f".into(), signal: Some(-61), rate: Some(433) };
+        // Not in the 1905 topology: added, named by the controller's AL MAC.
+        let mut nodes = Vec::new();
+        uplink_node(&mut nodes, "apcli1", "02:00:00:00:e4:4f", Some("02:00:00:00:e4:50".into()), Some(link.clone()));
+        assert_eq!(nodes.len(), 1);
+        assert_eq!((nodes[0].almac.as_str(), nodes[0].via.as_str()), ("02:00:00:00:e4:50", "Wi-Fi 5 GHz"));
+        assert_eq!(nodes[0].link, Some(link.clone()));
+        // Already listed (e.g. as "Wi-Fi" or a stale LAN port): relabelled, not duplicated.
+        let mut nodes = vec![Node { almac: "02:00:00:00:e4:50".into(), name: None, via: "LAN4".into(), radios: vec![], clients: 3, link: None }];
+        uplink_node(&mut nodes, "apcli0", "02:00:00:00:e4:4e", None, None);
+        assert_eq!((nodes.len(), nodes[0].via.as_str(), nodes[0].clients), (1, "Wi-Fi 2.4 GHz", 3));
     }
 }

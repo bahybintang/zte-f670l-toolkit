@@ -66,11 +66,35 @@ pub struct Uplink {
     pub password: String,
 }
 
+/// An associated station: its AP, signal (dBm) and PHY rate (Mb/s).
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+pub struct LinkInfo {
+    pub ap: String,
+    pub signal: Option<i32>,
+    pub rate: Option<u32>,
+}
+
+/// From `iwconfig <station>`: "Access Point: 6C:4C:…   Bit Rate=867 Mb/s" and
+/// "Signal level:-27 dBm". An unassociated station reads "Not-Associated".
+pub fn parse_iwconfig(out: &str) -> Option<LinkInfo> {
+    let after = |key: &str| out.split(key).nth(1).and_then(|t| t.split_whitespace().next());
+    let ap = after("Access Point: ")?.to_lowercase();
+    if ap.len() != 17 || ap.matches(':').count() != 5 {
+        return None;
+    }
+    let signal = after("Signal level:").and_then(|v| v.parse().ok()).filter(|s: &i32| (-120..0).contains(s));
+    let rate = after("Bit Rate=").and_then(|v| v.parse().ok());
+    Some(LinkInfo { ap, signal, rate })
+}
+
+pub async fn link_info(st: &str) -> Option<LinkInfo> {
+    let o = crate::exec::run_raw("iwconfig", &[st], T).await.ok()?;
+    parse_iwconfig(&o.stdout)
+}
+
 /// The AP a station interface is associated with, if any.
 pub async fn station_link(st: &str) -> Option<String> {
-    let o = crate::exec::run_raw("iwconfig", &[st], T).await.ok()?;
-    let ap = o.stdout.split("Access Point: ").nth(1)?.split_whitespace().next()?.to_lowercase();
-    (ap.len() == 17 && ap.matches(':').count() == 5).then_some(ap)
+    link_info(st).await.map(|l| l.ap)
 }
 
 /// Wi-Fi backhaul state: the first associated station and its AP.
@@ -494,6 +518,13 @@ async fn supervise(gen: u64, uplink: Option<Uplink>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn station_link_from_iwconfig() {
+        let up = "apcli1    RTWIFI SoftAP  ESSID:\"\"\n          Access Point: 6C:4C:BC:4E:E4:4F   Bit Rate=867 Mb/s   Sensitivity=-1094317672 dBm\n          Link Quality=100/0  Signal level:-27 dBm  Noise level:-27 dBm\n";
+        assert_eq!(parse_iwconfig(up), Some(LinkInfo { ap: "6c:4c:bc:4e:e4:4f".into(), signal: Some(-27), rate: Some(867) }));
+        assert_eq!(parse_iwconfig("          Access Point: Not-Associated   Bit Rate:867 Mb/s"), None);
+    }
 
     #[test]
     fn cable_to_the_main_router_is_detected() {

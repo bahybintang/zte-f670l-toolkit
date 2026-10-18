@@ -4,7 +4,16 @@ export interface MeshNode {
   via: string
   radios: string[]
   clients: number
+  /** This router's Wi-Fi backhaul to the device (agent): signal in dBm, PHY rate in Mb/s. */
+  link?: { ap: string; signal?: number | null; rate?: number | null } | null
 }
+
+/** Signal quality for a backhaul: 0 (weak) to 3 (excellent). */
+export function signalLevel(dbm: number) {
+  return dbm >= -60 ? 3 : dbm >= -67 ? 2 : dbm >= -75 ? 1 : 0
+}
+const SIGNAL_TONE = ['fill-red-500', 'fill-amber-500', 'fill-emerald-500', 'fill-emerald-500']
+export const SIGNAL_WORD = ['Weak', 'Fair', 'Good', 'Excellent']
 
 const W = 640
 const NODE_W = 196
@@ -19,7 +28,7 @@ function layout(n: number) {
   }
   if (n === 1) {
     const H = 210
-    return { H, root: { x: W / 2 - 130, y: H / 2 }, at: () => ({ x: W / 2 + 150, y: H / 2 }) }
+    return { H, root: { x: W / 2 - 190, y: H / 2 }, at: () => ({ x: W / 2 + 190, y: H / 2 }) }
   }
   if (n === 2) {
     const H = 230
@@ -70,6 +79,10 @@ export function MeshMap({ nodes, role }: { nodes: MeshNode[]; role: 'controller'
           // Label at the middle of the link.
           const mx = (CX + p.x) / 2
           const my = (CY + p.y) / 2
+          const sig = n.link?.signal ?? null
+          const detail = n.link ? [sig != null && `${sig} dBm`, n.link.rate && `${n.link.rate} Mb/s`].filter(Boolean).join(' · ') : ''
+          const pw = Math.max(60, Math.max(n.via.length * 6.2, detail.length * 5.9 + (sig != null ? 16 : 0)) + 22)
+          const ph = detail ? 36 : 22
           return (
             <g key={`link-${n.almac}`}>
               <line
@@ -84,10 +97,19 @@ export function MeshMap({ nodes, role }: { nodes: MeshNode[]; role: 'controller'
                 opacity={0.75}
               />
               <g transform={`translate(${mx} ${my})`}>
-                <rect x={-30} y={-11} width={60} height={22} rx={11} className="fill-card stroke-border" />
-                <text textAnchor="middle" dy="4" className="fill-muted-foreground text-[11px] font-medium">
+                {sig != null && <title>{`${SIGNAL_WORD[signalLevel(sig)]} signal: ${sig} dBm`}</title>}
+                <rect x={-pw / 2} y={-ph / 2} width={pw} height={ph} rx={11} className="fill-card stroke-border" />
+                <text textAnchor="middle" dy={detail ? -3 : 4} className="fill-muted-foreground text-[11px] font-medium">
                   {n.via}
                 </text>
+                {detail && (
+                  <g transform={`translate(0 ${12})`}>
+                    {sig != null && <SignalBars x={-(detail.length * 5.9) / 2 - 10} y={0} level={signalLevel(sig)} />}
+                    <text textAnchor="middle" x={sig != null ? 8 : 0} className="fill-foreground font-mono text-[10.5px]">
+                      {detail}
+                    </text>
+                  </g>
+                )}
               </g>
             </g>
           )
@@ -115,7 +137,7 @@ export function MeshMap({ nodes, role }: { nodes: MeshNode[]; role: 'controller'
                 {n.name ?? n.almac}
               </text>
               <text x={44} y={43} className="fill-muted-foreground text-[11px]">
-                {n.radios.length ? bands(n.radios) : 'Mesh device'}
+                {n.radios.length ? bands(n.radios) : role === 'agent' && n.link ? 'Main router' : 'Mesh device'}
               </text>
               <Clients x={NODE_W - 14} y={40} count={n.clients} />
             </g>
@@ -163,6 +185,25 @@ function RouterGlyph({ x, y, small }: { x: number; y: number; small?: boolean })
       <line x1={6} y1={-2} x2={8} y2={-10} />
       <circle cx={-5} cy={2.5} r={0.8} className="[fill:var(--mesh)]" />
       <circle cx={0} cy={2.5} r={0.8} className="[fill:var(--mesh)]" />
+    </g>
+  )
+}
+
+/** Four rising bars, the first `level + 1` lit in the quality colour; baseline at y. */
+function SignalBars({ x, y, level }: { x: number; y: number; level: number }) {
+  return (
+    <g transform={`translate(${x} ${y})`} aria-hidden>
+      {[0, 1, 2, 3].map((i) => (
+        <rect
+          key={i}
+          x={i * 3.2 - 6}
+          y={-3 - i * 2}
+          width={2.2}
+          height={3 + i * 2}
+          rx={0.6}
+          className={i <= level ? SIGNAL_TONE[level] : 'fill-muted-foreground/30'}
+        />
+      ))}
     </g>
   )
 }
