@@ -1,0 +1,1243 @@
+{
+  "pages": [
+    {
+      "id": "diag-line",
+      "title": "ATM line test",
+      "group": "diagnostics",
+      "order": 5,
+      "icon": "activity",
+      "description": "ATM OAM F4/F5 loopback test of a DSL PVC.",
+      "stock": {
+        "menu": "ssmLineDiag",
+        "page": "manager_dsl_diag_t.gch",
+        "handler": [
+          "atm_oam_gch.gch",
+          "manager_dsl_diag_js.gch"
+        ]
+      },
+      "applicable": false,
+      "applicableNote": "ADSL/ATM page; this device is GPON.",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "test",
+          "title": "Test",
+          "table": "",
+          "mode": "single",
+          "source": "runtime:atm_oam",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Destination_address",
+              "label": "VPI/VCI",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "notes": "Uses OBJ_ATM_ID / OBJ_DSLINTERFACE_ID (F5 segment/end-to-end, F4 segment/end-to-end loopback). Menu upMode 1 (DSL uplink only)."
+    },
+    {
+      "id": "diag-ping",
+      "title": "Ping",
+      "group": "diagnostics",
+      "order": 10,
+      "icon": "radar",
+      "description": "Ping an IP address or host name from the router, optionally through a specific WAN connection.",
+      "stock": {
+        "menu": "ssmPingDiag",
+        "page": "manager_dev_ping_t.gch",
+        "handler": [
+          "dev_ping_gch.gch",
+          "manager_dev_ping_js.gch",
+          "wan_query.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "request",
+          "title": "Ping",
+          "table": "",
+          "mode": "single",
+          "source": "runtime:ping_request",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Host",
+              "label": "IP address or host name",
+              "type": "string",
+              "required": true,
+              "min": 1,
+              "max": 255,
+              "pattern": "^[A-Za-z0-9.:_-]{1,255}$",
+              "help": "IPv4 address, IPv6 address or host name."
+            },
+            {
+              "dm": "Interface",
+              "label": "WAN connection",
+              "type": "string",
+              "help": "WAN connection to ping through. Leave empty to use the default route."
+            },
+            {
+              "dm": "NumofRepeat",
+              "label": "Count",
+              "type": "int",
+              "min": 1,
+              "max": 100,
+              "default": "4",
+              "help": "Number of pings to send (default 4).",
+              "advanced": true
+            },
+            {
+              "dm": "DataBlockSize",
+              "label": "Packet size",
+              "type": "int",
+              "min": 1,
+              "max": 65500,
+              "default": "56",
+              "unit": "bytes",
+              "advanced": true,
+              "help": "Payload size in bytes (default 56)."
+            },
+            {
+              "dm": "Timeout",
+              "label": "Timeout",
+              "type": "int",
+              "min": 1,
+              "max": 60000,
+              "default": "2000",
+              "unit": "ms",
+              "advanced": true,
+              "help": "Time to wait for each reply (default 2000 ms)."
+            }
+          ]
+        },
+        {
+          "id": "result",
+          "title": "Result",
+          "table": "",
+          "mode": "readonly",
+          "source": "runtime:ping",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "DiagnosticsState",
+              "label": "State",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "Requested",
+                  "label": "Running"
+                },
+                {
+                  "value": "Complete",
+                  "label": "Complete"
+                },
+                {
+                  "value": "Error_CannotResolveHostName",
+                  "label": "Cannot resolve host name"
+                },
+                {
+                  "value": "None",
+                  "label": "Idle"
+                }
+              ]
+            },
+            {
+              "dm": "PingAck",
+              "label": "Output",
+              "type": "text",
+              "help": "Full ping output; empty while the test is running."
+            },
+            {
+              "dm": "SuccessCount",
+              "label": "Replies",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "FailureCount",
+              "label": "Lost",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "MinimumResponseTime",
+              "label": "Min RTT",
+              "type": "int",
+              "unit": "ms",
+              "advanced": true
+            },
+            {
+              "dm": "AverageResponseTime",
+              "label": "Avg RTT",
+              "type": "int",
+              "unit": "ms",
+              "advanced": true
+            },
+            {
+              "dm": "MaximumResponseTime",
+              "label": "Max RTT",
+              "type": "int",
+              "unit": "ms",
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "ping",
+          "label": "Start",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Runs ping with the request fields; returns PingAck-style text plus summary. Stock writes OBJ_DEVPING_ID (PINGDiag row 0) DiagnosticsState=Requested and polls PingAck every 3 s."
+        }
+      ],
+      "notes": "Stock mechanism: dev_ping_gch.gch, on IF_ACTION=new, does set_inst(OBJ_DEVPING_ID, \"\") with Host, Interface from the form plus fixed DiagnosticsState=Requested, NumofRepeat=4, DataBlockSize=56, Timeout=2000, then undoDBSave() (not persisted to flash). The JS then re-submits every 3 s (IF_TIME starts at 8 tries) until OBJ_DEVPING_ID PingAck is non-empty and shows PingAck verbatim in a textarea. The genuine v9 firmware (networkdiag_ping_lua.lua) also reads MinimumResponseTime, MaximumResponseTime, AverageResponseTime, SuccessCount, FailureCount, DSCP. DB backing: view IGD.PINGDIAG.CFG1 = table PINGDiag row 0 (DMs ViewName, DiagnosticsState (stored numeric, 0=idle), Interface, Host, NumberOfRepetitions, DataBlockSize, TTL, DSCP, Timeout, Interval, Stop, HaveResult); note OBJ param NumofRepeat maps to DM NumberOfRepetitions. PINGDiag rows 1-3 (CFG2-4) are other ping users (TR-069/keepalive) - do not touch. Recommended backend: builtin action that runs busybox `ping -c N -s SIZE -W secs [-I <ifname>] HOST` directly and streams output, instead of driving PINGDiag. UI-text notes moved here: [Host]: Stock accepts an IPv4 address, an IPv6 address or a host name (checkIpAddress / checkIPV6Address / checkHostName); trailing spaces trimmed, leading zeros stripped from IPv4. | [Interface]: WAN connection view name (e.g. a WANC/WCIP/WCPPP identity such as IGD.WD1.WCD1.WCIP1). Options come from the live WAN list (stock wan_query.gch / wanQueryByApp). Empty = default route. | [NumofRepeat]: Stock fixes this at 4; not editable there. | [DataBlockSize]: Stock fixes this at 56. | [Timeout]: Stock fixes this at 2000. | [DiagnosticsState]: Value strings beyond Requested are TR-098 standard names; verify on device. | [PingAck]: Raw ping output; empty while running."
+    },
+    {
+      "id": "diag-traceroute",
+      "title": "Traceroute",
+      "group": "diagnostics",
+      "order": 20,
+      "icon": "route",
+      "description": "Trace the route to an IP address or host name.",
+      "stock": {
+        "menu": "ssmTraceRoute",
+        "page": "manager_trace_route_t.gch",
+        "handler": [
+          "trace_route_gch.gch",
+          "manager_trace_route_js.gch",
+          "wan_func.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "request",
+          "title": "Traceroute",
+          "table": "",
+          "mode": "single",
+          "source": "runtime:traceroute_request",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Host",
+              "label": "IP address or host name",
+              "type": "string",
+              "required": true,
+              "min": 1,
+              "max": 255,
+              "pattern": "^[A-Za-z0-9.:_-]{1,255}$",
+              "help": "IPv4 address, IPv6 address or host name."
+            },
+            {
+              "dm": "Interface",
+              "label": "WAN connection",
+              "type": "string",
+              "help": "WAN connection to trace through. Leave empty to use the default route."
+            },
+            {
+              "dm": "MaxHopCount",
+              "label": "Maximum hops",
+              "type": "int",
+              "min": 1,
+              "max": 64,
+              "help": "1–64. Leave empty for the default."
+            },
+            {
+              "dm": "Timeout",
+              "label": "Wait time",
+              "type": "int",
+              "min": 1,
+              "max": 4294967295,
+              "required": true,
+              "help": "Time to wait for each hop, in milliseconds."
+            },
+            {
+              "dm": "Protocol",
+              "label": "Protocol",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "UDP",
+                  "label": "UDP"
+                },
+                {
+                  "value": "ICMP",
+                  "label": "ICMP"
+                }
+              ],
+              "default": "UDP"
+            }
+          ]
+        },
+        {
+          "id": "result",
+          "title": "Result",
+          "table": "",
+          "mode": "readonly",
+          "source": "runtime:traceroute",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Flag",
+              "label": "Running",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Idle"
+                },
+                {
+                  "value": "1",
+                  "label": "Running"
+                }
+              ]
+            },
+            {
+              "dm": "Result",
+              "label": "Output",
+              "type": "text"
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "traceroute",
+          "label": "Start",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Runs traceroute with the request fields; stock sets OBJ_TRACERT_ID DiagnosticsState=Requested, Control=0."
+        },
+        {
+          "id": "traceroute-stop",
+          "label": "Stop",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Stock sets OBJ_TRACERT_ID Control=1 (IF_ACTION=stop)."
+        }
+      ],
+      "notes": "Stock mechanism: trace_route_gch.gch uses OBJ_TRACERT_ID (no DB table; runtime only). Start: IF_ACTION=start, Control=0, set_inst with Host, Interface, Timeout, MaxHopCount, Flag, Protocol, Control and DiagnosticsState=Requested (skipped if Flag already 1). Stop: IF_ACTION=stop, Control=1 (skipped if Flag 0). undoDBSave() afterwards. The JS polls every 3 s while Flag==1, up to IF_MAXTIME=500 tries, then shows \"FAIL\". Result holds a path to a text file with the traceroute output (read_file). Recommended backend: builtin action running busybox `traceroute [-I] -m HOPS -w SECS [-i <ifname>] HOST`. UI-text notes moved here: [Host]: IPv4, host name, or IPv6 when env DevIPv6Effect != 0. | [Interface]: WAN connection view name (e.g. a WANC/WCIP/WCPPP identity such as IGD.WD1.WCD1.WCIP1). Options come from the live WAN list (stock wan_query.gch / wanQueryByApp). Empty = default route. Stock list from wanQueryByApp(\"traceroute\"). | [MaxHopCount]: Stock: 1-64; empty is sent as 0 (= daemon default). | [Timeout]: Stock requires a value 1-4294967295; unit not shown by stock (TR-098 TraceRoute Timeout is ms). | [Result]: Stock: Result is a file path; the page prints read_file(Result)."
+    },
+    {
+      "id": "diag-arp",
+      "title": "ARP table",
+      "group": "diagnostics",
+      "order": 30,
+      "icon": "list",
+      "description": "IPv4 neighbours the router currently knows, with MAC and interface.",
+      "stock": {
+        "menu": "ssmARPTable",
+        "page": "diag_netDiag_arpTable_t.gch",
+        "handler": [
+          "arp_table_gch.gch",
+          "diag_netDiag_arpTable_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "arp",
+          "title": "ARP entries",
+          "table": "",
+          "mode": "list",
+          "source": "runtime:arp_table",
+          "fields": [
+            {
+              "dm": "ip",
+              "label": "IP address",
+              "readonly": true,
+              "column": true
+            },
+            {
+              "dm": "mac",
+              "label": "MAC address",
+              "readonly": true,
+              "column": true
+            },
+            {
+              "dm": "iface",
+              "label": "Interface",
+              "readonly": true,
+              "column": true
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "refresh",
+          "label": "Refresh",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Re-read."
+        }
+      ],
+      "notes": "Stock: OBJ_GETARPNUM_ID gives ARP_NUM and THRESHOLD_NUM; if ARP_NUM > THRESHOLD_NUM the user is asked whether to show all (DISPALL) or only THRESHOLD_NUM (DISPPART). Entries come from get_inst(OBJ_GETARPINST_ID) after set_para DispNum, DispType -> DestIP{i}, MACAddr{i}, Interface{i}. Runtime source: /proc/net/arp (or `ip -4 neigh`)."
+    },
+    {
+      "id": "diag-mac-table",
+      "title": "MAC address table",
+      "group": "diagnostics",
+      "order": 35,
+      "icon": "list",
+      "description": "MAC addresses learned on the LAN bridge, per port, with ageing time.",
+      "stock": {
+        "menu": "",
+        "page": "diag_netDiag_macTable_t.gch",
+        "handler": [
+          "mac_table_gch.gch",
+          "diag_netDiag_macTable_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "macs",
+          "title": "Learned MACs",
+          "table": "",
+          "mode": "list",
+          "source": "runtime:mac_table",
+          "fields": [
+            {
+              "dm": "mac",
+              "label": "MAC address",
+              "readonly": true,
+              "column": true
+            },
+            {
+              "dm": "port",
+              "label": "Port",
+              "readonly": true,
+              "column": true
+            },
+            {
+              "dm": "local",
+              "label": "Local",
+              "readonly": true,
+              "column": true
+            },
+            {
+              "dm": "ageingSec",
+              "label": "Ageing time (s)",
+              "readonly": true,
+              "column": true
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "refresh",
+          "label": "Refresh",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Re-read."
+        }
+      ],
+      "notes": "Not in this build's menu (file exists). Same pattern as ARP: OBJ_GETMACNUM_ID (MAC_NUM, THRESHOLD_NUM) then OBJ_GETMACINST_ID with DispNum/DispType -> LanName{i}, MACAddr{i}, AgingTm{i}. Runtime source: `brctl showmacs br0` (port no -> ifname via /sys/class/net/br0/brif/*/port_no), or the switch driver FDB if LAN ports are on a hardware switch."
+    },
+    {
+      "id": "diag-tr069-inform",
+      "title": "TR-069 manual Inform",
+      "group": "diagnostics",
+      "order": 40,
+      "icon": "send",
+      "description": "Send a TR-069 Inform to the ISP management server now and show the result.",
+      "stock": {
+        "menu": "ssmInform",
+        "page": "manager_act_inform_t.gch",
+        "handler": [
+          "act_inform_gch.gch",
+          "manager_act_inform_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "state",
+          "title": "Inform status",
+          "table": "",
+          "mode": "readonly",
+          "source": "runtime:tr069_status",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "enabled",
+              "label": "Enabled",
+              "readonly": true
+            },
+            {
+              "dm": "acsUrl",
+              "label": "ACS URL",
+              "readonly": true
+            },
+            {
+              "dm": "periodicInform",
+              "label": "Periodic inform",
+              "readonly": true
+            },
+            {
+              "dm": "connectionRequestUrl",
+              "label": "Connection request URL",
+              "readonly": true
+            },
+            {
+              "dm": "connectionRequestUser",
+              "label": "Connection request user",
+              "readonly": true
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "tr069-inform",
+          "label": "Send Inform",
+          "danger": "confirm",
+          "kind": "builtin",
+          "note": "Stock: OBJ_tr069InfmAct_ID (identity IGD.MGT) EventCode=\"2 PERIODIC\". No DB write."
+        }
+      ],
+      "notes": "Admin-only. Trigger: set_inst(OBJ_tr069InfmAct_ID, \"IGD.MGT\") with EventCode=\"2 PERIODIC\", then undoDBSave(). Status: OBJ_tr069InfmStat_ID InfoStat / InfoDesc (same codes as status-tr069), polled every 3 s up to 40 times while InfoStat==1. Lets the ISP ACS push config; harmless to run but contacts the ISP."
+    },
+    {
+      "id": "diag-simulation",
+      "title": "PPPoE / IPoE simulation",
+      "group": "diagnostics",
+      "order": 50,
+      "icon": "flask-conical",
+      "description": "Emulate a PPPoE or IPoE (DHCP) client on a WAN VLAN to test the ISP side, optionally with a ping.",
+      "stock": {
+        "menu": "ssmStimulate",
+        "page": "manager_svr_stimulate_t.gch",
+        "handler": [
+          "manager_svr_stimulate_js.gch",
+          "vlan_if_query.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "ISP test tool; it may not work on this router.",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "request",
+          "title": "Simulation",
+          "table": "",
+          "mode": "single",
+          "source": "runtime:simulation_request",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "SimulationType",
+              "label": "Simulation type",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "PPPoE",
+                  "label": "PPPoE"
+                },
+                {
+                  "value": "DHCP",
+                  "label": "IPoE (DHCP)"
+                }
+              ],
+              "default": "PPPoE"
+            },
+            {
+              "dm": "PortViewName",
+              "label": "WAN port / VLAN",
+              "type": "string",
+              "help": "WAN VLAN interface to run the test on."
+            },
+            {
+              "dm": "PppoeUserName",
+              "label": "PPPoE user name",
+              "type": "string",
+              "min": 1,
+              "max": 64,
+              "pattern": "^[\\x20-\\x7e]*$",
+              "showIf": {
+                "dm": "SimulationType",
+                "in": [
+                  "PPPoE"
+                ]
+              }
+            },
+            {
+              "dm": "PppoePassWord",
+              "label": "PPPoE password",
+              "type": "password",
+              "max": 64,
+              "pattern": "^[\\x20-\\x7e]*$",
+              "showIf": {
+                "dm": "SimulationType",
+                "in": [
+                  "PPPoE"
+                ]
+              }
+            },
+            {
+              "dm": "AuthType",
+              "label": "Authentication",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Auto"
+                },
+                {
+                  "value": "2",
+                  "label": "PAP"
+                },
+                {
+                  "value": "1",
+                  "label": "CHAP"
+                }
+              ],
+              "showIf": {
+                "dm": "SimulationType",
+                "in": [
+                  "PPPoE"
+                ]
+              }
+            },
+            {
+              "dm": "RetryTimes",
+              "label": "Retry times",
+              "type": "int",
+              "min": 0,
+              "showIf": {
+                "dm": "SimulationType",
+                "in": [
+                  "PPPoE"
+                ]
+              }
+            },
+            {
+              "dm": "SimuMAC",
+              "label": "Simulation MAC",
+              "type": "mac",
+              "showIf": {
+                "dm": "SimulationType",
+                "in": [
+                  "DHCP"
+                ]
+              }
+            },
+            {
+              "dm": "OPTCode",
+              "label": "DHCP option code",
+              "type": "int",
+              "default": "60",
+              "showIf": {
+                "dm": "SimulationType",
+                "in": [
+                  "DHCP"
+                ]
+              }
+            },
+            {
+              "dm": "OPT",
+              "label": "Option value (vendor class ID)",
+              "type": "string",
+              "showIf": {
+                "dm": "SimulationType",
+                "in": [
+                  "DHCP"
+                ]
+              }
+            },
+            {
+              "dm": "BNeedPing",
+              "label": "Ping after lease",
+              "type": "bool",
+              "default": "1",
+              "showIf": {
+                "dm": "SimulationType",
+                "in": [
+                  "DHCP"
+                ]
+              }
+            },
+            {
+              "dm": "PingDestIP",
+              "label": "Ping destination",
+              "type": "ipv4",
+              "showIf": {
+                "dm": "SimulationType",
+                "in": [
+                  "DHCP"
+                ]
+              }
+            },
+            {
+              "dm": "PingTimes",
+              "label": "Ping count",
+              "type": "int",
+              "min": 1,
+              "showIf": {
+                "dm": "SimulationType",
+                "in": [
+                  "DHCP"
+                ]
+              }
+            },
+            {
+              "dm": "PingTimeOut",
+              "label": "Ping timeout",
+              "type": "int",
+              "min": 1,
+              "unit": "ms",
+              "showIf": {
+                "dm": "SimulationType",
+                "in": [
+                  "DHCP"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "result",
+          "title": "Result",
+          "table": "",
+          "mode": "readonly",
+          "source": "runtime:simulation",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "PortState",
+              "label": "State",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "None",
+                  "label": "Not started"
+                },
+                {
+                  "value": "Running",
+                  "label": "Running"
+                },
+                {
+                  "value": "Stop",
+                  "label": "Stopped"
+                },
+                {
+                  "value": "Complete",
+                  "label": "Complete"
+                }
+              ]
+            },
+            {
+              "dm": "Issucceed",
+              "label": "Succeeded",
+              "type": "bool"
+            },
+            {
+              "dm": "SimuIp",
+              "label": "Obtained IP",
+              "type": "ipv4"
+            },
+            {
+              "dm": "SimuGateWay",
+              "label": "Gateway",
+              "type": "ipv4"
+            },
+            {
+              "dm": "SessionID",
+              "label": "PPPoE session ID",
+              "type": "string"
+            },
+            {
+              "dm": "FailReason",
+              "label": "Failure reason",
+              "type": "string"
+            },
+            {
+              "dm": "PingSuccessCount",
+              "label": "Ping replies",
+              "type": "int"
+            },
+            {
+              "dm": "PingFailCount",
+              "label": "Ping lost",
+              "type": "int"
+            },
+            {
+              "dm": "PingResTimeMin",
+              "label": "Ping min",
+              "type": "int",
+              "unit": "ms"
+            },
+            {
+              "dm": "PingResTimeAver",
+              "label": "Ping avg",
+              "type": "int",
+              "unit": "ms"
+            },
+            {
+              "dm": "PingResTimeMax",
+              "label": "Ping max",
+              "type": "int",
+              "unit": "ms"
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "simulation-start",
+          "label": "Start",
+          "danger": "confirm",
+          "kind": "builtin",
+          "note": "Stock: ModuleLogic with OBJ_SIMULATION_*_ID, SimulationStarted=1."
+        },
+        {
+          "id": "simulation-stop",
+          "label": "Stop",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Stock pageCancel re-submits with SimulationStarted cleared."
+        }
+      ],
+      "notes": "Stock calls ModuleLogic() with OBJ_SIMULATION_PPPOE_ID (prefix PPPOE_: PortViewName, AuthType, PppoeUserName, PppoePassWord, RetryTimes, IACTION=apply) or OBJ_SIMULATION_DHCP_ID (prefix DHCP_: PortViewName, SimuMAC, OPTCode, OPT, BNeedPing, BNeedRelease=1, PingDestIP, PingTimes, PingTimeOut, IACTION=apply); results via OBJ_SIMULATION_PPPOE_GET_ID / OBJ_SIMULATION_DHCP_GET_ID (PortState, Issucceed, SimuIp, SimuGateWay, FailReason, SessionID, Ping* stats; the JS also echoes the PPPoE password back - do not). SimulationStarted=1 while running; undoDBSave(). Validation: user name printable ASCII 1-64, password 0-64, retry/ping counts non-negative integers, MAC and IPv4 checked. No DB table. A PPPoE simulation with the live account may kick the real session. UI-text notes moved here: [applicableNote]: China Telecom ITMS test tool; whether the cspd module still works on this build is unverified. | [PortViewName]: Options from vlan_if_query.gch (WLAN/WDS entries removed). | [PortState]: Raw codes to verify; stock maps them in JS to these four labels."
+    },
+    {
+      "id": "diag-voice",
+      "title": "Voice line test",
+      "group": "diagnostics",
+      "order": 60,
+      "icon": "phone-call",
+      "description": "Electrical line test of the phone port and a simulated outgoing call.",
+      "stock": {
+        "menu": "ssmDSVoice",
+        "page": "diagnose_voice_t.gch",
+        "handler": [
+          "diagnose_voice_gch.gch",
+          "diagnose_voice_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "Needs a populated POTS port and SLIC test support.",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "call",
+          "title": "Simulated call",
+          "table": "",
+          "mode": "single",
+          "source": "runtime:voice_call_request",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "DialNumber",
+              "label": "Number to dial",
+              "type": "string",
+              "min": 1,
+              "max": 20,
+              "pattern": "^[0-9]{1,20}$",
+              "help": "1–20 digits."
+            }
+          ]
+        },
+        {
+          "id": "line",
+          "title": "Line test result",
+          "table": "",
+          "mode": "readonly",
+          "source": "runtime:voice_line_test",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "TestStatus",
+              "label": "State",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "Testing"
+                },
+                {
+                  "value": "2",
+                  "label": "Done"
+                },
+                {
+                  "value": "3",
+                  "label": "Failed (check configuration)"
+                }
+              ]
+            },
+            {
+              "dm": "vdc_tr",
+              "label": "Line voltage (tip-ring DC)",
+              "type": "int",
+              "unit": "mV"
+            },
+            {
+              "dm": "res_tr",
+              "label": "Ringer impedance (tip-ring)",
+              "type": "int",
+              "unit": "ohm",
+              "help": "In ohms."
+            },
+            {
+              "dm": "vac_tr",
+              "label": "AC voltage tip-ring",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "vac_tg",
+              "label": "AC voltage tip-ground",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "vac_rg",
+              "label": "AC voltage ring-ground",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "vdc_tg",
+              "label": "DC voltage tip-ground",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "vdc_rg",
+              "label": "DC voltage ring-ground",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "res_tg",
+              "label": "Resistance tip-ground",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "res_rg",
+              "label": "Resistance ring-ground",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "cap_tr",
+              "label": "Capacitance tip-ring",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "cap_tg",
+              "label": "Capacitance tip-ground",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "cap_rg",
+              "label": "Capacitance ring-ground",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "ring_vol",
+              "label": "Ring voltage",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "ren",
+              "label": "REN",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "loop_curent",
+              "label": "Loop current",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "loop_res",
+              "label": "Loop resistance",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "battary",
+              "label": "Battery voltage",
+              "type": "int",
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "callresult",
+          "title": "Simulated call result",
+          "table": "",
+          "mode": "readonly",
+          "source": "runtime:voice_call_test",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "CTCallerTestResult",
+              "label": "Result",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Not started"
+                },
+                {
+                  "value": "1",
+                  "label": "Passed (dial tone ok, number dialled)"
+                },
+                {
+                  "value": "2",
+                  "label": "Failed: no dial tone"
+                },
+                {
+                  "value": "3",
+                  "label": "Failed: no ring-back tone"
+                },
+                {
+                  "value": "4",
+                  "label": "Not started: VoIP connection incorrect"
+                },
+                {
+                  "value": "5",
+                  "label": "Not started: VoIP account not registered"
+                },
+                {
+                  "value": "6",
+                  "label": "In progress"
+                },
+                {
+                  "value": "7",
+                  "label": "In progress: checking dial tone"
+                },
+                {
+                  "value": "8",
+                  "label": "In progress: dial tone ok"
+                },
+                {
+                  "value": "9",
+                  "label": "In progress: dialling"
+                },
+                {
+                  "value": "10",
+                  "label": "In progress: waiting for ring-back tone"
+                },
+                {
+                  "value": "11",
+                  "label": "In progress: ring-back tone detected"
+                },
+                {
+                  "value": "12",
+                  "label": "Test error"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "voice-line-test",
+          "label": "Start line test",
+          "danger": "confirm",
+          "kind": "builtin",
+          "note": "Stock: OBJ_VOIP_DIAGNOSIS_ID set_inst (StartVoipDiag). Interrupts an active call."
+        },
+        {
+          "id": "voice-call-test",
+          "label": "Start simulated call",
+          "danger": "confirm",
+          "kind": "builtin",
+          "note": "Stock: OBJ_VOIP_CALL_ID set_inst with DialNumber (StartVoipCall). Places a real call."
+        }
+      ],
+      "notes": "Line test: IF_ACTION=StartVoipDiag -> set_inst(OBJ_VOIP_DIAGNOSIS_ID, first instance) with CMDPARA port, item, obligate, port_type, num, omci_item, cmd, flg (stock sends them empty from request(); values the cspd module expects are unknown). Results from the same OBJ: TestStatus, vac_*/vdc_*/res_*/cap_* (tr/tg/rg), ring_vol, ren, loop_curent, loop_res, battary; polled every 3 s while TestStatus==1. Call test: IF_ACTION=StartVoipCall -> set_inst(OBJ_VOIP_CALL_ID) with CallAction, Port, Role, DurationTime, DialNumber; result CTCallerTestResult polled every 3 s. Table VoIPIADDiag (ViewName IGD.SV.VS1.VP1.PD, TestServer) is the TR-069 IAD diagnostic, not this page. UI-text notes moved here: [DialNumber]: Stock: integer, 1-20 digits. | [res_tr]: Stock divides by 1000 and shows kOhm. | [CTCallerTestResult]: Index into stock VoiceState[] (voice_test7..18; index 6 is blank). Stock treats 1-5 as final and keeps polling on 0 and 6-12."
+    },
+    {
+      "id": "diag-mirror",
+      "title": "Port mirroring",
+      "group": "diagnostics",
+      "order": 70,
+      "icon": "copy",
+      "description": "Copy traffic of a WAN connection to a LAN port for packet capture.",
+      "stock": {
+        "menu": "ssmMirro",
+        "page": "manager_mirro_t.gch",
+        "handler": [
+          "mirror_gch.gch",
+          "manager_mirro_js.gch",
+          "wan_func.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "unknown",
+      "danger": "confirm",
+      "sections": [
+        {
+          "id": "rules",
+          "title": "Mirror rules",
+          "table": "MirrorConf",
+          "mode": "list",
+          "source": "db",
+          "addable": true,
+          "deletable": true,
+          "rowLabel": "Rule {n}",
+          "fields": [
+            {
+              "dm": "MirrorEnable",
+              "label": "Enabled",
+              "type": "bool",
+              "default": "1"
+            },
+            {
+              "dm": "MirrorSrc",
+              "label": "Source (WAN connection)",
+              "type": "string",
+              "column": true,
+              "required": true,
+              "help": "WAN connection whose traffic is copied."
+            },
+            {
+              "dm": "MirrorDest",
+              "label": "Destination (LAN port)",
+              "type": "string",
+              "column": true,
+              "required": true,
+              "help": "Ethernet LAN port that receives the copy."
+            }
+          ]
+        }
+      ],
+      "notes": "Stock: OBJ_MIRROR_ID multi-instance, PARA MirrorEnable, MirrorSrc, MirrorDest via applyOrNewOrDelInst (new/apply/delete), then undoDBSave() (so stock does not persist to flash immediately). Display names via OBJ_WANLAN_ID Name. Rule: the same rule cannot be added twice and a source cannot map to several destinations (mirro004). Table name MirrorConf (view 245, RowCount 0 in the user DB) - DM names are taken from the OBJ params and are UNVERIFIED because the table is empty; view 342 MirrorRule also exists and could be the real backing table. Verify with `sidbg 1 DB p MirrorConf` after adding a rule in the stock UI. UI-text notes moved here: [MirrorEnable]: Stock always writes 1 on add. | [MirrorSrc]: WAN connection view name from MirrorWANQuery (OBJ_ETHWANC_ID identities; IPv6-only WANs hidden when IPv6 is off). IGD.WD1.WCD1 is shown as WAN_ALL. | [MirrorDest]: LAN port view name from LANQuery: OBJ_WANLAN_ID entries with BRType=0 and WANLANType=2 (Ethernet ports such as IGD.LD1.ETH1..4); WLAN/WDS removed."
+    },
+    {
+      "id": "diag-monitor",
+      "title": "Monitoring data collection",
+      "group": "diagnostics",
+      "order": 80,
+      "icon": "upload-cloud",
+      "description": "Upload of diagnostic monitoring data to an ISP collector over TFTP.",
+      "stock": {
+        "menu": "smmonitorconfig",
+        "page": "pon_monitor_config_t.gch",
+        "handler": [
+          "pon_monitorconfig_gch.gch",
+          "pon_monitor_config_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "China Telecom \"intelligent diagnosis\" collector; only useful if the ISP runs a collector.",
+      "apply": "unknown",
+      "danger": "confirm",
+      "sections": [
+        {
+          "id": "cfg",
+          "title": "Collector",
+          "table": "MonitorCollectorCfg",
+          "mode": "single",
+          "source": "db",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Enabled",
+              "type": "bool",
+              "help": "Turned on by the ISP; once off, it cannot be turned on again here."
+            },
+            {
+              "dm": "ServerUrl",
+              "label": "Upload URL",
+              "type": "string",
+              "readonly": true,
+              "help": "Set by the ISP."
+            },
+            {
+              "dm": "TftpPort",
+              "label": "TFTP port",
+              "type": "int",
+              "min": 1,
+              "max": 65535,
+              "readonly": true,
+              "help": "Set by the ISP (default 69)."
+            }
+          ]
+        }
+      ],
+      "notes": "Stock: OBJ_PONMONITORCONFIG_ID (Enable, ServerUrl, TftpPort, MonitorNumberOfEntries) via getSubmitGCH; only Enable is posted. Mapped to DB MonitorCollectorCfg (Enable, ServerUrl, TftpPort) by DM-name match - unverified. Related tables MONITORCONFIG (Enable) and MonitorCollectorParm (0 rows). Menu label is wrongly \"DHCP Address Pool\" (monitor001); help text calls it the intelligent diagnosis system. UI-text notes moved here: [Enable]: Stock: the checkbox is only editable while already enabled; once off, Submit is disabled (ISP turns it on). | [ServerUrl]: Read-only in stock. | [TftpPort]: Read-only in stock. Firmware default 69."
+    },
+    {
+      "id": "diag-monitor-anhui",
+      "title": "Monitoring data collection (Anhui)",
+      "group": "diagnostics",
+      "order": 81,
+      "icon": "upload-cloud",
+      "description": "Anhui-province variant of the monitoring collector page.",
+      "stock": {
+        "menu": "smmonitorconfig_ah",
+        "page": "anhui_monitor_config_t.gch",
+        "handler": [
+          "pon_monitorconfig_gch.gch",
+          "pon_monitor_config_js.gch"
+        ]
+      },
+      "applicable": false,
+      "applicableNote": "China Telecom Anhui-province specific page.",
+      "apply": "live",
+      "danger": "none",
+      "sections": [],
+      "notes": "Identical template to diag-monitor (same OBJ_PONMONITORCONFIG_ID handler); menu label \"Preflight preparation system\"."
+    },
+    {
+      "id": "help",
+      "title": "Help",
+      "group": "admin",
+      "order": 900,
+      "icon": "circle-help",
+      "description": "Short description of every admin page.",
+      "stock": {
+        "menu": "ssmHelp",
+        "page": "help_t.gch",
+        "handler": [
+          "dmenu_func.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "live",
+      "danger": "none",
+      "sections": [],
+      "notes": "help_t.gch builds the help from dmenu.conf: for every menu entry it prints the entry name (nameTag) and its helpTag string from langen.conf. The new UI can instead use each page \"description\". No data source."
+    }
+  ]
+}

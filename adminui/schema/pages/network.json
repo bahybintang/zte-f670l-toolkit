@@ -1,0 +1,4152 @@
+{
+  "pages": [
+    {
+      "id": "wan",
+      "title": "Internet (WAN)",
+      "group": "network",
+      "order": 10,
+      "icon": "globe",
+      "description": "WAN connections over GPON: PPPoE, IPoE (DHCP/static) and bridge, with VLAN, NAT and service binding.",
+      "stock": {
+        "menu": "ssmETHWANCon",
+        "page": "net_ethwan_conf_t.gch",
+        "handler": [
+          "ethwanctype_gch.gch",
+          "ethwancppp_gch.gch",
+          "ethwancip_gch.gch",
+          "ethwancbridge_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "commit-confirm",
+      "sections": [
+        {
+          "id": "connections",
+          "title": "Connections",
+          "table": "WANC",
+          "mode": "list",
+          "rowLabel": "{WANCName}",
+          "addable": true,
+          "deletable": true,
+          "maxRows": 8,
+          "fields": [
+            {
+              "dm": "ViewName",
+              "label": "Connection ID",
+              "type": "string",
+              "column": true,
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "WANCDViewName",
+              "label": "Connection device",
+              "type": "string",
+              "column": true,
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "WANCName",
+              "label": "Connection name",
+              "type": "string",
+              "max": 64,
+              "column": true,
+              "readonly": true,
+              "help": "Generated automatically from the connection number, service and VLAN."
+            },
+            {
+              "dm": "Enable",
+              "label": "Enabled",
+              "type": "bool",
+              "column": true
+            },
+            {
+              "dm": "ConnType",
+              "label": "Connection type",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Unconfigured"
+                },
+                {
+                  "value": "1",
+                  "label": "Routed"
+                },
+                {
+                  "value": "2",
+                  "label": "IP bridged"
+                },
+                {
+                  "value": "3",
+                  "label": "DHCP spoofed"
+                },
+                {
+                  "value": "4",
+                  "label": "PPPoE bridged"
+                },
+                {
+                  "value": "5",
+                  "label": "PPPoE relay"
+                },
+                {
+                  "value": "6",
+                  "label": "PPTP relay"
+                },
+                {
+                  "value": "7",
+                  "label": "L2TP relay"
+                }
+              ],
+              "column": true,
+              "help": "Use Routed for internet access, or PPPoE bridged to let a LAN device dial PPPoE itself."
+            },
+            {
+              "dm": "WANCType",
+              "label": "Connection kind",
+              "type": "int",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "IPMode",
+              "label": "IP version",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "IPv4"
+                },
+                {
+                  "value": "2",
+                  "label": "IPv6"
+                },
+                {
+                  "value": "3",
+                  "label": "IPv4 + IPv6"
+                }
+              ],
+              "column": true
+            },
+            {
+              "dm": "ServList",
+              "label": "Service list",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "Internet"
+                },
+                {
+                  "value": "2",
+                  "label": "TR069"
+                },
+                {
+                  "value": "3",
+                  "label": "TR069 + Internet"
+                },
+                {
+                  "value": "4",
+                  "label": "VoIP"
+                },
+                {
+                  "value": "5",
+                  "label": "VoIP + Internet"
+                },
+                {
+                  "value": "6",
+                  "label": "TR069 + VoIP"
+                },
+                {
+                  "value": "7",
+                  "label": "TR069 + VoIP + Internet"
+                },
+                {
+                  "value": "8",
+                  "label": "Other"
+                }
+              ],
+              "column": true,
+              "help": "Services that use this connection."
+            },
+            {
+              "dm": "StrServList",
+              "label": "Service list (text)",
+              "type": "string",
+              "max": 64,
+              "advanced": true,
+              "pattern": "^(INTERNET|TR069|TR069,INTERNET|VOIP|VOIP,INTERNET|TR069,VOIP|TR069,VOIP,INTERNET|OTHER)$",
+              "help": "Text form of the service list; keep it in step with the service list."
+            },
+            {
+              "dm": "IsNAT",
+              "label": "Enable NAT",
+              "type": "bool",
+              "help": "Off for TR069-only, VoIP-only and IPv6-only connections."
+            },
+            {
+              "dm": "IsDefGW",
+              "label": "Default gateway",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "IsDefGW6",
+              "label": "IPv6 default gateway",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "IsForward",
+              "label": "Forwarding",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "WBDMode",
+              "label": "VLAN mode",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Untagged"
+                },
+                {
+                  "value": "1",
+                  "label": "Transparent"
+                },
+                {
+                  "value": "2",
+                  "label": "Tagged"
+                }
+              ],
+              "column": true,
+              "help": "Tagged requires a VLAN ID (1–4094)."
+            },
+            {
+              "dm": "VLANID",
+              "label": "VLAN ID",
+              "type": "int",
+              "min": 0,
+              "max": 4094,
+              "column": true,
+              "showIf": {
+                "dm": "WBDMode",
+                "in": [
+                  "2"
+                ]
+              }
+            },
+            {
+              "dm": "Priority",
+              "label": "802.1p priority",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "0"
+                },
+                {
+                  "value": "1",
+                  "label": "1"
+                },
+                {
+                  "value": "2",
+                  "label": "2"
+                },
+                {
+                  "value": "3",
+                  "label": "3"
+                },
+                {
+                  "value": "4",
+                  "label": "4"
+                },
+                {
+                  "value": "5",
+                  "label": "5"
+                },
+                {
+                  "value": "6",
+                  "label": "6"
+                },
+                {
+                  "value": "7",
+                  "label": "7"
+                }
+              ],
+              "showIf": {
+                "dm": "WBDMode",
+                "in": [
+                  "2"
+                ]
+              },
+              "help": "Used only when the VLAN mode is Tagged."
+            },
+            {
+              "dm": "MCVLANID",
+              "label": "Multicast VLAN ID",
+              "type": "int",
+              "min": -1,
+              "max": 4094,
+              "advanced": true,
+              "help": "-1 = no multicast VLAN."
+            },
+            {
+              "dm": "DSCP",
+              "label": "DSCP",
+              "type": "int",
+              "min": -1,
+              "max": 63,
+              "advanced": true,
+              "help": "0–63, or -1 to turn DSCP marking off."
+            },
+            {
+              "dm": "DSCP6",
+              "label": "DSCP (IPv6)",
+              "type": "int",
+              "min": -1,
+              "max": 63,
+              "advanced": true
+            },
+            {
+              "dm": "LANDViewName",
+              "label": "LAN device",
+              "type": "string",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "WorkIFMac",
+              "label": "Interface MAC",
+              "type": "mac",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "DNSOverrideAllowed",
+              "label": "Allow DNS override",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "HideListView",
+              "label": "Hidden from connection list",
+              "type": "bool",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "IsSFUMode",
+              "label": "SFU-mode connection",
+              "type": "bool",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "IsOMCICreated",
+              "label": "Created by OMCI",
+              "type": "bool",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "IsDel",
+              "label": "Deletion flag",
+              "type": "bool",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "PingResponseEnable",
+              "label": "Answer ping on this WAN",
+              "type": "bool",
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "pppoe",
+          "title": "PPPoE settings",
+          "table": "WANCPPP",
+          "mode": "list",
+          "rowLabel": "{ViewName}",
+          "addable": true,
+          "deletable": true,
+          "maxRows": 8,
+          "fields": [
+            {
+              "dm": "ViewName",
+              "label": "Connection ID",
+              "type": "string",
+              "column": true,
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "UserName",
+              "label": "PPPoE username",
+              "type": "string",
+              "min": 1,
+              "max": 64,
+              "column": true,
+              "pattern": "^[\\x21-\\x7e]*$"
+            },
+            {
+              "dm": "Password",
+              "label": "PPPoE password",
+              "type": "password",
+              "min": 0,
+              "max": 64,
+              "pattern": "^[\\x21-\\x7e]*$"
+            },
+            {
+              "dm": "AuthType",
+              "label": "Authentication",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Auto (PAP/CHAP/MS-CHAP)"
+                },
+                {
+                  "value": "1",
+                  "label": "PAP"
+                },
+                {
+                  "value": "2",
+                  "label": "CHAP"
+                },
+                {
+                  "value": "3",
+                  "label": "MS-CHAP"
+                }
+              ]
+            },
+            {
+              "dm": "ConnTrigger",
+              "label": "Dial mode",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Always on"
+                },
+                {
+                  "value": "1",
+                  "label": "On demand"
+                },
+                {
+                  "value": "2",
+                  "label": "Manual"
+                }
+              ],
+              "column": true
+            },
+            {
+              "dm": "IdleTime",
+              "label": "Idle timeout",
+              "type": "int",
+              "unit": "s",
+              "min": 0,
+              "max": 4294967295,
+              "showIf": {
+                "dm": "ConnTrigger",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "MTU",
+              "label": "MTU",
+              "type": "int",
+              "min": 128,
+              "max": 1492,
+              "help": "128–1492 bytes; 1280–1492 when IPv6 is on."
+            },
+            {
+              "dm": "MaxMRU",
+              "label": "Max MRU",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "PPPoEACName",
+              "label": "AC name",
+              "type": "string",
+              "max": 30
+            },
+            {
+              "dm": "PPPoEServiceName",
+              "label": "Service name",
+              "type": "string",
+              "max": 30
+            },
+            {
+              "dm": "EnableProxy",
+              "label": "PPPoE proxy",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "MaxUser",
+              "label": "Proxy max users",
+              "type": "int",
+              "min": 1,
+              "advanced": true,
+              "showIf": {
+                "dm": "EnableProxy",
+                "in": [
+                  "1"
+                ]
+              },
+              "help": "Maximum number of LAN devices that can use the PPPoE proxy."
+            },
+            {
+              "dm": "EnablePassThrough",
+              "label": "PPPoE pass-through",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "EchoTime",
+              "label": "LCP echo interval",
+              "type": "int",
+              "unit": "s",
+              "advanced": true
+            },
+            {
+              "dm": "EchoRetry",
+              "label": "LCP echo retries",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "AutoDisconnTime",
+              "label": "Auto-disconnect time",
+              "type": "int",
+              "unit": "s",
+              "advanced": true
+            },
+            {
+              "dm": "WarnDisconnTime",
+              "label": "Disconnect warning time",
+              "type": "int",
+              "unit": "s",
+              "advanced": true
+            },
+            {
+              "dm": "PassThroughViewName",
+              "label": "Pass-through view",
+              "type": "string",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "ValidWANRx",
+              "label": "Valid WAN receive",
+              "type": "int",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "ValidLANTx",
+              "label": "Valid LAN transmit",
+              "type": "int",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "HostTrigger",
+              "label": "Host trigger",
+              "type": "int",
+              "advanced": true,
+              "readonly": true
+            }
+          ]
+        },
+        {
+          "id": "ipoe",
+          "title": "IPoE settings",
+          "table": "WANCIP",
+          "mode": "list",
+          "rowLabel": "{ViewName}",
+          "addable": true,
+          "deletable": true,
+          "maxRows": 8,
+          "fields": [
+            {
+              "dm": "ViewName",
+              "label": "Connection ID",
+              "type": "string",
+              "column": true,
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "Addressingtype",
+              "label": "Addressing",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "DHCP"
+                },
+                {
+                  "value": "1",
+                  "label": "Static"
+                },
+                {
+                  "value": "2",
+                  "label": "Auto IP"
+                }
+              ],
+              "column": true
+            },
+            {
+              "dm": "IPAddress",
+              "label": "IP address",
+              "type": "ipv4",
+              "column": true,
+              "showIf": {
+                "dm": "Addressingtype",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "SubnetMask",
+              "label": "Subnet mask",
+              "type": "ipv4",
+              "showIf": {
+                "dm": "Addressingtype",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "GateWay",
+              "label": "Default gateway",
+              "type": "ipv4",
+              "showIf": {
+                "dm": "Addressingtype",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "DNS1",
+              "label": "DNS 1",
+              "type": "ipv4",
+              "showIf": {
+                "dm": "Addressingtype",
+                "in": [
+                  "1"
+                ]
+              },
+              "help": "0.0.0.0 = not set."
+            },
+            {
+              "dm": "DNS2",
+              "label": "DNS 2",
+              "type": "ipv4",
+              "showIf": {
+                "dm": "Addressingtype",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "DNS3",
+              "label": "DNS 3",
+              "type": "ipv4",
+              "showIf": {
+                "dm": "Addressingtype",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "MTU",
+              "label": "MTU",
+              "type": "int",
+              "min": 128,
+              "max": 1500,
+              "help": "Static 128–1500 bytes, DHCP 576–1500, IPv6 1280–1500."
+            },
+            {
+              "dm": "IPoEName",
+              "label": "IPoE username",
+              "type": "string",
+              "max": 64,
+              "advanced": true
+            },
+            {
+              "dm": "IPoEPassword",
+              "label": "IPoE password",
+              "type": "password",
+              "max": 64,
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "devices",
+          "title": "Connection devices (VLAN containers)",
+          "table": "WANCD",
+          "mode": "list",
+          "rowLabel": "{ViewName}",
+          "addable": true,
+          "deletable": true,
+          "maxRows": 8,
+          "fields": [
+            {
+              "dm": "ViewName",
+              "label": "Connection device ID",
+              "type": "string",
+              "column": true,
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "WANDViewName",
+              "label": "WAN device",
+              "type": "string",
+              "column": true,
+              "readonly": true
+            },
+            {
+              "dm": "LinkType",
+              "label": "Link type",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Unconfigured"
+                },
+                {
+                  "value": "1",
+                  "label": "Ethernet"
+                },
+                {
+                  "value": "2",
+                  "label": "EoA"
+                },
+                {
+                  "value": "3",
+                  "label": "PPPoA"
+                },
+                {
+                  "value": "4",
+                  "label": "IPoA"
+                },
+                {
+                  "value": "5",
+                  "label": "CIP"
+                },
+                {
+                  "value": "6",
+                  "label": "PPPoTTY"
+                },
+                {
+                  "value": "7",
+                  "label": "STA"
+                },
+                {
+                  "value": "8",
+                  "label": "3G DHCP"
+                }
+              ],
+              "column": true,
+              "readonly": true,
+              "help": "Always Ethernet on a fiber (GPON) uplink."
+            },
+            {
+              "dm": "Enabled",
+              "label": "Enabled",
+              "type": "bool",
+              "column": true
+            },
+            {
+              "dm": "WANCCapcity",
+              "label": "Connection capacity",
+              "type": "int",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "IsDel",
+              "label": "Deletion flag",
+              "type": "bool",
+              "advanced": true,
+              "readonly": true
+            }
+          ]
+        },
+        {
+          "id": "device-vlan",
+          "title": "Per-device VLAN",
+          "table": "MultiWancd",
+          "mode": "list",
+          "rowLabel": "{WCDViewName}",
+          "addable": true,
+          "deletable": true,
+          "maxRows": 8,
+          "fields": [
+            {
+              "dm": "ViewName",
+              "label": "View name",
+              "type": "string",
+              "column": true,
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "WCDViewName",
+              "label": "Connection device",
+              "type": "string",
+              "column": true,
+              "readonly": true
+            },
+            {
+              "dm": "Enable",
+              "label": "Enabled",
+              "type": "bool",
+              "column": true
+            },
+            {
+              "dm": "VlanMode",
+              "label": "VLAN mode (per device)",
+              "type": "int",
+              "column": true
+            },
+            {
+              "dm": "WanVlan",
+              "label": "VLAN ID",
+              "type": "int",
+              "min": 0,
+              "max": 4094,
+              "column": true
+            },
+            {
+              "dm": "WanPri",
+              "label": "802.1p priority",
+              "type": "int",
+              "min": 0,
+              "max": 7
+            }
+          ]
+        },
+        {
+          "id": "ext",
+          "title": "Connection extras",
+          "table": "WANCEXT",
+          "mode": "list",
+          "rowLabel": "{WANCViewName}",
+          "addable": true,
+          "deletable": true,
+          "maxRows": 8,
+          "fields": [
+            {
+              "dm": "ViewName",
+              "label": "View name",
+              "type": "string",
+              "column": true,
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "WANCViewName",
+              "label": "Connection",
+              "type": "string",
+              "column": true,
+              "readonly": true
+            },
+            {
+              "dm": "DhcpEnable",
+              "label": "Enable DHCP server for bound LAN ports",
+              "type": "bool",
+              "column": true,
+              "help": "Off for TR069-only and VoIP-only connections."
+            }
+          ]
+        },
+        {
+          "id": "services",
+          "title": "Service bindings",
+          "table": "WANCServList",
+          "mode": "list",
+          "rowLabel": "{WANCViewName} · {Application}",
+          "addable": true,
+          "deletable": true,
+          "fields": [
+            {
+              "dm": "ViewName",
+              "label": "View name",
+              "type": "string",
+              "column": true,
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "WANCViewName",
+              "label": "Connection",
+              "type": "string",
+              "column": true
+            },
+            {
+              "dm": "Application",
+              "label": "Application",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "Firewall"
+                },
+                {
+                  "value": "2",
+                  "label": "Dynamic DNS"
+                },
+                {
+                  "value": "3",
+                  "label": "DNS"
+                },
+                {
+                  "value": "4",
+                  "label": "SNTP"
+                },
+                {
+                  "value": "5",
+                  "label": "UPnP"
+                },
+                {
+                  "value": "6",
+                  "label": "IGMP proxy"
+                },
+                {
+                  "value": "7",
+                  "label": "VoIP"
+                },
+                {
+                  "value": "8",
+                  "label": "TR-069"
+                },
+                {
+                  "value": "9",
+                  "label": "Routing"
+                },
+                {
+                  "value": "10",
+                  "label": "Port binding"
+                },
+                {
+                  "value": "11",
+                  "label": "Traceroute"
+                },
+                {
+                  "value": "12",
+                  "label": "FTP server"
+                },
+                {
+                  "value": "13",
+                  "label": "MLD proxy"
+                },
+                {
+                  "value": "14",
+                  "label": "IPv4-in-IPv6 tunnel"
+                },
+                {
+                  "value": "15",
+                  "label": "IPv6-in-IPv4 tunnel"
+                },
+                {
+                  "value": "16",
+                  "label": "Other (16)"
+                }
+              ],
+              "column": true
+            },
+            {
+              "dm": "IsDel",
+              "label": "Deletion flag",
+              "type": "bool",
+              "advanced": true,
+              "readonly": true
+            }
+          ]
+        },
+        {
+          "id": "pppoe-common",
+          "title": "PPPoE common",
+          "table": "WANCPPPComm",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Dscp",
+              "label": "PPP control DSCP",
+              "type": "int",
+              "min": -1,
+              "max": 63,
+              "help": "-1 = unmarked"
+            },
+            {
+              "dm": "Priority",
+              "label": "PPP control 802.1p",
+              "type": "int",
+              "min": -1,
+              "max": 7,
+              "help": "-1 = unmarked"
+            },
+            {
+              "dm": "QueueNum",
+              "label": "Queue",
+              "type": "int",
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "status",
+          "title": "Connection status",
+          "table": "WANC",
+          "mode": "readonly",
+          "source": "runtime:wan_status",
+          "fields": [
+            {
+              "dm": "status",
+              "label": "Status",
+              "readonly": true
+            },
+            {
+              "dm": "ipAddress",
+              "label": "IP address",
+              "readonly": true
+            },
+            {
+              "dm": "dns1",
+              "label": "DNS 1",
+              "readonly": true
+            },
+            {
+              "dm": "dns2",
+              "label": "DNS 2",
+              "readonly": true
+            },
+            {
+              "dm": "dns3",
+              "label": "DNS 3",
+              "readonly": true
+            }
+          ]
+        },
+        {
+          "id": "port-binding",
+          "title": "Port binding",
+          "table": "WANC",
+          "mode": "readonly",
+          "source": "runtime:wan_port_binding",
+          "fields": [
+            {
+              "dm": "bitBind",
+              "label": "Bound LAN/SSID ports",
+              "type": "string",
+              "help": "One digit per port (1 = bound): LAN1–LAN4, then SSID1 onwards."
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "wan-create",
+          "label": "Create WAN connection",
+          "danger": "confirm",
+          "kind": "builtin",
+          "note": "Stock: set_inst(OBJ_ETHWANCPPP_ID|OBJ_ETHWANCIP_ID|OBJ_ETHWANCBRIDGE_ID, '') with IF_ACTION=new; libcmapi then creates WANCD(+MultiWancd) IGD.WD1.WCDn, WANC + WANCPPP/WANCIP with the same ViewName IGD.WD1.WCDn.WCPPPm|WCIPm, WANCEXT, WANCServList rows and port binding. A raw sidbg implementation must add and link all of these (see notes/network.md)."
+        },
+        {
+          "id": "wan-delete",
+          "label": "Delete WAN connection",
+          "danger": "confirm",
+          "kind": "builtin",
+          "note": "Stock: del_inst(<type OBJ>, identity). Must remove WANC + WANCPPP/WANCIP row with that ViewName, the WANCEXT/WANCServList rows pointing at it and the WANCD/MultiWancd row if it becomes empty."
+        },
+        {
+          "id": "ppp-connect",
+          "label": "Connect PPPoE",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Live: /action/wan/ppp-connect. Stock dev_action cmd_pppconnect -> pm_wanc_ppp_manual_connect = OSS 0x2801 to module 0x10109 with the WANCPPP view; adminui sends the same. Routed PPPoE only (bridge mode refused)."
+        },
+        {
+          "id": "ppp-disconnect",
+          "label": "Disconnect PPPoE",
+          "danger": "confirm",
+          "kind": "builtin",
+          "note": "Live: /action/wan/ppp-disconnect. Stock cmd_pppdisconnect -> OSS 0x2802 to module 0x10109 with the WANCPPP view."
+        },
+        {
+          "id": "dhcp-release",
+          "label": "Release DHCP lease",
+          "danger": "confirm",
+          "kind": "builtin",
+          "note": "Live: /action/wan/dhcp-release. Stock cmd_dhcpdisconnect -> pm_wanc_ip_manual_disconnect = OSS 0x2802 to module 0x10c01, identity only."
+        },
+        {
+          "id": "dhcp-renew",
+          "label": "Renew DHCP lease",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Live: /action/wan/dhcp-renew. Stock cmd_dhcpconnect -> pm_wanc_ip_manual_connect = OSS 0x2801 to module 0x10c01, identity only."
+        }
+      ],
+      "notes": "One stock OBJ (OBJ_ETHWANCPPP_ID/IP/BRIDGE) spans WANC (common), WANCPPP or WANCIP (type-specific), WANCEXT (DHCP server toggle), WANCServList (apps), WANCD/MultiWancd (VLAN container). Rows join on ViewName (WANC.ViewName == WANCPPP/WANCIP.ViewName == WANCEXT.WANCViewName == WANCServList.WANCViewName; WANC.WANCDViewName == WANCD.ViewName == MultiWancd.WCDViewName). Row numbers differ per table. IPv6 WAN parameters (GUASrc, DNSv6Src, Gatewayv6Src, PrefixSrc, GUA1, Prefix1, IPv6CPExt) have no DB table in the dump: runtime/unknown. Enum codes from libcmapi.so tables (ref fw): tWANCAPPConnTypeTable, tWancPPPConnTriggerTable, tWancPPPAuthTypeTable, tWANCIPAddressingTypeTable, tWANCIpModeTable, tWANCDLINKType, tWANCApplicationTable. UI-text notes moved here: [WANCName]: Generated by the stock firmware (e.g. <n>_INTERNET_R_VID_<vlan>); not user-editable in the stock page. | [ConnType]: Routed WAN = 1, PPPoE pass-through bridge = 4 (stock user page offers exactly these two). | [WANCType]: Internal WANC kind code; observed 0 on the factory PPP row. Meaning not decoded. | [ServList]: Bitmask INTERNET=1, TR069=2, VoIP=4, OTHER=8. StrServList must be kept in sync. | [StrServList]: Text twin of ServList written by the stock JS (SERVICELIST_PARA[ServList]). | [IsNAT]: Stock forces 0 for TR069/VoIP-only services and IPv6-only. | [WBDMode]: Stock web values: 0 UnTag, 1 Transparency, 2 Tag (VLAN ID 1-4094 required when tagged). | [Priority]: Stock writes 0 unless the VLAN mode is Tagged. | [MCVLANID]: -1 = none. Stock page parameter is spelled MCVlANID; the DB DM is MCVLANID. | [DSCP]: -1 = DSCP marking disabled; 0-63 when 'Enable DSCP' is ticked. | [MTU]: Stock: 128-1492 (IPv4 PPPoE); 1280-1492 when IPv6 is enabled. | [MaxUser]: Upper bound comes from the firmware config key ProxyMaxUser. | [DNS1]: 0.0.0.0 = unset (stock writes 0.0.0.0 for blanks). | [MTU]: Stock: static 128-1500, DHCP 576-1500, IPv6 1280-1500. | [LinkType]: Always 1 (oE) on GPON. | [VlanMode]: Observed 1 and 2. Probably the same 0/1/2 coding as WANC.WBDMode; unverified. | [DhcpEnable]: Stock 'Enable DHCP Server' checkbox (page param dhcpEnable); forced 0 for TR069/VoIP-only. | [bitBind]: Stock string of 0/1 per port: LAN1..LAN4 then SSID1..SSIDn. | ConnType option codes: 1 IP_Routed, 2 IP_Bridged, 3 DHCP_Spoofed, 4 PPPoE_Bridged, 5 PPPoE_Relay, 6 PPTP_Relay, 7 L2TP_Relay."
+    },
+    {
+      "id": "wan-user-pppoe",
+      "title": "PPPoE account (user view)",
+      "group": "network",
+      "order": 11,
+      "icon": "user",
+      "description": "Simplified user-role page: change the PPPoE username/password of an existing WAN.",
+      "stock": {
+        "menu": "ssmWANConnUser",
+        "page": "pon_net_wanuser_conf_t.gch",
+        "handler": [
+          "pon_ethwancpppuser_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "Simplified view; the WAN page has the same settings.",
+      "apply": "reboot",
+      "danger": "commit-confirm",
+      "sections": [
+        {
+          "id": "account",
+          "title": "PPPoE account",
+          "table": "WANCPPP",
+          "mode": "list",
+          "rowLabel": "{ViewName}",
+          "fields": [
+            {
+              "dm": "ViewName",
+              "label": "Connection",
+              "type": "string",
+              "column": true,
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "UserName",
+              "label": "Username",
+              "type": "string",
+              "min": 1,
+              "max": 64,
+              "column": true
+            },
+            {
+              "dm": "Password",
+              "label": "Password",
+              "type": "password",
+              "min": 0,
+              "max": 64
+            }
+          ]
+        }
+      ],
+      "notes": "Also ssmWANConnUserCom (net_user_wan_conf_t.gch): same fields plus a mode select with values IP_Routed (PPPoE) / PPPoE_Bridged (Bridge) -> WANC.ConnType 1/4; this confirmed the ConnType codes. UI-text notes moved here: [applicableNote]: User-role (right=2) subset of the WAN page; the admin 'wan' page already covers these DMs."
+    },
+    {
+      "id": "wan-client-limit",
+      "title": "Client limit",
+      "group": "network",
+      "order": 12,
+      "icon": "users",
+      "description": "Maximum number of LAN clients allowed through the WAN (operator feature).",
+      "stock": {
+        "menu": "ssmCLTMLT",
+        "page": "pon_net_cltlmt_t.gch",
+        "handler": [
+          "pon_cltlmt_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "The ISP sets this limit; it is read only.",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "limits",
+          "title": "Limits",
+          "table": "CltLmt",
+          "mode": "list",
+          "rowLabel": "Class {Type}",
+          "maxRows": 9,
+          "fields": [
+            {
+              "dm": "ViewName",
+              "label": "View name",
+              "type": "string",
+              "column": true,
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "Type",
+              "label": "Device class",
+              "type": "int",
+              "column": true,
+              "readonly": true
+            },
+            {
+              "dm": "Enable",
+              "label": "Enabled",
+              "type": "bool",
+              "column": true
+            },
+            {
+              "dm": "Max",
+              "label": "Maximum",
+              "type": "int",
+              "min": 0,
+              "column": true,
+              "help": "0 = unlimited."
+            },
+            {
+              "dm": "LanHostMax",
+              "label": "LAN host maximum",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "CtlListMax",
+              "label": "Control list maximum",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "IPORMAC",
+              "label": "Match by IP or MAC",
+              "type": "int",
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "Stock OBJ_PON_USERLMT_ID params (Mode, TotalNumber, STBEnable/Number, CameraEnable/Number, PCEnable/Number, PhoneEnable/Number) are not DB DM names; CltLmt is the only matching table. UI-text notes moved here: [applicableNote]: Stock page is read-only (field disabled, buttons hidden); operator-pushed limit. | [Type]: Rows 0..8 carry Type 0..8. Stock OBJ fields are Mode/TotalNumber/STB/Camera/PC/Phone; mapping of Type codes not decoded. | [Max]: 0 = unlimited (stock shows 'unlimited' when Mode=0 or TotalNumber=0). | [IPORMAC]: Observed 0; coding unknown."
+    },
+    {
+      "id": "dslite",
+      "title": "DS-Lite tunnel",
+      "group": "network",
+      "order": 13,
+      "icon": "git-branch",
+      "description": "IPv4-in-IPv6 (DS-Lite) tunnel bound to an IPv6 WAN connection.",
+      "stock": {
+        "menu": "ssmDSLITECon",
+        "page": "net_dslite_conf_t.gch",
+        "handler": [
+          "tunnel_gch.gch",
+          "dslite_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "Works only if your ISP offers DS-Lite.",
+      "apply": "reboot",
+      "danger": "commit-confirm",
+      "sections": [
+        {
+          "id": "tunnels",
+          "title": "Tunnels",
+          "table": "TUNNEL46CFG",
+          "mode": "list",
+          "rowLabel": "{Tunnel46name}",
+          "addable": true,
+          "deletable": true,
+          "fields": [
+            {
+              "dm": "TUN46ViewName",
+              "label": "View",
+              "type": "string",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "Tunnel46name",
+              "label": "Tunnel name",
+              "type": "string",
+              "min": 1,
+              "max": 32,
+              "column": true
+            },
+            {
+              "dm": "IsTUN46Enable",
+              "label": "Enabled",
+              "type": "bool",
+              "column": true
+            },
+            {
+              "dm": "TUN46WANCViewName",
+              "label": "WAN connection",
+              "type": "string",
+              "column": true,
+              "help": "An IPv6-capable WAN connection."
+            },
+            {
+              "dm": "TUN46Localv4Addr",
+              "label": "Interface IPv4 address",
+              "type": "ipv4",
+              "help": "Must not be 0.x, 127.x or 224.x and above."
+            },
+            {
+              "dm": "IsHMREMOTEAddrSrc",
+              "label": "Manual AFTR",
+              "type": "bool"
+            },
+            {
+              "dm": "TUN46REMOTEIPAddr",
+              "label": "AFTR address",
+              "type": "string",
+              "max": 256,
+              "showIf": {
+                "dm": "IsHMREMOTEAddrSrc",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "Tunneltype",
+              "label": "Tunnel type",
+              "type": "int",
+              "advanced": true,
+              "readonly": true
+            }
+          ]
+        }
+      ],
+      "notes": "DM names are the OBJ_TUNNEL46_ID page params (table has 0 rows; unverified). UI-text notes moved here: [applicableNote]: TUNNEL46CFG exists (0 rows) and WAN service apps tunnel46/tunnel64 are present, so the stack has it; whether the ISP offers DS-Lite is deployment-specific. ssmDSLITEEth (net_dsliteeth_conf_t.gch) just includes this page. | [TUN46WANCViewName]: WANC.ViewName of an IPv6-capable WAN. | [TUN46Localv4Addr]: Stock rejects 127.x, >=224.x, 0.x. | [Tunneltype]: 8 = ds-lite (only option)."
+    },
+    {
+      "id": "arp-detect",
+      "title": "ARP detection",
+      "group": "network",
+      "order": 14,
+      "icon": "radar",
+      "description": "Periodic ARP probing of LAN hosts and ARP entry ageing.",
+      "stock": {
+        "menu": "ssmArpDetect",
+        "page": "net_arpdetect_t.gch",
+        "handler": [
+          "arpdetect_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "arp",
+          "title": "ARP detection",
+          "table": "ARPDETECTConfig",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "ArpEnable",
+              "label": "Enable",
+              "type": "bool"
+            },
+            {
+              "dm": "Timeout",
+              "label": "Interval",
+              "type": "int",
+              "unit": "s",
+              "min": 60,
+              "max": 900,
+              "showIf": {
+                "dm": "ArpEnable",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "ArpAgeingtime",
+              "label": "Ageing time",
+              "type": "int",
+              "unit": "s",
+              "min": 60,
+              "max": 900,
+              "showIf": {
+                "dm": "ArpEnable",
+                "in": [
+                  "1"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_ArpDetect_ID. UI-text notes moved here: [ArpAgeingtime]: Stock page param is ArpAging; DB DM is ArpAgeingtime."
+    },
+    {
+      "id": "dhcp-client",
+      "title": "DHCP client release",
+      "group": "network",
+      "order": 15,
+      "icon": "unplug",
+      "description": "Send DHCP RELEASE on the WAN when the link goes down.",
+      "stock": {
+        "menu": "ssmdhcpcleanlink",
+        "page": "net_dhcpcleanlink_t.gch",
+        "handler": [
+          "net_dhcpcleanlink_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "client",
+          "title": "DHCP client",
+          "table": "DHCPCComm",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "SendRelease",
+              "label": "Send DHCP release",
+              "type": "bool"
+            },
+            {
+              "dm": "DhcpForceRenewEnable",
+              "label": "Accept FORCERENEW",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "Dscp",
+              "label": "DHCP DSCP",
+              "type": "int",
+              "min": -1,
+              "max": 63,
+              "advanced": true
+            },
+            {
+              "dm": "Priority",
+              "label": "DHCP 802.1p",
+              "type": "int",
+              "min": -1,
+              "max": 7,
+              "advanced": true
+            },
+            {
+              "dm": "QueueNum",
+              "label": "Queue",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "BootpFlag",
+              "label": "BOOTP broadcast flag",
+              "type": "bool",
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "Mapping bSendRelease -> DHCPCComm.SendRelease inferred by name. UI-text notes moved here: [SendRelease]: Stock page param bSendRelease (OBJ_DHCPCLEANLINK_ID); best match DHCPCComm.SendRelease."
+    },
+    {
+      "id": "mtu",
+      "title": "MTU optimisation",
+      "group": "network",
+      "order": 16,
+      "icon": "ruler",
+      "description": "Choose WAN MTU for compatibility or throughput.",
+      "stock": {
+        "menu": "ssmMtuCg",
+        "page": "net_mtu_mtucg_t.gch",
+        "handler": [
+          "net_mtu_mtucg_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "Some ISP settings lock this page.",
+      "apply": "unknown",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "mtu",
+          "title": "MTU",
+          "table": "EthGlobalConf",
+          "mode": "single",
+          "row": 0,
+          "source": "runtime:mtu_change",
+          "fields": [
+            {
+              "dm": "MTUConfigSwitch",
+              "label": "Mode",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Best compatibility"
+                },
+                {
+                  "value": "1",
+                  "label": "Best forwarding performance"
+                },
+                {
+                  "value": "2",
+                  "label": "Manual"
+                }
+              ]
+            },
+            {
+              "dm": "MTUValue",
+              "label": "MTU",
+              "type": "int",
+              "min": 1401,
+              "max": 1491,
+              "showIf": {
+                "dm": "MTUConfigSwitch",
+                "in": [
+                  "2"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_MTU_CHANGE_ID, identity IGD. Not in any dumped table; runtime source until located. UI-text notes moved here: [applicableNote]: User-role page (right=2); values 4/5 lock the page. No DB table holds MTUConfigSwitch/MTUValue."
+    },
+    {
+      "id": "vlan-binding",
+      "title": "VLAN binding",
+      "group": "network",
+      "order": 20,
+      "icon": "split",
+      "description": "Per LAN port / SSID: port binding or VLAN translation (user VLAN/WAN VLAN pairs).",
+      "stock": {
+        "menu": "ssmBindingMode",
+        "page": "net_vlan_port_binding_t.gch",
+        "handler": [
+          "vlan_port_binding_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "commit-confirm",
+      "sections": [
+        {
+          "id": "ports",
+          "title": "Ports",
+          "table": "VLANBIND",
+          "mode": "list",
+          "rowLabel": "{ViewName}",
+          "maxRows": 32,
+          "fields": [
+            {
+              "dm": "ViewName",
+              "label": "Port",
+              "type": "string",
+              "column": true,
+              "help": "LAN port or SSID.",
+              "readonly": true
+            },
+            {
+              "dm": "Mode",
+              "label": "Binding mode",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Port binding"
+                },
+                {
+                  "value": "1",
+                  "label": "VLAN binding"
+                }
+              ],
+              "column": true
+            },
+            {
+              "dm": "VLAN",
+              "label": "VLAN pairs",
+              "type": "string",
+              "max": 64,
+              "column": true,
+              "showIf": {
+                "dm": "Mode",
+                "in": [
+                  "1"
+                ]
+              },
+              "pattern": "^$|^[0-9]{1,4}/[0-9]{1,4}(,[0-9]{1,4}/[0-9]{1,4}){0,3}$",
+              "help": "Up to 4 'lanVLAN/wanVLAN' pairs, each 1-4094, no duplicates, e.g. 10/100,20/200."
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_VLANBIND_ID with identity per port. VLANBIND has 0 rows in the dump, so the row key DM (ViewName vs a port reference) is unverified; the stock object probably creates a row on first apply. UI-text notes moved here: [ViewName]: Stock identities IGD.LD1.ETH1..4, IGD.LD1.WLAN1..n."
+    },
+    {
+      "id": "lan",
+      "title": "LAN",
+      "group": "network",
+      "order": 30,
+      "icon": "network",
+      "description": "Router LAN address and bridge settings.",
+      "stock": {
+        "menu": "ssmDHCPSer",
+        "page": "net_dhcp_dynamic_t.gch",
+        "handler": [
+          "dhcp_basic_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "commit-confirm",
+      "sections": [
+        {
+          "id": "ip",
+          "title": "LAN IPv4",
+          "table": "LAND",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "IPAddr",
+              "label": "LAN IP address",
+              "type": "ipv4",
+              "required": true,
+              "help": "Not 0.0.0.0, 127.x or 224.x and above. Update the DHCP pool to match."
+            },
+            {
+              "dm": "NetMask",
+              "label": "Subnet mask",
+              "type": "ipv4",
+              "required": true,
+              "help": "Not 0.0.0.0, 255.255.255.254 or 255.255.255.255."
+            },
+            {
+              "dm": "AddressingType",
+              "label": "Addressing",
+              "type": "int",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "IPv6Addr",
+              "label": "LAN IPv6 address",
+              "type": "ipv6",
+              "advanced": true
+            },
+            {
+              "dm": "IPv6PrefLen",
+              "label": "LAN IPv6 prefix length",
+              "type": "int",
+              "min": 0,
+              "max": 128,
+              "advanced": true
+            },
+            {
+              "dm": "STPEnable",
+              "label": "Spanning tree",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "AgeingTime",
+              "label": "MAC ageing",
+              "type": "int",
+              "unit": "s",
+              "advanced": true
+            },
+            {
+              "dm": "IGMPSNPEnable",
+              "label": "IGMP snooping",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "MLDSNPEnable",
+              "label": "MLD snooping",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "ArpStolenEnable",
+              "label": "ARP spoofing protection",
+              "type": "bool",
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "Stock hides LAN IP inside the DHCP server page (OBJ_BRGRP_ID -> LAND). Stock also writes DHCPSHostCfg.SubnetMask = LAN mask and DHCPSHostCfg.IPRouters = LAN IP on the same submit; the server should do the same and keep MinAddress/MaxAddress inside the new subnet. UI-text notes moved here: [description]: Router LAN address (br0) and bridge settings. | [IPAddr]: Stock rejects 0.0.0.0, 127.x, >=224.x. Also update DHCP pool/gateway. | [NetMask]: Stock param SubMask; not 0.0.0.0, .254 or .255. | [AddressingType]: 1 = static (tBrGrpAddressingTypeTable)"
+    },
+    {
+      "id": "dhcp-server",
+      "title": "DHCP server",
+      "group": "network",
+      "order": 31,
+      "icon": "server",
+      "description": "IPv4 DHCP server on the LAN: pool range, lease, DNS and gateway handed to clients.",
+      "stock": {
+        "menu": "ssmDHCPSer",
+        "page": "net_dhcp_dynamic_t.gch",
+        "handler": [
+          "host_gch.gch",
+          "dhcp_host_gch.gch",
+          "dhcp_hostinfo_gch.gch",
+          "dhcp_basic_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "commit-confirm",
+      "sections": [
+        {
+          "id": "server",
+          "title": "Server",
+          "table": "DHCPSHostCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "ServerEnable",
+              "label": "Enable DHCP server",
+              "type": "bool"
+            },
+            {
+              "dm": "MinAddress",
+              "label": "Start address",
+              "type": "ipv4",
+              "required": true
+            },
+            {
+              "dm": "MaxAddress",
+              "label": "End address",
+              "type": "ipv4",
+              "required": true
+            },
+            {
+              "dm": "SubnetMask",
+              "label": "Subnet mask",
+              "type": "ipv4",
+              "help": "Normally the same as the LAN subnet mask."
+            },
+            {
+              "dm": "IPRouters",
+              "label": "Default gateway",
+              "type": "ipv4",
+              "help": "Normally the router's LAN IP address."
+            },
+            {
+              "dm": "LeaseTime",
+              "label": "Lease time",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "60",
+                  "label": "1 minute"
+                },
+                {
+                  "value": "3600",
+                  "label": "1 hour"
+                },
+                {
+                  "value": "86400",
+                  "label": "1 day"
+                },
+                {
+                  "value": "604800",
+                  "label": "1 week"
+                },
+                {
+                  "value": "-1",
+                  "label": "Infinite"
+                }
+              ]
+            },
+            {
+              "dm": "DnsServerSource",
+              "label": "DNS handed out",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "ISP DNS (from WAN)"
+                },
+                {
+                  "value": "0",
+                  "label": "Manual"
+                }
+              ]
+            },
+            {
+              "dm": "DNSServers1",
+              "label": "DNS 1",
+              "type": "ipv4",
+              "showIf": {
+                "dm": "DnsServerSource",
+                "in": [
+                  "0"
+                ]
+              }
+            },
+            {
+              "dm": "DNSServers2",
+              "label": "DNS 2",
+              "type": "ipv4",
+              "showIf": {
+                "dm": "DnsServerSource",
+                "in": [
+                  "0"
+                ]
+              }
+            },
+            {
+              "dm": "DNSServers3",
+              "label": "DNS 3",
+              "type": "ipv4",
+              "showIf": {
+                "dm": "DnsServerSource",
+                "in": [
+                  "0"
+                ]
+              }
+            },
+            {
+              "dm": "DomainName",
+              "label": "Domain name",
+              "type": "string",
+              "max": 64,
+              "advanced": true
+            },
+            {
+              "dm": "EnableOpt125",
+              "label": "Option 125",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "EnableOpt60",
+              "label": "Option 60",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "RelayEnable",
+              "label": "DHCP relay",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "ReservedAddresses",
+              "label": "Reserved addresses",
+              "type": "string",
+              "advanced": true
+            },
+            {
+              "dm": "DHCPConditionalServing",
+              "label": "Conditional serving",
+              "type": "int",
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "leases",
+          "title": "Leases",
+          "table": "DHCPSHostCfg",
+          "mode": "readonly",
+          "source": "runtime:dhcp_leases",
+          "fields": [
+            {
+              "dm": "HostName",
+              "label": "Client name",
+              "column": true
+            },
+            {
+              "dm": "IP",
+              "label": "IP address",
+              "column": true
+            },
+            {
+              "dm": "MAC",
+              "label": "MAC address",
+              "column": true
+            },
+            {
+              "dm": "If",
+              "label": "Interface",
+              "column": true
+            },
+            {
+              "dm": "AddrSrc",
+              "label": "Source",
+              "column": true
+            },
+            {
+              "dm": "LastConn",
+              "label": "Last seen",
+              "column": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_DHCPHOST_ID -> DHCPSHostCfg (page params DNSServer1..3 map to DB DNSServers1..3). Leases: OBJ_DHCPHOSTINFO_ID (HostName, MACAddr, IPAddr, PhyPortName, PhyType); runtime. Validation: start/end within LAN subnet; stock errors 152/153/164. UI-text notes moved here: [SubnetMask]: Stock copies the LAN mask here. | [IPRouters]: Stock copies the LAN IP here. | [LeaseTime]: Seconds; other stored values are shown as custom by the stock page. | [DNSServers1]: Stock param DNSServer1."
+    },
+    {
+      "id": "dhcp-static",
+      "title": "DHCP reservations",
+      "group": "network",
+      "order": 32,
+      "icon": "pin",
+      "description": "Fixed IPv4 addresses for known MAC addresses.",
+      "stock": {
+        "menu": "ssmDHCPBind",
+        "page": "net_dhcp_static_t.gch",
+        "handler": [
+          "dhcp_bind_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "binds",
+          "title": "Reservations",
+          "table": "DHCPSBind",
+          "mode": "list",
+          "rowLabel": "{MACAddr}",
+          "addable": true,
+          "deletable": true,
+          "maxRows": 32,
+          "fields": [
+            {
+              "dm": "ViewName",
+              "label": "View",
+              "type": "string",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "HostCfgViewName",
+              "label": "Server",
+              "type": "string",
+              "advanced": true,
+              "default": "IGD.LD1.HostCfg",
+              "readonly": true
+            },
+            {
+              "dm": "MACAddr",
+              "label": "MAC address",
+              "type": "mac",
+              "column": true,
+              "required": true
+            },
+            {
+              "dm": "IPAddr",
+              "label": "IP address",
+              "type": "ipv4",
+              "column": true,
+              "required": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_DHCPBIND_ID (view 'Bind' under HostCfg). DHCPSBind has 0 rows; DM names = page params (unverified). HostCfgViewName default IGD.LD1.HostCfg is the only DHCPSHostCfg view."
+    },
+    {
+      "id": "dhcp-device-pools",
+      "title": "DHCP device pools",
+      "group": "network",
+      "order": 33,
+      "icon": "layers",
+      "description": "Separate address ranges per device type (HGW, STB, phone, camera, PC).",
+      "stock": {
+        "menu": "ssmSAddrRange",
+        "page": "net_dhcp_specialdevice_t.gch",
+        "handler": [
+          "dhcp_specialdevice_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "pools",
+          "title": "Device pools",
+          "table": "DHCPSPool",
+          "mode": "list",
+          "rowFilter": {
+            "dm": "PoolName",
+            "in": [
+              "hgw",
+              "stb",
+              "camera",
+              "phone",
+              "pc"
+            ]
+          },
+          "rowLabel": "{PoolName}",
+          "fields": [
+            {
+              "dm": "PoolName",
+              "label": "Pool",
+              "type": "string",
+              "column": true,
+              "readonly": true
+            },
+            {
+              "dm": "Enable",
+              "label": "Enabled",
+              "type": "bool",
+              "column": true
+            },
+            {
+              "dm": "MinAddress",
+              "label": "Start address",
+              "type": "ipv4",
+              "column": true
+            },
+            {
+              "dm": "MaxAddress",
+              "label": "End address",
+              "type": "ipv4",
+              "column": true
+            },
+            {
+              "dm": "SubnetMask",
+              "label": "Subnet mask",
+              "type": "ipv4",
+              "advanced": true
+            },
+            {
+              "dm": "IPRouters",
+              "label": "Gateway",
+              "type": "ipv4",
+              "advanced": true
+            },
+            {
+              "dm": "LeaseTime",
+              "label": "Lease time",
+              "type": "int",
+              "unit": "s",
+              "advanced": true
+            },
+            {
+              "dm": "DNSServers1",
+              "label": "DNS 1",
+              "type": "ipv4",
+              "advanced": true
+            },
+            {
+              "dm": "DNSServers2",
+              "label": "DNS 2",
+              "type": "ipv4",
+              "advanced": true
+            },
+            {
+              "dm": "DNSServers3",
+              "label": "DNS 3",
+              "type": "ipv4",
+              "advanced": true
+            },
+            {
+              "dm": "VendorClassID",
+              "label": "Match (vendor class / port)",
+              "type": "string",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "ViewName",
+              "label": "View",
+              "type": "string",
+              "advanced": true,
+              "readonly": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_DHCPPOOL_ID. DHCPSPool rows 0-4 (PoolName hgw/stb/camera/phone/pc, VendorClassID '*'). Labels: hgw=HGW, stb=STB, phone=Phone, camera=Camera, pc=PC. Stock edits only MinAddress/MaxAddress; must stay inside the LAN subnet."
+    },
+    {
+      "id": "dhcp-port",
+      "title": "DHCP per port",
+      "group": "network",
+      "order": 34,
+      "icon": "plug",
+      "description": "Disable the DHCP server on individual LAN ports / SSIDs.",
+      "stock": {
+        "menu": "ssmDHCPPort",
+        "page": "net_dhcp_bindonport_t.gch",
+        "handler": [
+          "dhcp_bindonport_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "ports",
+          "title": "Ports",
+          "table": "DHCPSPool",
+          "mode": "list",
+          "rowFilter": {
+            "dm": "PoolName",
+            "in": [
+              "eth1",
+              "eth2",
+              "eth3",
+              "eth4",
+              "wlan0",
+              "wlan1",
+              "wlan2",
+              "wlan3",
+              "wlan4",
+              "wlan5",
+              "wlan6",
+              "wlan7",
+              "wlan8",
+              "wlan9",
+              "wlan10",
+              "wlan11",
+              "wlan12",
+              "wlan13",
+              "wlan14",
+              "wlan15"
+            ]
+          },
+          "rowLabel": "{PoolName}",
+          "fields": [
+            {
+              "dm": "PoolName",
+              "label": "Port",
+              "type": "string",
+              "column": true,
+              "readonly": true
+            },
+            {
+              "dm": "VendorClassID",
+              "label": "Interface",
+              "type": "string",
+              "column": true,
+              "readonly": true
+            },
+            {
+              "dm": "ProcFlag",
+              "label": "DHCP disabled on this port",
+              "type": "bool",
+              "column": true,
+              "help": "When on, the DHCP server does not answer on this port."
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_DHCPBINDONPORT_ID over DHCPSPool per-port pools (rows 5-16, 19-26; VendorClassID eth0..3 / wlan0..15). Rows pppoeproxy1/2 (ProcFlag=1) are PPPoE-proxy pools, not shown. UI-text notes moved here: [ProcFlag]: Stock: checked => ProcFlag=1 => that port's DHCP service is closed."
+    },
+    {
+      "id": "ipv6-ra",
+      "title": "IPv6 router advertisement",
+      "group": "network",
+      "order": 35,
+      "icon": "radio-tower",
+      "description": "RA (SLAAC) on the LAN: intervals and managed/other flags.",
+      "stock": {
+        "menu": "ssmIPV6Ra",
+        "page": "net_v6_ra_server_t.gch",
+        "handler": [
+          "ra_server_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "ra",
+          "title": "Router advertisement",
+          "table": "RaCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "dwMinTime",
+              "label": "Minimum interval",
+              "type": "int",
+              "unit": "s",
+              "min": 3,
+              "max": 1350
+            },
+            {
+              "dm": "dwMaxTime",
+              "label": "Maximum interval",
+              "type": "int",
+              "unit": "s",
+              "min": 4,
+              "max": 1800
+            },
+            {
+              "dm": "bMangment",
+              "label": "Managed flag (M)",
+              "type": "bool",
+              "help": "Clients get their addresses from DHCPv6."
+            },
+            {
+              "dm": "bOtherCfg",
+              "label": "Other config flag (O)",
+              "type": "bool",
+              "help": "Clients get DNS and other settings from DHCPv6."
+            },
+            {
+              "dm": "dwReachTime",
+              "label": "Reachable time",
+              "type": "int",
+              "unit": "ms",
+              "advanced": true
+            },
+            {
+              "dm": "dwRetranTime",
+              "label": "Retransmit time",
+              "type": "int",
+              "unit": "ms",
+              "advanced": true
+            },
+            {
+              "dm": "nHopLimit",
+              "label": "Hop limit",
+              "type": "int",
+              "min": 0,
+              "max": 255,
+              "advanced": true
+            },
+            {
+              "dm": "wRouteLifeTime",
+              "label": "Router lifetime",
+              "type": "int",
+              "unit": "s",
+              "advanced": true
+            },
+            {
+              "dm": "bState",
+              "label": "State flags",
+              "type": "int",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "bIsVisual",
+              "label": "Visible",
+              "type": "int",
+              "advanced": true,
+              "readonly": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_RA_SERVER_ID params (Enable, MinWaitTime, MaxWaitTime, Mangment, OtherCfg, ReachTime, RetranTime) are renamed in RaCfg (dw*/b* prefixes). The page 'Enable' has no obvious DM (bState is a bitmask, observed 243); left out until verified. UI-text notes moved here: [dwMinTime]: Stock param MinWaitTime. | [dwMaxTime]: Stock param MaxWaitTime. | [bMangment]: Stock param Mangment: clients use DHCPv6 for addresses. | [bOtherCfg]: Stock param OtherCfg: clients use DHCPv6 for DNS etc."
+    },
+    {
+      "id": "dhcpv6-server",
+      "title": "DHCPv6 server",
+      "group": "network",
+      "order": 36,
+      "icon": "server-cog",
+      "description": "Stateful DHCPv6 on the LAN and the DNS source handed to IPv6 clients.",
+      "stock": {
+        "menu": "ssmIPV6Addr",
+        "page": "net_v6_dhcp_dynamic_t.gch",
+        "handler": [
+          "v6_br0_dhcp_gch.gch",
+          "v6_dhcps_gch.gch",
+          "v6_dhcpdns_gch.gch",
+          "v6_dhcpc_gch.gch",
+          "dhcp_basic_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "server",
+          "title": "Server",
+          "table": "DHCP6SHostCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "ServerEnable",
+              "label": "Enable DHCPv6 server",
+              "type": "bool"
+            },
+            {
+              "dm": "MinAddress",
+              "label": "Start (interface ID)",
+              "type": "string",
+              "max": 39,
+              "help": "Only the last 64 bits are used."
+            },
+            {
+              "dm": "MaxAddress",
+              "label": "End (interface ID)",
+              "type": "string",
+              "max": 39
+            },
+            {
+              "dm": "DnsRefreshTime",
+              "label": "DNS refresh time",
+              "type": "int",
+              "unit": "s",
+              "min": 60,
+              "max": 864000
+            },
+            {
+              "dm": "Prefer",
+              "label": "Preference",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "ConflictAddrHoldingTime",
+              "label": "Conflict hold time",
+              "type": "int",
+              "unit": "s",
+              "advanced": true
+            },
+            {
+              "dm": "PreferredLifeTime",
+              "label": "Preferred lifetime",
+              "type": "int",
+              "unit": "s",
+              "advanced": true
+            },
+            {
+              "dm": "ValidLifeTime",
+              "label": "Valid lifetime",
+              "type": "int",
+              "unit": "s",
+              "advanced": true
+            },
+            {
+              "dm": "DomainName",
+              "label": "Domain name",
+              "type": "string",
+              "max": 64,
+              "advanced": true
+            },
+            {
+              "dm": "EnableOpt16",
+              "label": "Option 16",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "EnableOpt17",
+              "label": "Option 17",
+              "type": "bool",
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "lan6",
+          "title": "LAN IPv6 address",
+          "table": "LAND",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "IPv6Addr",
+              "label": "LAN IPv6 address",
+              "type": "ipv6"
+            },
+            {
+              "dm": "IPv6PrefLen",
+              "label": "Prefix length",
+              "type": "int",
+              "min": 48,
+              "max": 64
+            }
+          ]
+        },
+        {
+          "id": "dns",
+          "title": "IPv6 DNS for LAN clients",
+          "table": "DNSSettings",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "IPv6DNSConfigType",
+              "label": "DNS source",
+              "type": "int",
+              "help": "Where LAN clients get IPv6 DNS: a WAN connection, static, or the router as proxy."
+            },
+            {
+              "dm": "IPv6DNSWANC",
+              "label": "WAN connection (view)",
+              "type": "string",
+              "help": "WAN connection to take DNS from."
+            },
+            {
+              "dm": "SerIPv6Address3",
+              "label": "Static DNS 1",
+              "type": "ipv6"
+            },
+            {
+              "dm": "SerIPv6Address4",
+              "label": "Static DNS 2",
+              "type": "ipv6"
+            },
+            {
+              "dm": "SerIPv6Address5",
+              "label": "Static DNS 3",
+              "type": "ipv6"
+            }
+          ]
+        },
+        {
+          "id": "leases",
+          "title": "Leases",
+          "table": "DHCP6SHostCfg",
+          "mode": "readonly",
+          "source": "runtime:dhcp6_leases",
+          "fields": [
+            {
+              "dm": "MacAddr",
+              "label": "MAC address",
+              "type": "mac"
+            },
+            {
+              "dm": "Duid",
+              "label": "DUID",
+              "type": "string"
+            },
+            {
+              "dm": "IpAddr",
+              "label": "Address",
+              "type": "string"
+            },
+            {
+              "dm": "HostName",
+              "label": "Host name",
+              "type": "string"
+            },
+            {
+              "dm": "ExpiredTime",
+              "label": "Remaining",
+              "type": "string",
+              "unit": "s"
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_DHCP6S_ID -> DHCP6SHostCfg; OBJ_DNS_ID -> DNSSettings; OBJ_BRGRP_ID -> LAND (IPv6Addr/IPv6PrefLen, 48-64); OBJ_DHCP6C_ID clients are runtime. DHCP6SPool (1 row, Enable/MinAddress/MaxAddress) is a sibling pool not edited by the stock page. UI-text notes moved here: [MinAddress]: Last 64 bits effective. | [IPv6DNSConfigType]: Stock options WANConnection / Static / HGWProxy; DB code mapping unverified (observed 2). | [IPv6DNSWANC]: WANC.ViewName when source is WAN connection."
+    },
+    {
+      "id": "ipv6-lan-prefix",
+      "title": "IPv6 LAN prefix",
+      "group": "network",
+      "order": 37,
+      "icon": "hash",
+      "description": "Static IPv6 prefix advertised on the LAN.",
+      "stock": {
+        "menu": "ssmIPV6Prefix",
+        "page": "ipv6_net_prefix_t.gch",
+        "handler": [
+          "ipv6_prefix_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "prefix",
+          "title": "Prefix",
+          "table": "LAND",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "IPv6GUAAddr",
+              "label": "Prefix",
+              "type": "ipv6"
+            },
+            {
+              "dm": "IPv6GUAPrefLen",
+              "label": "Prefix length",
+              "type": "int",
+              "min": 48,
+              "max": 64
+            }
+          ]
+        }
+      ],
+      "notes": "Mapping to LAND GUA fields unverified. UI-text notes moved here: [applicableNote]: OBJ_IPV6PREFIX_ID (Mode, Prefix, PrefixLen; JS forces Mode=1) has no matching DB table; LAND.IPv6GUAAddr/IPv6GUAPrefLen is a guess. | [IPv6GUAAddr]: Stock param Prefix (OBJ_IPV6PREFIX_ID). | [IPv6GUAPrefLen]: Stock param PrefixLen."
+    },
+    {
+      "id": "prefix",
+      "title": "IPv6 prefix management",
+      "group": "network",
+      "order": 38,
+      "icon": "list-tree",
+      "description": "Prefixes per WAN: source (delegation/static), lifetimes, and RA/DHCPv6 use.",
+      "stock": {
+        "menu": "ssmPrefix",
+        "page": "net_prefix_t.gch",
+        "handler": [
+          "prefix_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "Needs an IPv6 WAN connection.",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "prefixes",
+          "title": "Prefixes",
+          "table": "PrefixCfg",
+          "mode": "list",
+          "rowLabel": "{WANCName}",
+          "maxRows": 8,
+          "fields": [
+            {
+              "dm": "ViewName",
+              "label": "View",
+              "type": "string",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "WANCName",
+              "label": "WAN connection",
+              "type": "string",
+              "column": true,
+              "readonly": true
+            },
+            {
+              "dm": "BindWANCID",
+              "label": "WAN view",
+              "type": "string",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "Prefix",
+              "label": "Prefix",
+              "type": "ipv6",
+              "column": true,
+              "showIf": {
+                "dm": "Src",
+                "in": [
+                  "Static"
+                ]
+              }
+            },
+            {
+              "dm": "PrefixLen",
+              "label": "Prefix length",
+              "type": "int",
+              "min": 48,
+              "max": 64,
+              "column": true,
+              "showIf": {
+                "dm": "Src",
+                "in": [
+                  "Static"
+                ]
+              }
+            },
+            {
+              "dm": "Src",
+              "label": "Source",
+              "type": "string",
+              "column": true,
+              "help": "Static, PrefixDelegation or None.",
+              "readonly": true
+            },
+            {
+              "dm": "PreferLifetime",
+              "label": "Preferred lifetime",
+              "type": "int",
+              "unit": "s",
+              "min": 0,
+              "max": 4294967295
+            },
+            {
+              "dm": "ValidLifetime",
+              "label": "Valid lifetime",
+              "type": "int",
+              "unit": "s",
+              "min": 0,
+              "max": 4294967295
+            },
+            {
+              "dm": "Delegation",
+              "label": "Use for",
+              "type": "string",
+              "help": "Whether the prefix is announced by RA, DHCPv6 or both."
+            },
+            {
+              "dm": "WorkIfID",
+              "label": "Interface",
+              "type": "string",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "Onlink",
+              "label": "On-link flag",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "Autoconf",
+              "label": "Autonomous flag",
+              "type": "bool",
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_PREFIX_ID: ViewName, WANCName, BindWANCID, Prefix, PrefixLen, Src, PreferLifetime, ValidLifetime, Delegation, WorkIfID, Onlink, Autoconf. Stock edits lifetimes and RA/DHCPv6 flags only; Prefix editable when Src=Static. UI-text notes moved here: [applicableNote]: PrefixCfg has 0 rows (no IPv6 WAN configured); DM names = OBJ_PREFIX_ID page params, unverified. | [Src]: Stock values Static / PrefixDelegation / None (strings). | [Delegation]: Stock RA / DHCPv6 checkboxes; storage format unverified."
+    },
+    {
+      "id": "tr069",
+      "title": "TR-069 (ACS)",
+      "group": "network",
+      "order": 40,
+      "icon": "satellite-dish",
+      "description": "Remote management: ACS URL and credentials, connection request, periodic inform.",
+      "stock": {
+        "menu": "ssmTR069Basic",
+        "page": "net_tr069_basic_t.gch",
+        "handler": [
+          "manage_server_gch.gch",
+          "manage_tr069_gch.gch",
+          "wan_func.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "confirm",
+      "sections": [
+        {
+          "id": "acs",
+          "title": "ACS",
+          "table": "MgtServer",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Tr069Enable",
+              "label": "Enable TR-069",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "DefaultWan",
+              "label": "WAN connection",
+              "type": "string",
+              "help": "WAN connection used for TR-069 management."
+            },
+            {
+              "dm": "URL",
+              "label": "ACS URL",
+              "type": "string",
+              "max": 256,
+              "pattern": "^$|^https?://"
+            },
+            {
+              "dm": "UserName",
+              "label": "ACS username",
+              "type": "string",
+              "min": 1,
+              "max": 256,
+              "required": true
+            },
+            {
+              "dm": "Password",
+              "label": "ACS password",
+              "type": "password",
+              "max": 256
+            },
+            {
+              "dm": "ConnectionRequestURL",
+              "label": "Connection request URL",
+              "type": "string",
+              "readonly": true
+            },
+            {
+              "dm": "ConnectionRequestUsername",
+              "label": "Connection request username",
+              "type": "string",
+              "max": 256
+            },
+            {
+              "dm": "ConnectionRequestPassword",
+              "label": "Connection request password",
+              "type": "password",
+              "max": 256
+            },
+            {
+              "dm": "PeriodicInformEnable",
+              "label": "Periodic inform",
+              "type": "bool"
+            },
+            {
+              "dm": "PeriodicInformInterval",
+              "label": "Inform interval",
+              "type": "int",
+              "unit": "s",
+              "min": 1,
+              "max": 42949672,
+              "showIf": {
+                "dm": "PeriodicInformEnable",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "SupportCertAuth",
+              "label": "Verify ACS certificate",
+              "type": "bool"
+            },
+            {
+              "dm": "PeriodicInformTime",
+              "label": "Periodic inform time",
+              "type": "string",
+              "advanced": true
+            },
+            {
+              "dm": "SessionRetryTimes",
+              "label": "Session retries",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "retryMinWaitInterval",
+              "label": "Retry minimum wait",
+              "type": "int",
+              "unit": "s",
+              "advanced": true
+            },
+            {
+              "dm": "RetryIntervalMultiplier",
+              "label": "Retry multiplier",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "CheckHost",
+              "label": "Check host",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "ParameterKey",
+              "label": "Parameter key",
+              "type": "string",
+              "advanced": true,
+              "readonly": true
+            }
+          ]
+        },
+        {
+          "id": "queue",
+          "title": "TR-069 traffic marking",
+          "table": "Tr069Queue",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "QueueNum",
+              "label": "Queue",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "DSCPMark",
+              "label": "DSCP",
+              "type": "int",
+              "min": -1,
+              "max": 63,
+              "advanced": true
+            },
+            {
+              "dm": "VlanPriorityReMark",
+              "label": "802.1p",
+              "type": "int",
+              "min": -1,
+              "max": 7,
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ for manage_tr069_gch.gch; DB MgtServer. Stock locks fields whose TR-069 attribute = 3 and hides config when ProInfoCfg.Tr069WebConfigEnable != 1. Values (URL/credentials) are personal: never shipped as defaults. UI-text notes moved here: [DefaultWan]: WANC.ViewName of a TR069 WAN (stock combo lists TR069-capable WANs). | [Password]: Stock field Frm_UserPassword."
+    },
+    {
+      "id": "tr069-cert",
+      "title": "TR-069 certificate",
+      "group": "network",
+      "order": 41,
+      "icon": "file-badge",
+      "description": "ACS CA certificate chain selection and upload.",
+      "stock": {
+        "menu": "ssmCF",
+        "page": "net_tr069_cafile_t.gch",
+        "handler": []
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "confirm",
+      "sections": [
+        {
+          "id": "cert",
+          "title": "Certificate",
+          "table": "MgtServer",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "CertID",
+              "label": "ACS CA certificate chain",
+              "type": "string",
+              "help": "Choose one of the installed certificates."
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "tr069-ca-upload",
+          "label": "Upload CA certificate",
+          "danger": "confirm",
+          "kind": "builtin",
+          "note": "Stock: multipart POST getpage.gch?pid=100 field CertUpload + UPLOAD_SESSION_TOKEN; takes effect after reboot."
+        }
+      ],
+      "notes": "CertID -> MgtServer.CertID inferred by name; certificate list is runtime. UI-text notes moved here: [CertID]: Stock select Frm_CertID populated from the installed list (runtime)."
+    },
+    {
+      "id": "qos",
+      "title": "QoS",
+      "group": "network",
+      "order": 50,
+      "icon": "gauge",
+      "description": "Upstream QoS: enable, total bandwidth, scheduler, re-marking and service priority template.",
+      "stock": {
+        "menu": "ssmQosBasic",
+        "page": "e8_net_qos_basic_t.gch",
+        "handler": [
+          "e8_qos_qb_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "basic",
+          "title": "Basic",
+          "table": "QOSBasic",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Enable QoS",
+              "type": "bool"
+            },
+            {
+              "dm": "QQRate",
+              "label": "Total upstream bandwidth",
+              "type": "int",
+              "unit": "kbps",
+              "min": 0,
+              "max": 1000000,
+              "help": "0 = no limit; otherwise 64–1000000."
+            },
+            {
+              "dm": "QQAlgorithmName",
+              "label": "Queue scheduling",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "SP",
+                  "label": "Strict priority (SP)"
+                },
+                {
+                  "value": "DWRR",
+                  "label": "Weighted (DWRR)"
+                }
+              ]
+            },
+            {
+              "dm": "QQBorrowEnable",
+              "label": "Lock DWRR bandwidth",
+              "type": "bool",
+              "showIf": {
+                "dm": "QQAlgorithmName",
+                "in": [
+                  "DWRR"
+                ]
+              }
+            },
+            {
+              "dm": "DSCPRemarkEnable",
+              "label": "DSCP/TC re-marking",
+              "type": "bool"
+            },
+            {
+              "dm": "VlanprioRemarkEnable",
+              "label": "802.1p re-marking",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "Mode",
+              "label": "Mode",
+              "type": "int",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "MaxQQNum",
+              "label": "Queues",
+              "type": "int",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "MaxQCNum",
+              "label": "Max classifiers",
+              "type": "int",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "MaxQPNum",
+              "label": "Max policers",
+              "type": "int",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "QPEnable",
+              "label": "Policing",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "QQEnable",
+              "label": "Queuing",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "QQDwrrNum",
+              "label": "DWRR queues",
+              "type": "int",
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "remark",
+          "title": "802.1p re-mark model and template",
+          "table": "QosCvpA",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "VlanprioRemarkMode",
+              "label": "802.1p re-mark model",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Untagged"
+                },
+                {
+                  "value": "1",
+                  "label": "Transparent"
+                },
+                {
+                  "value": "2",
+                  "label": "Tagged"
+                }
+              ]
+            },
+            {
+              "dm": "ModeName",
+              "label": "Priority template",
+              "type": "string",
+              "max": 64,
+              "pattern": "^$|^OTHER$|^(TR069|VOIP|IPTV|INTERNET)(,(TR069|VOIP|IPTV|INTERNET)){0,3}$",
+              "help": "Comma-separated, highest priority first (TR069, VOIP, IPTV, INTERNET), or OTHER for custom rules."
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_QOSQB_ID spans QOSBasic (Enable, QQRate, QQAlgorithmName, QQBorrowEnable, DSCPRemarkEnable...) and QosCvpA (VlanprioRemarkMode, template). The template page (ssmQosTemplate, net_qos_qostemplate_t.gch) writes OBJ param Mode as e.g. 'TR069,VOIP,IPTV,INTERNET'; QosCvpA.ModeName holds that format in the DB, QOSBasic.Mode is an int (0) - mapping inferred. Algorithm may also be SP_DWRR per the queue page JS. UI-text notes moved here: [QQRate]: 0 = no limit. Stock range comes from OBJ params QQRateMin/QQRateMax (64-1000000 on the 'new' variant). | [ModeName]: Comma list, highest priority first (TR069, VOIP, IPTV, INTERNET), or OTHER for custom rules."
+    },
+    {
+      "id": "qos-queues",
+      "title": "QoS queues",
+      "group": "network",
+      "order": 51,
+      "icon": "rows-3",
+      "description": "Upstream queues: enable and DWRR weight.",
+      "stock": {
+        "menu": "ssmQosQueMgr",
+        "page": "net_qos_congestion_t.gch",
+        "handler": [
+          "qos_qq_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "up",
+          "title": "Upstream queues",
+          "table": "QOSQueue",
+          "mode": "list",
+          "rowLabel": "Queue {QueueNum}",
+          "maxRows": 8,
+          "fields": [
+            {
+              "dm": "QueueNum",
+              "label": "Queue",
+              "type": "int",
+              "column": true,
+              "readonly": true
+            },
+            {
+              "dm": "Enable",
+              "label": "Enabled",
+              "type": "bool",
+              "column": true,
+              "help": "Queue 1 is the default queue."
+            },
+            {
+              "dm": "Weight",
+              "label": "Weight",
+              "type": "int",
+              "unit": "%",
+              "min": 0,
+              "max": 100,
+              "column": true,
+              "help": "Used with DWRR / SP_DWRR; weights should sum to 100."
+            },
+            {
+              "dm": "SchedulerAlgorithm",
+              "label": "Algorithm",
+              "type": "string",
+              "column": true,
+              "readonly": true
+            },
+            {
+              "dm": "Rate",
+              "label": "Rate",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "Burst",
+              "label": "Burst",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "Ceil",
+              "label": "Ceiling",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "Car",
+              "label": "CAR",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "QueueInterface",
+              "label": "Interface",
+              "type": "string",
+              "advanced": true,
+              "readonly": true
+            }
+          ]
+        },
+        {
+          "id": "down",
+          "title": "Downstream queues",
+          "table": "DWQOSQueue",
+          "mode": "list",
+          "rowLabel": "Queue {QueueNum}",
+          "maxRows": 4,
+          "fields": [
+            {
+              "dm": "QueueNum",
+              "label": "Queue",
+              "type": "int",
+              "column": true,
+              "readonly": true
+            },
+            {
+              "dm": "Enable",
+              "label": "Enabled",
+              "type": "bool",
+              "column": true
+            },
+            {
+              "dm": "Weight",
+              "label": "Weight",
+              "type": "int",
+              "unit": "%",
+              "min": 0,
+              "max": 100,
+              "column": true
+            },
+            {
+              "dm": "SchedulerAlgorithm",
+              "label": "Algorithm",
+              "type": "string",
+              "column": true,
+              "readonly": true
+            }
+          ]
+        },
+        {
+          "id": "stats",
+          "title": "Queue statistics",
+          "table": "QOSQueue",
+          "mode": "readonly",
+          "source": "runtime:qos_queue_stats",
+          "fields": [
+            {
+              "dm": "QueueNum",
+              "label": "Queue",
+              "type": "string"
+            },
+            {
+              "dm": "Enable",
+              "label": "Enabled",
+              "type": "string"
+            },
+            {
+              "dm": "TxPackets",
+              "label": "Packets sent",
+              "type": "string"
+            },
+            {
+              "dm": "DropPackets",
+              "label": "Packets dropped",
+              "type": "string"
+            },
+            {
+              "dm": "TxBytes",
+              "label": "Bytes sent",
+              "type": "string"
+            },
+            {
+              "dm": "DropBytes",
+              "label": "Bytes dropped",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "qos-stats-reset",
+          "label": "Reset queue statistics",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Stock button on net_qos_congestion_statistics_t.gch (qos_qqstats_entry_gch.gch)."
+        }
+      ],
+      "notes": "OBJ_QOSQQ_ID (ViewName, QueueNum, QEnable, Status, Length, Weight, Rate, Burst, Ceil). Stats page ssmQosQueMgr1 (net_qos_congestion_statistics_t.gch) is runtime. DWQOS* tables are the downstream twin (no stock page here). UI-text notes moved here: [Enable]: Stock param QEnable; queue 1 is the default queue."
+    },
+    {
+      "id": "qos-rules",
+      "title": "QoS rules",
+      "group": "network",
+      "order": 52,
+      "icon": "list-filter",
+      "description": "Classification rules: match types, queue and re-marking.",
+      "stock": {
+        "menu": "ssmQosRule",
+        "page": "e8_net_qos_configuration_t.gch",
+        "handler": [
+          "qos_qr_gch.gch",
+          "qos_qt_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "rules",
+          "title": "Rules",
+          "table": "QOSRule",
+          "mode": "list",
+          "rowLabel": "Rule {Order}",
+          "addable": true,
+          "deletable": true,
+          "maxRows": 30,
+          "fields": [
+            {
+              "dm": "ViewName",
+              "label": "View",
+              "type": "string",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "Order",
+              "label": "Order",
+              "type": "int",
+              "min": 1,
+              "column": true
+            },
+            {
+              "dm": "ClassQueue",
+              "label": "Queue",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "1"
+                },
+                {
+                  "value": "2",
+                  "label": "2"
+                },
+                {
+                  "value": "3",
+                  "label": "3"
+                },
+                {
+                  "value": "4",
+                  "label": "4"
+                },
+                {
+                  "value": "5",
+                  "label": "5"
+                },
+                {
+                  "value": "6",
+                  "label": "6"
+                },
+                {
+                  "value": "7",
+                  "label": "7"
+                },
+                {
+                  "value": "8",
+                  "label": "8"
+                }
+              ],
+              "column": true
+            },
+            {
+              "dm": "VlanPrioMark",
+              "label": "802.1p re-mark",
+              "type": "int",
+              "min": -1,
+              "max": 7,
+              "column": true,
+              "help": "-1 = unchanged"
+            },
+            {
+              "dm": "DscpMark",
+              "label": "DSCP re-mark (IPv4)",
+              "type": "int",
+              "min": -1,
+              "max": 63
+            },
+            {
+              "dm": "TCMark",
+              "label": "TC re-mark (IPv6)",
+              "type": "int",
+              "min": -1,
+              "max": 255
+            },
+            {
+              "dm": "PolicerQueue",
+              "label": "Policer",
+              "type": "int",
+              "min": -1,
+              "advanced": true,
+              "help": "-1 = none; otherwise the policer number."
+            },
+            {
+              "dm": "ProtocolList",
+              "label": "Protocols",
+              "type": "string",
+              "max": 32,
+              "help": "Comma list of TCP,UDP,ICMP,RTP.",
+              "pattern": "^$|^(TCP|UDP|ICMP|RTP)(,(TCP|UDP|ICMP|RTP)){0,3}$"
+            }
+          ]
+        },
+        {
+          "id": "types",
+          "title": "Match conditions",
+          "table": "QOSType",
+          "mode": "list",
+          "rowLabel": "{Type}",
+          "addable": true,
+          "deletable": true,
+          "fields": [
+            {
+              "dm": "ViewName",
+              "label": "View",
+              "type": "string",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "Type",
+              "label": "Type",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "SMAC",
+                  "label": "Source MAC"
+                },
+                {
+                  "value": "DMAC",
+                  "label": "Destination MAC"
+                },
+                {
+                  "value": "8021P",
+                  "label": "802.1p (0-7)"
+                },
+                {
+                  "value": "SIP",
+                  "label": "Source IP"
+                },
+                {
+                  "value": "DIP",
+                  "label": "Destination IP"
+                },
+                {
+                  "value": "SPORT",
+                  "label": "Source port"
+                },
+                {
+                  "value": "DPORT",
+                  "label": "Destination port"
+                },
+                {
+                  "value": "TOS",
+                  "label": "TOS (0-255)"
+                },
+                {
+                  "value": "DSCP",
+                  "label": "DSCP (0-63)"
+                },
+                {
+                  "value": "IPPrecedence",
+                  "label": "IP precedence (0-7)"
+                },
+                {
+                  "value": "LANInterface",
+                  "label": "LAN interface"
+                },
+                {
+                  "value": "TC",
+                  "label": "Traffic class (0-255)"
+                },
+                {
+                  "value": "FLOWLABEL",
+                  "label": "Flow label (0-1048575)"
+                },
+                {
+                  "value": "WANInterface",
+                  "label": "WAN interface"
+                }
+              ],
+              "column": true
+            },
+            {
+              "dm": "Min",
+              "label": "Minimum",
+              "type": "string",
+              "max": 64,
+              "column": true
+            },
+            {
+              "dm": "Max",
+              "label": "Maximum",
+              "type": "string",
+              "max": 64,
+              "column": true
+            },
+            {
+              "dm": "ProtocolList",
+              "label": "Protocols",
+              "type": "string",
+              "max": 32,
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_QOSQR_ID -> QOSRule (ViewName, Order, Status, ProtocolList, VlanPrioMark, DscpMark, TCMark, PolicerQueue, ClassQueue). OBJ_QOSQT_ID -> QOSType (ViewName, Status, Type, Max, Min, ProtocolList); QOSType has 0 rows, so the DM linking a type to its rule is unknown (identity is likely IGD.QOS.QRn.QTm). Min/Max validated per Type in e8_net_qos_type_js.gch (MAC, IPv4, 0-65535 ports, etc.). LANInterface values IGD.LD1.ETHn / IGD.LD1.WLANn. UI-text notes moved here: [PolicerQueue]: -1 = none; else policer index."
+    },
+    {
+      "id": "qos-app",
+      "title": "QoS local applications",
+      "group": "network",
+      "order": 53,
+      "icon": "app-window",
+      "description": "Map built-in applications (VoIP, TR-069...) to a queue.",
+      "stock": {
+        "menu": "ssmQosLocApp",
+        "page": "e8_net_qos_localapp_t.gch",
+        "handler": [
+          "qos_qa_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "apps",
+          "title": "Applications",
+          "table": "QOSClassification",
+          "mode": "list",
+          "source": "runtime:qos_app",
+          "fields": [
+            {
+              "dm": "AppName",
+              "label": "Application",
+              "type": "string",
+              "column": true,
+              "readonly": true
+            },
+            {
+              "dm": "ClassQueue",
+              "label": "Queue",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "1"
+                },
+                {
+                  "value": "2",
+                  "label": "2"
+                },
+                {
+                  "value": "3",
+                  "label": "3"
+                },
+                {
+                  "value": "4",
+                  "label": "4"
+                }
+              ],
+              "column": true
+            }
+          ]
+        }
+      ],
+      "notes": "Kept as runtime until the backing table is found. UI-text notes moved here: [applicableNote]: OBJ_QOSQA_ID (ViewName, AppName, ClassQueue) has no matching DB table in the dump."
+    },
+    {
+      "id": "qos-policers",
+      "title": "QoS rate limits",
+      "group": "network",
+      "order": 54,
+      "icon": "gauge-circle",
+      "description": "Policers (ingress rate limits) referenced by QoS rules.",
+      "stock": {
+        "menu": "ssmQosIRL",
+        "page": "net_qos_speed_t.gch",
+        "handler": [
+          "qos_qp_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "policers",
+          "title": "Policers",
+          "table": "QOSPolicer",
+          "mode": "list",
+          "rowLabel": "Policer {PolicerNum}",
+          "addable": true,
+          "deletable": true,
+          "maxRows": 10,
+          "fields": [
+            {
+              "dm": "ViewName",
+              "label": "View",
+              "type": "string",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "PolicerNum",
+              "label": "Policer",
+              "type": "int",
+              "column": true,
+              "readonly": true
+            },
+            {
+              "dm": "Enable",
+              "label": "Enabled",
+              "type": "bool",
+              "column": true
+            },
+            {
+              "dm": "Rate",
+              "label": "Rate",
+              "type": "int",
+              "unit": "kbps",
+              "min": 0,
+              "column": true
+            },
+            {
+              "dm": "Dev",
+              "label": "Device",
+              "type": "string",
+              "advanced": true,
+              "readonly": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_QOSQP_ID (ViewName, PolicerNum, Enable, Status, Dev, Rate). QOSPolicer has 0 rows; DM names unverified. View QP max 10. UI-text notes moved here: [Rate]: Stock range from OBJ_QPRange_ID (RateMin/RateMax)."
+    },
+    {
+      "id": "qos-template",
+      "title": "QoS priority template",
+      "group": "network",
+      "order": 55,
+      "icon": "arrow-up-down",
+      "description": "Order the service classes (TR069, VoIP, IPTV, INTERNET) by priority.",
+      "stock": {
+        "menu": "ssmQosTemplate",
+        "page": "net_qos_qostemplate_t.gch",
+        "handler": [
+          "e8_qos_qb_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "Same setting as the template on the QoS page.",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "template",
+          "title": "Template",
+          "table": "QosCvpA",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "ModeName",
+              "label": "Priority order",
+              "type": "string",
+              "max": 64,
+              "pattern": "^$|^OTHER$|^(TR069|VOIP|IPTV|INTERNET)(,(TR069|VOIP|IPTV|INTERNET)){0,3}$",
+              "help": "Highest priority first. Leave empty for OTHER (custom rules)."
+            }
+          ]
+        }
+      ],
+      "notes": "Kept separate to mirror the stock menu; the UI may hide it. UI-text notes moved here: [applicableNote]: Duplicate of the template field on the 'qos' page; mapping OBJ param Mode -> QosCvpA.ModeName inferred. | [ModeName]: Highest first. Empty submit = OTHER (custom rules)."
+    },
+    {
+      "id": "qos-basic-yn",
+      "title": "QoS (province variant)",
+      "group": "network",
+      "order": 59,
+      "icon": "gauge",
+      "description": "Province-specific combined QoS page; superseded by the generic QoS pages.",
+      "stock": {
+        "menu": "ssmQosBasicYN",
+        "page": "e8_net_qos_basic_new_t.gch",
+        "handler": []
+      },
+      "applicable": false,
+      "applicableNote": "Regional variant; use the main QoS pages instead.",
+      "apply": "unknown",
+      "danger": "none",
+      "sections": [],
+      "notes": "UI-text notes moved here: [applicableNote]: Province (YN) variant of the QoS basic/queue/statistics pages; same OBJs (OBJ_QOSQB_ID, OBJ_QOSQQ_ID, OBJ_QOSQA_ID)."
+    },
+    {
+      "id": "qos-stats-yn",
+      "title": "QoS statistics (province variant)",
+      "group": "network",
+      "order": 59,
+      "icon": "gauge",
+      "description": "Province-specific combined QoS page; superseded by the generic QoS pages.",
+      "stock": {
+        "menu": "ssmQosBasicYN1",
+        "page": "net_qos_congestion_statisticsYN_t.gch",
+        "handler": []
+      },
+      "applicable": false,
+      "applicableNote": "Regional variant; use the main QoS pages instead.",
+      "apply": "unknown",
+      "danger": "none",
+      "sections": [],
+      "notes": "UI-text notes moved here: [applicableNote]: Province (YN) variant of the QoS basic/queue/statistics pages; same OBJs (OBJ_QOSQB_ID, OBJ_QOSQQ_ID, OBJ_QOSQA_ID)."
+    },
+    {
+      "id": "sntp",
+      "title": "Time (SNTP)",
+      "group": "network",
+      "order": 60,
+      "icon": "clock",
+      "description": "NTP servers, poll interval and time zone.",
+      "stock": {
+        "menu": "ssmSNTP",
+        "page": "net_sntp_conf_t.gch",
+        "handler": [
+          "sntp_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "unknown",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "sntp",
+          "title": "SNTP",
+          "table": "SNTP",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Enable SNTP",
+              "type": "bool"
+            },
+            {
+              "dm": "NtpServer1",
+              "label": "Primary NTP server",
+              "type": "string",
+              "max": 64
+            },
+            {
+              "dm": "NtpServer2",
+              "label": "Secondary NTP server",
+              "type": "string",
+              "max": 64
+            },
+            {
+              "dm": "NtpServer3",
+              "label": "NTP server 3",
+              "type": "string",
+              "max": 64,
+              "advanced": true
+            },
+            {
+              "dm": "NtpServer4",
+              "label": "NTP server 4",
+              "type": "string",
+              "max": 64,
+              "advanced": true
+            },
+            {
+              "dm": "NtpServer5",
+              "label": "NTP server 5",
+              "type": "string",
+              "max": 64,
+              "advanced": true
+            },
+            {
+              "dm": "PollTimeInterval",
+              "label": "Poll interval",
+              "type": "int",
+              "unit": "s",
+              "min": 0,
+              "max": 604800,
+              "help": "0, or 3600–604800."
+            },
+            {
+              "dm": "LocalTimeZone",
+              "label": "Time zone offset",
+              "type": "string",
+              "pattern": "^GMT[+-][0-9]{2}:[0-9]{2}$",
+              "help": "For example GMT+07:00. Set it together with the time zone name and index."
+            },
+            {
+              "dm": "LocalTimeZoneName",
+              "label": "Time zone name",
+              "type": "string",
+              "max": 128
+            },
+            {
+              "dm": "iZoneIndex",
+              "label": "Time zone index",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "sPosixTimeZoneName",
+              "label": "POSIX time zone",
+              "type": "string",
+              "advanced": true
+            },
+            {
+              "dm": "NTPServerType",
+              "label": "Bind WAN service",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Internet"
+                },
+                {
+                  "value": "1",
+                  "label": "VoIP"
+                },
+                {
+                  "value": "2",
+                  "label": "TR069"
+                },
+                {
+                  "value": "3",
+                  "label": "Other"
+                },
+                {
+                  "value": "4",
+                  "label": "Auto"
+                }
+              ]
+            },
+            {
+              "dm": "Dscp",
+              "label": "DSCP",
+              "type": "int",
+              "min": -1,
+              "max": 63,
+              "help": "-1 = unmarked."
+            },
+            {
+              "dm": "DaylightSavingsUsed",
+              "label": "Daylight saving",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "DaylightSavingsStart",
+              "label": "DST start",
+              "type": "string",
+              "advanced": true
+            },
+            {
+              "dm": "DaylightSavingsEnd",
+              "label": "DST end",
+              "type": "string",
+              "advanced": true
+            },
+            {
+              "dm": "QueueNum",
+              "label": "Queue",
+              "type": "int",
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "status",
+          "title": "Status",
+          "table": "SNTP",
+          "mode": "readonly",
+          "source": "runtime:sntp_status",
+          "fields": [
+            {
+              "dm": "currentTime",
+              "label": "Current time",
+              "readonly": true
+            },
+            {
+              "dm": "sntpEnabled",
+              "label": "SNTP enabled",
+              "readonly": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_SNTP_ID. Page params ZoneIndex/PosixTimeZoneName map to DB iZoneIndex/sPosixTimeZoneName. Stock NTP server check: IP or domain name; Dscp 0-63. UI-text notes moved here: [PollTimeInterval]: 0 or 3600-604800. | [LocalTimeZone]: e.g. GMT+07:00; set together with LocalTimeZoneName/iZoneIndex from the stock timeZoneArray."
+    },
+    {
+      "id": "rip",
+      "title": "RIP",
+      "group": "network",
+      "order": 70,
+      "icon": "route",
+      "description": "RIP dynamic routing on the LAN side.",
+      "stock": {
+        "menu": "ssmRIP",
+        "page": "app_rip_t.gch",
+        "handler": [
+          "rip_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "commit-confirm",
+      "sections": [
+        {
+          "id": "rip",
+          "title": "RIP",
+          "table": "RIPConf",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "RipEnabled",
+              "label": "Enable RIP",
+              "type": "bool"
+            },
+            {
+              "dm": "RipSend",
+              "label": "Send updates",
+              "type": "bool"
+            },
+            {
+              "dm": "RipProtocol",
+              "label": "Version",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "RIP v1"
+                },
+                {
+                  "value": "2",
+                  "label": "RIP v2"
+                },
+                {
+                  "value": "3",
+                  "label": "RIP v1 compatible"
+                }
+              ]
+            },
+            {
+              "dm": "RipAuthType",
+              "label": "Authentication",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "None"
+                },
+                {
+                  "value": "2",
+                  "label": "Plain text"
+                },
+                {
+                  "value": "3",
+                  "label": "MD5"
+                }
+              ],
+              "showIf": {
+                "dm": "RipProtocol",
+                "in": [
+                  "2"
+                ]
+              }
+            },
+            {
+              "dm": "RipAuthKey",
+              "label": "Authentication key",
+              "type": "password",
+              "min": 1,
+              "max": 16,
+              "showIf": {
+                "dm": "RipAuthType",
+                "in": [
+                  "2",
+                  "3"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "id": "ifs",
+          "title": "Interfaces",
+          "table": "RIPIf",
+          "mode": "list",
+          "rowLabel": "{IfId}",
+          "maxRows": 8,
+          "fields": [
+            {
+              "dm": "IfId",
+              "label": "Interface",
+              "type": "string",
+              "column": true,
+              "readonly": true
+            },
+            {
+              "dm": "IfRipStatus",
+              "label": "RIP on interface",
+              "type": "int",
+              "column": true,
+              "help": "0 = off, 1 = on."
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_RIP_ID. Auth only for v2 (stock disables auth fields unless RipProtocol web value 1). UI-text notes moved here: [RipProtocol]: DB codes from tRIPProtocol (web 0/1/2 -> DB 1/2/3); verify on device. | [IfRipStatus]: Coding not decoded (tRIPIFConfStatus Disabled 0 / Enabled 1 likely)."
+    },
+    {
+      "id": "static-routes",
+      "title": "Static routes",
+      "group": "network",
+      "order": 71,
+      "icon": "signpost",
+      "description": "IPv4 static routes via a WAN connection.",
+      "stock": {
+        "menu": "ssmStaticRout",
+        "page": "net_route_static_t.gch",
+        "handler": [
+          "route_static_gch.gch",
+          "IPv4_wan_query.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "commit-confirm",
+      "sections": [
+        {
+          "id": "routes",
+          "title": "Routes",
+          "table": "L3ForwardingRT",
+          "mode": "list",
+          "rowLabel": "{DestIP}/{DestIPMask}",
+          "addable": true,
+          "deletable": true,
+          "maxRows": 32,
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Enabled",
+              "type": "bool",
+              "column": true
+            },
+            {
+              "dm": "Interface",
+              "label": "WAN connection",
+              "type": "string",
+              "column": true,
+              "help": "A routed IPv4 WAN connection."
+            },
+            {
+              "dm": "DestIP",
+              "label": "Destination network",
+              "type": "ipv4",
+              "column": true,
+              "required": true
+            },
+            {
+              "dm": "DestIPMask",
+              "label": "Subnet mask",
+              "type": "ipv4",
+              "column": true,
+              "required": true,
+              "help": "255.255.255.255 requires a host address."
+            },
+            {
+              "dm": "GWIP",
+              "label": "Gateway",
+              "type": "ipv4",
+              "column": true,
+              "help": "Not 0.0.0.0."
+            },
+            {
+              "dm": "Type",
+              "label": "Type",
+              "type": "int",
+              "advanced": true,
+              "help": "0 = default route, 1 = network, 2 = host.",
+              "readonly": true
+            },
+            {
+              "dm": "SrcIP",
+              "label": "Source IP",
+              "type": "ipv4",
+              "advanced": true
+            },
+            {
+              "dm": "SrcIPMask",
+              "label": "Source mask",
+              "type": "ipv4",
+              "advanced": true
+            },
+            {
+              "dm": "ForwardingMetric",
+              "label": "Metric",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "MTU",
+              "label": "MTU",
+              "type": "int",
+              "advanced": true
+            },
+            {
+              "dm": "StaticRoute",
+              "label": "Static",
+              "type": "bool",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "ForwardingPolicy",
+              "label": "Policy",
+              "type": "string",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "Status",
+              "label": "Status",
+              "type": "int",
+              "advanced": true,
+              "help": "0 = disabled, 1 = enabled, 2 = error.",
+              "readonly": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_ROUTESTATIC_ID; view RT under L3F -> L3ForwardingRT (0 rows; DM names = page params, unverified - TR-098 names like DestIPAddress are possible). L3Forwarding.RTSum counts rows. UI-text notes moved here: [Interface]: WANC.ViewName of a routed IPv4 WAN. | [Type]: tROUTEEntryTypeTable: 0 Default, 1 Network, 2 Host | [Status]: 0 Disabled, 1 Enabled, 2 Error"
+    },
+    {
+      "id": "route-table",
+      "title": "Routing table",
+      "group": "network",
+      "order": 72,
+      "icon": "table",
+      "description": "Current IPv4 routing table.",
+      "stock": {
+        "menu": "ssmRouteTable",
+        "page": "app_route_table_t.gch",
+        "handler": [
+          "route_table_gch.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "unknown",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "table",
+          "title": "Routes",
+          "table": "L3ForwardingRT",
+          "mode": "readonly",
+          "source": "runtime:route_table",
+          "fields": [
+            {
+              "dm": "destination",
+              "label": "Network",
+              "readonly": true
+            },
+            {
+              "dm": "gateway",
+              "label": "Gateway",
+              "readonly": true
+            },
+            {
+              "dm": "interface",
+              "label": "Interface",
+              "readonly": true
+            },
+            {
+              "dm": "source",
+              "label": "Source",
+              "readonly": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_ROUTETABLE_ID (runtime). Interface names resolved through OBJ_WANLAN_ID / OBJ_TUNNEL_ID. UI-text notes moved here: [description]: Current kernel IPv4 routing table."
+    },
+    {
+      "id": "adsl",
+      "title": "ADSL",
+      "group": "network",
+      "order": 90,
+      "icon": "cable",
+      "description": "DSL line settings.",
+      "stock": {
+        "menu": "smADSL",
+        "page": "",
+        "handler": []
+      },
+      "applicable": false,
+      "applicableNote": "This router has a GPON fiber uplink, not ADSL.",
+      "apply": "unknown",
+      "danger": "none",
+      "sections": [],
+      "notes": "UI-text notes moved here: [applicableNote]: ADSL menu on a GPON device; dmenu.conf has no leaf page under smADSL."
+    }
+  ]
+}

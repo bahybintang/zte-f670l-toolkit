@@ -12,3 +12,8 @@ backup/
 
 # Local-only investigation material (tool repos + decoded configs with secrets)
 debug/
+
+# adminui build outputs
+adminui/server/target/
+adminui/web/node_modules/
+adminui/web/dist/

@@ -1,0 +1,933 @@
+{
+  "pages": [
+    {
+      "id": "sec-url-filter",
+      "title": "URL filter",
+      "group": "security",
+      "order": 10,
+      "icon": "link-2-off",
+      "description": "Block or allow web addresses for LAN clients.",
+      "stock": {
+        "menu": "ssmURLFilter",
+        "page": "sec_url_filter_t.gch",
+        "handler": [
+          "all_url_gch.gch",
+          "fw_url_gch.gch",
+          "fw_base_gch.gch",
+          "sec_url_filter_conf_js.gch"
+        ]
+      },
+      "applicable": true,
+      "apply": "unknown",
+      "danger": "confirm",
+      "sections": [
+        {
+          "id": "global",
+          "title": "Filter",
+          "table": "FWBase",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "UrlFilterEnable",
+              "label": "Enable URL filter",
+              "type": "bool"
+            },
+            {
+              "dm": "UrlFilterTarget",
+              "label": "Mode",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Block listed (blacklist)"
+                },
+                {
+                  "value": "1",
+                  "label": "Allow only listed (whitelist)"
+                }
+              ],
+              "help": "Allow-only blocks every site that is not listed."
+            }
+          ]
+        },
+        {
+          "id": "rules",
+          "title": "URL list",
+          "table": "FWURL",
+          "mode": "list",
+          "addable": true,
+          "deletable": true,
+          "rowLabel": "{Url}",
+          "fields": [
+            {
+              "dm": "Url",
+              "label": "URL",
+              "type": "string",
+              "min": 1,
+              "max": 256,
+              "required": true,
+              "column": true,
+              "pattern": "^[0-9A-Za-z.:;,!@%#?_/&=+*'$()\\[\\]-]{1,256}$",
+              "help": "Host name or URL, 1-256 characters."
+            },
+            {
+              "dm": "Enable",
+              "label": "Enabled",
+              "type": "bool",
+              "default": "0",
+              "advanced": true,
+              "help": "The global switch above turns filtering on or off."
+            },
+            {
+              "dm": "FilterTarget",
+              "label": "Rule target",
+              "type": "enum",
+              "default": "0",
+              "advanced": true,
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Discard"
+                },
+                {
+                  "value": "1",
+                  "label": "Permit"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_FWBASE_ID -> FWBase (row 0) for the switch and mode; OBJ_FWURL_ID -> FWURL rows (ViewName, Enable, Url, FilterTarget). FWURL is empty on this device, so its DM names are taken from the OBJ parameter list (stock param names == DM names elsewhere) and are unverified. UrlFilterTarget 0/1 = Discard/Permit (stock option values). Stock 'enable' and 'mode' changes submit immediately (basic_apply). No row limit in the stock JS (pv Max 1024). Stock applies through OBJ_* set_inst, which notifies the firewall module at once. A raw `sidbg DB set` + save is expected to need a reboot (or a firewall reload) to take effect; unverified. UI-text notes moved here: [Enable]: Stock always writes 0; the global switch above governs filtering. | [FilterTarget]: Stock always writes 0."
+    },
+    {
+      "id": "sec-firewall-level",
+      "title": "Firewall level",
+      "group": "security",
+      "order": 20,
+      "icon": "shield",
+      "description": "IPv4 firewall security level for traffic arriving from the WAN.",
+      "stock": {
+        "menu": "ssmFwLevel",
+        "page": "sec_firewall_level_t.gch",
+        "handler": [
+          "fw_level_gch.gch",
+          "sec_firewall_conf_js.gch"
+        ]
+      },
+      "applicable": true,
+      "apply": "unknown",
+      "danger": "commit-confirm",
+      "sections": [
+        {
+          "id": "level",
+          "title": "Level",
+          "table": "FWLevel",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Level",
+              "label": "Security level (IPv4)",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "3",
+                  "label": "High: legal access allowed, WAN ping blocked"
+                },
+                {
+                  "value": "2",
+                  "label": "Middle"
+                },
+                {
+                  "value": "1",
+                  "label": "Low: legal access allowed, WAN ping allowed"
+                }
+              ]
+            },
+            {
+              "dm": "TR69PingEnable",
+              "label": "Allow ping on the TR-069 WAN",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "WanDiscardDHCPEnable",
+              "label": "Drop DHCP arriving from the WAN",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "BridgeITVDHCPOnly",
+              "label": "IPTV bridge: DHCP only",
+              "type": "bool",
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_FWLEVEL_ID -> FWLevel row 0 (shared with the anti-hacking page). Stock offers High (3) and Low (1); Middle (2) has a hidden explanation row on the stock page. The three advanced DMs are in the table but not on any stock page. Stock applies through OBJ_* set_inst, which notifies the firewall module at once. A raw `sidbg DB set` + save is expected to need a reboot (or a firewall reload) to take effect; unverified."
+    },
+    {
+      "id": "sec-firewall-attack",
+      "title": "Anti-hacking protection",
+      "group": "security",
+      "order": 21,
+      "icon": "shield-alert",
+      "description": "Built-in protection against common WAN attacks (flood, scan, spoofing).",
+      "stock": {
+        "menu": "ssmFwAttack",
+        "page": "sec_firewall_attack_t.gch",
+        "handler": [
+          "fw_level_gch.gch",
+          "sec_firewall_conf_js.gch"
+        ]
+      },
+      "applicable": true,
+      "apply": "unknown",
+      "danger": "commit-confirm",
+      "sections": [
+        {
+          "id": "attack",
+          "title": "Protection",
+          "table": "FWLevel",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "AntiAttack",
+              "label": "Enable anti-hacking protection",
+              "type": "bool"
+            }
+          ]
+        }
+      ],
+      "notes": "Same OBJ/table as the firewall level page (FWLevel.AntiAttack). Stock menu right=1 (admin only). The individual attack types are not configurable in the stock UI. Stock applies through OBJ_* set_inst, which notifies the firewall module at once. A raw `sidbg DB set` + save is expected to need a reboot (or a firewall reload) to take effect; unverified."
+    },
+    {
+      "id": "sec-mac-filter",
+      "title": "MAC filter",
+      "group": "security",
+      "order": 30,
+      "icon": "list-x",
+      "description": "Block or allow forwarding by source and destination MAC address (wired and wireless, IPv4 and IPv6).",
+      "stock": {
+        "menu": "ssmMACFilter",
+        "page": "sec_macfilter_conf_t.gch",
+        "handler": [
+          "all_mac_gch.gch",
+          "fw_mac_gch.gch",
+          "fw_mac_base_gch.gch",
+          "sec_macfilter_conf_js.gch"
+        ]
+      },
+      "applicable": true,
+      "apply": "unknown",
+      "danger": "commit-confirm",
+      "sections": [
+        {
+          "id": "global",
+          "title": "Filter",
+          "table": "FWBase",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "MacFilterEnable",
+              "label": "Enable MAC filter",
+              "type": "bool"
+            },
+            {
+              "dm": "MacFilterTarget",
+              "label": "Mode",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Block listed (blacklist)"
+                },
+                {
+                  "value": "1",
+                  "label": "Allow only listed (whitelist)"
+                }
+              ],
+              "help": "In allow-only mode add your own computer's MAC first, or it loses access."
+            }
+          ]
+        },
+        {
+          "id": "rules",
+          "title": "Rules",
+          "table": "MacFilter",
+          "mode": "list",
+          "addable": true,
+          "deletable": true,
+          "rowLabel": "{SrcMacAddr}",
+          "fields": [
+            {
+              "dm": "SrcMacAddr",
+              "label": "Source MAC",
+              "type": "mac",
+              "column": true,
+              "help": "Leave empty or 00:00:00:00:00:00 for any."
+            },
+            {
+              "dm": "DstMacAddr",
+              "label": "Destination MAC",
+              "type": "mac",
+              "column": true
+            },
+            {
+              "dm": "Type",
+              "label": "Type",
+              "type": "enum",
+              "default": "2",
+              "column": true,
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Bridge"
+                },
+                {
+                  "value": "1",
+                  "label": "Route"
+                },
+                {
+                  "value": "2",
+                  "label": "Bridge + route"
+                }
+              ]
+            },
+            {
+              "dm": "Protocol",
+              "label": "Protocol",
+              "type": "enum",
+              "default": "4",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "IP"
+                },
+                {
+                  "value": "1",
+                  "label": "ARP"
+                },
+                {
+                  "value": "2",
+                  "label": "RARP"
+                },
+                {
+                  "value": "3",
+                  "label": "PPPoE"
+                },
+                {
+                  "value": "4",
+                  "label": "All"
+                }
+              ]
+            },
+            {
+              "dm": "Enable",
+              "label": "Enabled",
+              "type": "bool",
+              "default": "1",
+              "advanced": true,
+              "help": "New rules follow the global switch."
+            },
+            {
+              "dm": "BlackList",
+              "label": "Blacklist flag",
+              "type": "bool",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "Port",
+              "label": "Port",
+              "type": "string",
+              "advanced": true,
+              "readonly": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_FWBASE_ID -> FWBase (MacFilterEnable/MacFilterTarget); OBJ_MACFILTER_ID -> MacFilter rows (Enable, BlackList, Type, Protocol, SrcMacAddr, DstMacAddr, Port). MacFilter is empty on this device, so the row DM names come from the OBJ list and are unverified (pv also lists a separate MACFILTER view). The stock page only offers Type 'Bridge+Route' and Protocol 'ALL'; codes from the firmware tables (Discard 0/Permit 1, Bridge 0/Route 1/Bridge+Route 2, IP 0/ARP 1/RARP 2/PPPoE 3/ALL 4) - the OBJ exchanges strings, the DB is assumed to hold codes like every other table here. commit-confirm because allow-only mode can cut the admin's own PC off. Stock applies through OBJ_* set_inst, which notifies the firewall module at once. A raw `sidbg DB set` + save is expected to need a reboot (or a firewall reload) to take effect; unverified. UI-text notes moved here: [SrcMacAddr]: 00:00:00:00:00:00 = any (stock writes that when left empty). | [Enable]: Stock copies the global switch into each new rule."
+    },
+    {
+      "id": "sec-ip-filter",
+      "title": "IP filter",
+      "group": "security",
+      "order": 40,
+      "icon": "filter",
+      "description": "Drop or permit traffic by protocol, address range, port range and interface.",
+      "stock": {
+        "menu": "ssmIPFilter",
+        "page": "sec_portfilter_conf_t.gch",
+        "handler": [
+          "fw_ip_gch.gch",
+          "wan_lan_query.gch",
+          "wan_func.gch",
+          "sec_portfilter_conf_js.gch"
+        ]
+      },
+      "applicable": true,
+      "apply": "unknown",
+      "danger": "commit-confirm",
+      "sections": [
+        {
+          "id": "rules",
+          "title": "Rules",
+          "table": "FWIP",
+          "mode": "list",
+          "addable": true,
+          "deletable": true,
+          "rowLabel": "{Name}",
+          "fields": [
+            {
+              "dm": "Name",
+              "label": "Name",
+              "type": "string",
+              "min": 1,
+              "max": 32,
+              "required": true,
+              "column": true,
+              "pattern": "^[\\x01-\\xff]{1,32}$"
+            },
+            {
+              "dm": "Enable",
+              "label": "Enabled",
+              "type": "bool",
+              "default": "1",
+              "column": true
+            },
+            {
+              "dm": "Protocol",
+              "label": "Protocol",
+              "type": "enum",
+              "default": "4",
+              "column": true,
+              "options": [
+                {
+                  "value": "0",
+                  "label": "TCP"
+                },
+                {
+                  "value": "1",
+                  "label": "UDP"
+                },
+                {
+                  "value": "2",
+                  "label": "TCP and UDP"
+                },
+                {
+                  "value": "3",
+                  "label": "ICMP"
+                },
+                {
+                  "value": "4",
+                  "label": "Any"
+                }
+              ]
+            },
+            {
+              "dm": "FilterTarget",
+              "label": "Action",
+              "type": "enum",
+              "default": "0",
+              "column": true,
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Drop"
+                },
+                {
+                  "value": "1",
+                  "label": "Permit"
+                }
+              ]
+            },
+            {
+              "dm": "MinSrcIp",
+              "label": "Source IP from",
+              "type": "ipv4",
+              "help": "Empty = any."
+            },
+            {
+              "dm": "MaxSrcIp",
+              "label": "Source IP to",
+              "type": "ipv4"
+            },
+            {
+              "dm": "MinDstIp",
+              "label": "Destination IP from",
+              "type": "ipv4"
+            },
+            {
+              "dm": "MaxDstIp",
+              "label": "Destination IP to",
+              "type": "ipv4"
+            },
+            {
+              "dm": "MinSrcPort",
+              "label": "Source port from",
+              "type": "int",
+              "min": -1,
+              "max": 65535,
+              "default": "-1",
+              "help": "-1 = any. Ignored for ICMP and Any."
+            },
+            {
+              "dm": "MaxSrcPort",
+              "label": "Source port to",
+              "type": "int",
+              "min": -1,
+              "max": 65535,
+              "default": "-1"
+            },
+            {
+              "dm": "MinDstPort",
+              "label": "Destination port from",
+              "type": "int",
+              "min": -1,
+              "max": 65535,
+              "default": "-1"
+            },
+            {
+              "dm": "MaxDstPort",
+              "label": "Destination port to",
+              "type": "int",
+              "min": -1,
+              "max": 65535,
+              "default": "-1"
+            },
+            {
+              "dm": "INCViewName",
+              "label": "Ingress interface",
+              "type": "string",
+              "column": true,
+              "help": "WAN connection or LAN interface; empty = any."
+            },
+            {
+              "dm": "OUTCViewName",
+              "label": "Egress interface",
+              "type": "string"
+            },
+            {
+              "dm": "INCName",
+              "label": "Ingress name",
+              "type": "string",
+              "readonly": true,
+              "advanced": true
+            },
+            {
+              "dm": "OUTCName",
+              "label": "Egress name",
+              "type": "string",
+              "readonly": true,
+              "advanced": true
+            },
+            {
+              "dm": "MinSrcMask",
+              "label": "Source mask",
+              "type": "ipv4",
+              "advanced": true
+            },
+            {
+              "dm": "MinDstMask",
+              "label": "Destination mask",
+              "type": "ipv4",
+              "advanced": true
+            },
+            {
+              "dm": "FilterType",
+              "label": "Filter type",
+              "type": "string",
+              "readonly": true,
+              "advanced": true
+            },
+            {
+              "dm": "FilterIndex",
+              "label": "Filter index",
+              "type": "string",
+              "readonly": true,
+              "advanced": true
+            },
+            {
+              "dm": "FilterAction",
+              "label": "Filter action",
+              "type": "string",
+              "readonly": true,
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_FWIP_ID -> FWIP (22 params). FWIP is empty on this device: DM names are the OBJ names, unverified. Stock posts Protocol 0-4 and FilterTarget 0/1 as numbers directly (labels 'refuse'/'Permit'); note the firmware has a different protocol table (TCP 0, UDP 1, ICMP 2, ANY 3) elsewhere, so check one stored rule before trusting codes 2-4. Stock writes -1 to all ports for ICMP/Any and for empty ports, '' for empty IPs. Ingress/egress options are the runtime OBJ_WANLAN_ID list (WAN connections and LAN bridges); a runtime option source would help. Name: 1-32 chars, codes 1-255 (checkGenStringForASC). Stock also validates start <= end for IP and port ranges (cross-field, not expressible here). Stock applies through OBJ_* set_inst, which notifies the firewall module at once. A raw `sidbg DB set` + save is expected to need a reboot (or a firewall reload) to take effect; unverified. UI-text notes moved here: [INCViewName]: Interface identity such as a WAN connection or LAN view name; empty = any."
+    },
+    {
+      "id": "sec-service-control",
+      "title": "Service control",
+      "group": "security",
+      "order": 50,
+      "icon": "server-cog",
+      "description": "Which management services (web, Telnet, SSH, FTP, SNMP) accept connections from which interface and source range.",
+      "stock": {
+        "menu": "smSerCon",
+        "page": "sec_sc_t.gch",
+        "handler": [
+          "total_sc_gch.gch",
+          "sc_gch.gch",
+          "wan_lan_query.gch",
+          "sec_sc_js.gch"
+        ]
+      },
+      "applicable": true,
+      "apply": "unknown",
+      "danger": "commit-confirm",
+      "sections": [
+        {
+          "id": "global",
+          "title": "Defaults",
+          "table": "FWBase",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "IsWanSrvCntl",
+              "label": "Service control on the WAN",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "SrvCntlTarget",
+              "label": "Default target",
+              "type": "enum",
+              "advanced": true,
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Discard"
+                },
+                {
+                  "value": "1",
+                  "label": "Permit"
+                }
+              ]
+            },
+            {
+              "dm": "DefaultPolicy",
+              "label": "Default policy",
+              "type": "int",
+              "advanced": true,
+              "readonly": true
+            }
+          ]
+        },
+        {
+          "id": "rules",
+          "title": "Rules",
+          "table": "FWSC",
+          "mode": "list",
+          "addable": true,
+          "deletable": true,
+          "rowLabel": "{INCName} {Servise}",
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Enabled",
+              "type": "bool",
+              "default": "1",
+              "column": true
+            },
+            {
+              "dm": "IPMode",
+              "label": "IP version",
+              "type": "enum",
+              "default": "1",
+              "column": true,
+              "options": [
+                {
+                  "value": "1",
+                  "label": "IPv4"
+                },
+                {
+                  "value": "2",
+                  "label": "IPv6"
+                }
+              ]
+            },
+            {
+              "dm": "INCViewName",
+              "label": "Ingress",
+              "type": "string",
+              "column": true,
+              "default": "IGD.WANIF",
+              "help": "Any WAN, or a LAN interface. Empty = any."
+            },
+            {
+              "dm": "INCName",
+              "label": "Ingress name",
+              "type": "string",
+              "readonly": true,
+              "column": true
+            },
+            {
+              "dm": "MinSrcIp",
+              "label": "Source IP from",
+              "type": "ipv4",
+              "showIf": {
+                "dm": "IPMode",
+                "in": [
+                  "1"
+                ]
+              },
+              "help": "0.0.0.0 = any."
+            },
+            {
+              "dm": "MaxSrcIp",
+              "label": "Source IP to",
+              "type": "ipv4",
+              "showIf": {
+                "dm": "IPMode",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "MinSrcMask",
+              "label": "Source mask",
+              "type": "ipv4",
+              "advanced": true
+            },
+            {
+              "dm": "Prefix",
+              "label": "Source IPv6 prefix",
+              "type": "ipv6",
+              "showIf": {
+                "dm": "IPMode",
+                "in": [
+                  "2"
+                ]
+              },
+              "help": "Used for IPv6 rules only."
+            },
+            {
+              "dm": "PrefixLen",
+              "label": "Prefix length",
+              "type": "int",
+              "min": 0,
+              "max": 128,
+              "showIf": {
+                "dm": "IPMode",
+                "in": [
+                  "2"
+                ]
+              },
+              "help": "0 = unset."
+            },
+            {
+              "dm": "FilterTarget",
+              "label": "Action",
+              "type": "enum",
+              "default": "1",
+              "column": true,
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Discard"
+                },
+                {
+                  "value": "1",
+                  "label": "Permit"
+                }
+              ]
+            },
+            {
+              "dm": "Servise",
+              "label": "Services",
+              "type": "int",
+              "min": 0,
+              "max": 63,
+              "column": true,
+              "help": "Add up: HTTP 1, FTP 2, SSH 4, Telnet 8, HTTPS 16, SNMP 32. IPv6 rules use HTTP and HTTPS only."
+            },
+            {
+              "dm": "Name",
+              "label": "Name",
+              "type": "string",
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_FWSC_ID -> FWSC (DM names verified on the device; the stock param list omits Name). The DM really is spelled 'Servise'. Services are a bitmask (stock hexVal 1/2/4/8/16/32 = HTTP/FTP/SSH/TELNET/HTTPS/SNMP); a checkbox-group field type would render it better. IPMode: stock writes 1 for IPv4 and 2 for IPv6. FWBase IsWanSrvCntl/SrvCntlTarget/DefaultPolicy are not on the stock page (the param list carries them through untouched); SrvCntlTarget code meaning assumed Discard 0/Permit 1. A Discard rule on a LAN ingress for HTTP or Telnet locks the admin out of this UI and of telnet - hence commit-confirm. 'Modify remote access port' links to sec-service-ports. Stock applies through OBJ_* set_inst, which notifies the firewall module at once. A raw `sidbg DB set` + save is expected to need a reboot (or a firewall reload) to take effect; unverified. UI-text notes moved here: [INCViewName]: IGD.WANIF = any WAN; otherwise a LAN bridge identity. Empty = any. | [MinSrcIp]: 0.0.0.0 = any (stock writes 0.0.0.0 for IPv6 rules). | [Prefix]: Stock writes :: for IPv4 rules. | [Servise]: Bitmask: HTTP 1, FTP 2, SSH 4, Telnet 8, HTTPS 16, SNMP 32. IPv6 rules only use HTTP and HTTPS."
+    },
+    {
+      "id": "sec-service-ports",
+      "title": "Remote access ports",
+      "group": "security",
+      "order": 51,
+      "icon": "plug",
+      "description": "Ports on which the web, FTP, SSH, Telnet and HTTPS services listen for remote (WAN) access.",
+      "stock": {
+        "menu": "smSerCon1",
+        "page": "sec_fw_servport_t.gch",
+        "handler": [
+          "fw_servport_gch.gch",
+          "sec_fw_servport_js.gch"
+        ]
+      },
+      "applicable": true,
+      "apply": "unknown",
+      "danger": "commit-confirm",
+      "sections": [
+        {
+          "id": "ports",
+          "title": "Ports",
+          "table": "PortControl",
+          "mode": "list",
+          "addable": false,
+          "deletable": false,
+          "rowFilter": {
+            "dm": "ServName",
+            "in": [
+              "WEB",
+              "FTP",
+              "SSH",
+              "TELNET",
+              "HTTPS"
+            ]
+          },
+          "rowLabel": "{ServName}",
+          "maxRows": 8,
+          "fields": [
+            {
+              "dm": "ServName",
+              "label": "Service",
+              "type": "string",
+              "readonly": true,
+              "column": true
+            },
+            {
+              "dm": "PortValue",
+              "label": "Port",
+              "type": "int",
+              "min": 1,
+              "max": 65535,
+              "column": true,
+              "help": "Only affects access from the WAN; LAN access keeps the standard port."
+            },
+            {
+              "dm": "PortEnable",
+              "label": "Port enabled",
+              "type": "bool",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "RedirectPort",
+              "label": "Redirect port",
+              "type": "int",
+              "advanced": true,
+              "readonly": true
+            },
+            {
+              "dm": "IPv6PortValue",
+              "label": "IPv6 port",
+              "type": "int",
+              "advanced": true,
+              "readonly": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_FW_SERVPORT_ID (ServName, ServPort) -> PortControl rows (ServName, PortValue). The ServPort -> PortValue name mapping is inferred (no ServPort DM exists; PortValue holds 80/21/22/23/443/161 for WEB/FTP/SSH/TELNET/HTTPS/SNMP). Stock shows only WEB/FTP/SSH/TELNET/HTTPS and lets you edit the port (1-65535) only; SNMP row and empty rows 6-7 are hidden by rowFilter. Stock menu right=3, staFlag 7. PortEnable/RedirectPort semantics unknown; read only. Stock applies through OBJ_* set_inst, which notifies the firewall module at once. A raw `sidbg DB set` + save is expected to need a reboot (or a firewall reload) to take effect; unverified."
+    },
+    {
+      "id": "sec-telnet",
+      "title": "Telnet access",
+      "group": "security",
+      "order": 60,
+      "icon": "terminal",
+      "description": "Enable the Telnet server and choose whether it answers on the LAN and the WAN.",
+      "stock": {
+        "menu": "ssmTelnetWeb",
+        "page": "tele_sec_tserver_t.gch",
+        "handler": [
+          "tserver_cfg_gch.gch",
+          "tele_sec_tserver_js.gch"
+        ]
+      },
+      "applicable": true,
+      "apply": "unknown",
+      "danger": "commit-confirm",
+      "sections": [
+        {
+          "id": "telnet",
+          "title": "Telnet",
+          "table": "TelnetCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "TS_Enable",
+              "label": "Enable Telnet server",
+              "type": "bool",
+              "help": "Turning this off removes the root shell the toolkit uses for recovery."
+            },
+            {
+              "dm": "Lan_Enable",
+              "label": "Allow from LAN",
+              "type": "bool"
+            },
+            {
+              "dm": "Wan_Enable",
+              "label": "Allow from WAN",
+              "type": "bool",
+              "showIf": {
+                "dm": "TS_Enable",
+                "in": [
+                  "1"
+                ]
+              },
+              "help": "Not recommended: exposes a root shell to the internet."
+            },
+            {
+              "dm": "TS_Port",
+              "label": "Port",
+              "type": "int",
+              "min": 1,
+              "max": 65535,
+              "advanced": true
+            },
+            {
+              "dm": "TSLan_Port",
+              "label": "LAN port",
+              "type": "int",
+              "min": 1,
+              "max": 65535,
+              "advanced": true
+            },
+            {
+              "dm": "Max_Con_Num",
+              "label": "Maximum sessions",
+              "type": "int",
+              "min": 1,
+              "max": 99,
+              "advanced": true
+            },
+            {
+              "dm": "Lan_EnableAfterOlt",
+              "label": "Keep LAN telnet after OLT provisioning",
+              "type": "bool",
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_TSERVER_CONF_ID (TS_Enable, Wan_Enable, Lan_Enable) -> TelnetCfg row 0. IMPORTANT: the stock handler calls undoDBSave() after the set, i.e. the stock page changes telnet only at runtime and does NOT persist it; writing TelnetCfg with sidbg + save makes the change permanent across reboots, which the stock UI never does. Stock menu right=1 (admin only). Stock JS clears and disables Wan_Enable when TS_Enable is off. Telnet user accounts are in TelnetUser (Username/Password) - not mapped here (credentials). ProcType/ProcFlag/WanWebLinkToTS/TS_Sprtwl_Mode left out (unknown). Stock applies through OBJ_* set_inst, which notifies the firewall module at once. A raw `sidbg DB set` + save is expected to need a reboot (or a firewall reload) to take effect; unverified. UI-text notes moved here: [Lan_EnableAfterOlt]: Meaning inferred from the name."
+    }
+  ]
+}
