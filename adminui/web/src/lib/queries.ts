@@ -77,3 +77,47 @@ export function useInvalidatePages() {
   const qc = useQueryClient()
   return () => qc.invalidateQueries({ queryKey: ['page'] })
 }
+
+/** A runtime readout from /status/live/<name>; one cache entry per name, always `data`. */
+export function useLive<T>(name: string, ms = 5000) {
+  return useQuery({
+    queryKey: ['live', name],
+    queryFn: async () => (await api.get<{ data: T }>(`/status/live/${name}`)).data,
+    refetchInterval: ms,
+  })
+}
+
+export interface Host {
+  MAC: string
+  HostName?: string
+  IP?: string
+  arpIp?: string
+  If?: string
+  Active?: string
+  AddrSrc?: string
+  LastConn?: string
+}
+export interface LanPort {
+  label: string
+  link: boolean
+  speedMbps?: number | null
+  rxBytes?: number
+  txBytes?: number
+}
+export interface WifiClient {
+  mac: string
+  iface: string
+  band: string
+  [k: string]: string
+}
+
+export const useHosts = (ms = 10_000) => useLive<{ rows: Host[] }>('hosts', ms)
+export const useLanPorts = (ms = 5000) => useLive<{ rows: LanPort[] }>('lan_ports', ms)
+
+export function useWifiClients(ms = 10_000) {
+  return useQuery({
+    queryKey: ['wifi-clients'],
+    queryFn: async () => (await api.get<{ clients: WifiClient[] }>('/wifi/clients')).clients,
+    refetchInterval: ms,
+  })
+}

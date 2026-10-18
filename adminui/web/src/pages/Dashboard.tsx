@@ -1,21 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
-import { api } from '@/lib/api'
-import { useSystem, useTraffic } from '@/lib/queries'
+import { useHosts, useLanPorts, useLive, useSystem, useTraffic, type LanPort as Port } from '@/lib/queries'
 import { bitrate, bytes, duration } from '@/lib/format'
 import { LedStrip } from '@/components/LedStrip'
 import { Sparkline } from '@/components/Sparkline'
+import { NetworkMap } from '@/components/NetworkMap'
 
 interface Optics { temperatureC?: number; supplyVoltageV?: number; biasCurrentMa?: number; txPowerDbm?: number | null; rxPowerDbm?: number | null; los?: boolean }
-interface Port { label: string; link: boolean; speedMbps?: number | null; rxBytes?: number; txBytes?: number }
-
-function useLive<T>(name: string, ms = 5000) {
-  return useQuery({
-    queryKey: ['live', name],
-    queryFn: async () => (await api.get<{ data: T }>(`/status/live/${name}`)).data,
-    refetchInterval: ms,
-  })
-}
 
 const IFACES: { id: string; label: string }[] = [
   { id: 'br0', label: 'LAN bridge' },
@@ -28,8 +18,8 @@ export function Dashboard() {
   const sys = useSystem()
   const traffic = useTraffic()
   const optics = useLive<Optics>('pon_optics')
-  const ports = useLive<{ rows: Port[] }>('lan_ports')
-  const hosts = useLive<{ rows: { Active?: string }[] }>('hosts', 15000)
+  const ports = useLanPorts()
+  const hosts = useHosts()
   const s = sys.data
   const memUsed = s ? 1 - s.memAvailableKb / s.memTotalKb : 0
   const cpu = traffic.data?.cpu ?? []
@@ -48,6 +38,18 @@ export function Dashboard() {
           </p>
         </div>
         <LedStrip size="lg" />
+      </section>
+
+      <section aria-labelledby="net" className="mb-10">
+        <div className="mb-3 flex items-baseline justify-between border-b border-border pb-2">
+          <h2 id="net" className="font-heading text-[19px] font-semibold">Your network</h2>
+          <Link to="/clients" className="text-sm text-link hover:underline">
+            All devices
+          </Link>
+        </div>
+        <div className="rounded-xl bg-card/60 p-3 shadow-[0_1px_0_var(--border)]">
+          <NetworkMap />
+        </div>
       </section>
 
       <div className="grid gap-x-10 gap-y-10 lg:grid-cols-[1.25fr_1fr]">

@@ -176,7 +176,7 @@ export function MeshMap({ nodes, role }: { nodes: MeshNode[]; role: 'controller'
 }
 
 /** A small router: box with two antennas. */
-function RouterGlyph({ x, y, small }: { x: number; y: number; small?: boolean }) {
+export function RouterGlyph({ x, y, small }: { x: number; y: number; small?: boolean }) {
   const s = small ? 0.7 : 1
   return (
     <g transform={`translate(${x} ${y}) scale(${s})`} className="[stroke:var(--mesh)]" fill="none" strokeWidth={2} strokeLinecap="round">
@@ -190,7 +190,7 @@ function RouterGlyph({ x, y, small }: { x: number; y: number; small?: boolean })
 }
 
 /** Four rising bars, the first `level + 1` lit in the quality colour; baseline at y. */
-function SignalBars({ x, y, level }: { x: number; y: number; level: number }) {
+export function SignalBars({ x, y, level }: { x: number; y: number; level: number }) {
   return (
     <g transform={`translate(${x} ${y})`} aria-hidden>
       {[0, 1, 2, 3].map((i) => (
