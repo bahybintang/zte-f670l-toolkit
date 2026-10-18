@@ -21,6 +21,8 @@ interface Settings {
   roamRssi24: number
   roamRssi5: number
   steerRssi: number
+  uplinkSsid: string
+  uplinkPasswordSet?: boolean
 }
 
 interface Status {
@@ -29,6 +31,8 @@ interface Status {
   nodes?: MeshNode[]
   topology: string
   agent?: { controller: string | null; configured: boolean } | null
+  wifiBackhaul?: { station: string; band: string; ap: string } | null
+  uplink?: 'off' | 'connecting' | 'cabled' | 'bridged'
 }
 
 interface MeshResp {
@@ -40,7 +44,10 @@ interface MeshResp {
 /** EasyMesh, modelled on the ZTE V9 "NetSphere" page: one network across every node. */
 export function Mesh() {
   const qc = useQueryClient()
-  const q = useQuery({ queryKey: ['mesh'], queryFn: () => api.get<MeshResp>('/mesh') })
+  const q = useQuery({
+    queryKey: ['mesh'],
+    queryFn: () => api.get<MeshResp>('/mesh'),
+  })
   const st = useQuery({
     queryKey: ['mesh-status'],
     queryFn: () => api.get<{ status: Status }>('/mesh/status'),
@@ -48,6 +55,7 @@ export function Mesh() {
   })
   const [s, setS] = useState<Settings | null>(null)
   const [password, setPassword] = useState('')
+  const [uplinkPassword, setUplinkPassword] = useState('')
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState<string | null>(null)
 
@@ -61,14 +69,28 @@ export function Mesh() {
   const status = st.data?.status ?? q.data?.status
   const set = <K extends keyof Settings>(k: K, v: Settings[K]) => setS((p) => (p ? { ...p, [k]: v } : p))
   const needsPassword = s.enabled && s.role === 'controller' && !s.passwordSet && password.length === 0
+  const wifiAgent = s.role === 'agent' && s.backhaul === 'wifi'
+  const savedUplink = q.data?.settings.uplinkSsid ?? ''
+  const needsUplinkPassword =
+    s.enabled &&
+    wifiAgent &&
+    s.uplinkSsid.length > 0 &&
+    uplinkPassword.length === 0 &&
+    !(s.uplinkPasswordSet && s.uplinkSsid === savedUplink)
 
   const save = async () => {
     setBusy(true)
     setResult(null)
     try {
-      const r = await api.post<MeshResp>('/mesh', { ...s, password })
+      const r = await api.post<MeshResp>('/mesh', {
+        ...s,
+        password,
+        uplinkPassword,
+      })
       setS(r.settings)
       setPassword('')
+      setUplinkPassword('')
+      qc.setQueryData(['mesh'], r)
       setResult(r.message ?? 'Saved.')
       toast.success(r.message ?? 'Saved.')
       qc.setQueryData(['mesh-status'], { status: r.status })
@@ -78,6 +100,18 @@ export function Mesh() {
       toast.error(m)
     } finally {
       setBusy(false)
+    }
+  }
+
+  const pair = async () => {
+    try {
+      const r = await api.post<{ message: string }>('/mesh/pair', {})
+      setResult(r.message)
+      toast.success(r.message)
+    } catch (e) {
+      const m = (e as Error).message
+      setResult(m)
+      toast.error(m)
     }
   }
 
@@ -142,11 +176,53 @@ export function Mesh() {
           </>
         )}
 
+        {wifiAgent && (
+          <>
+            <Row
+              label="Main router's Wi-Fi"
+              help="The main router's 5 GHz network name. This router joins it directly; leave empty to pair with WPS instead."
+            >
+              <Input
+                value={s.uplinkSsid}
+                onChange={(e) => set('uplinkSsid', e.target.value)}
+                autoComplete="off"
+                className="h-9 max-w-sm bg-card"
+              />
+            </Row>
+            {s.uplinkSsid.length > 0 && (
+              <Row
+                label="Main router's Wi-Fi password"
+                help={
+                  s.uplinkPasswordSet && s.uplinkSsid === savedUplink
+                    ? 'Saved. Leave empty to keep it.'
+                    : 'Stored on this router only; never shown again.'
+                }
+              >
+                <Input
+                  type="password"
+                  autoComplete="new-password"
+                  value={uplinkPassword}
+                  onChange={(e) => setUplinkPassword(e.target.value)}
+                  placeholder={s.uplinkPasswordSet && s.uplinkSsid === savedUplink ? '••••••••' : ''}
+                  className="h-9 max-w-sm bg-card"
+                />
+              </Row>
+            )}
+            <p className="text-[13px] text-muted-foreground sm:pl-[236px]">
+              Unplug the cable between the two routers. While a cable connects them, this router keeps the Wi-Fi link
+              out of its network so the two paths can't form a loop.
+            </p>
+          </>
+        )}
+
         <Row label="Band steering" help="Moves capable devices between 2.4 GHz and 5 GHz, and between mesh devices.">
           <Switch checked={s.bandSteering} onCheckedChange={(v) => set('bandSteering', v)} aria-label="Band steering" />
         </Row>
 
-        <Row label="Roaming threshold" help="Below this signal a device is moved to a better mesh device (dBm, −95 to −30).">
+        <Row
+          label="Roaming threshold"
+          help="Below this signal a device is moved to a better mesh device (dBm, −95 to −30)."
+        >
           <div className="flex flex-wrap gap-4">
             <Dbm label="2.4 GHz" value={s.roamRssi24} onChange={(v) => set('roamRssi24', v)} />
             <Dbm label="5 GHz" value={s.roamRssi5} onChange={(v) => set('roamRssi5', v)} />
@@ -158,13 +234,33 @@ export function Mesh() {
         </Row>
       </div>
 
+      {s.enabled && wifiAgent && !s.uplinkSsid && q.data?.settings.enabled && (
+        <div className="mt-8 rounded-lg border border-border bg-card p-4">
+          <div className="text-sm font-medium">Pair over Wi-Fi</div>
+          <p className="mt-1 text-[13px] text-muted-foreground">
+            Start “Add satellite” on the main router (or press its WPS button), then press Pair. This router keeps
+            trying for up to 10 minutes and connects to the main router’s hidden backhaul network.
+          </p>
+          <Button variant="outline" className="mt-3" onClick={pair} disabled={busy}>
+            Pair
+          </Button>
+        </div>
+      )}
+
       <div className="mt-8 flex items-center gap-3 border-t border-border pt-5">
-        <Button onClick={save} disabled={busy || needsPassword}>
+        <Button onClick={save} disabled={busy || needsPassword || needsUplinkPassword}>
           {busy ? 'Applying…' : 'Apply'}
         </Button>
-        {needsPassword && <span className="text-[13px] text-muted-foreground">Set a mesh Wi-Fi password to turn it on.</span>}
+        {needsPassword && (
+          <span className="text-[13px] text-muted-foreground">Set a mesh Wi-Fi password to turn it on.</span>
+        )}
+        {needsUplinkPassword && (
+          <span className="text-[13px] text-muted-foreground">Enter the main router's Wi-Fi password.</span>
+        )}
       </div>
-      {result && <p className="mt-4 rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">{result}</p>}
+      {result && (
+        <p className="mt-4 rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">{result}</p>
+      )}
     </article>
   )
 }
@@ -208,6 +304,22 @@ function StatusCard({ status, enabled, role }: { status?: Status; enabled: boole
           )}
         </p>
       )}
+      {up && status?.agent && (
+        <p className="mt-1 text-[13px] text-muted-foreground">
+          {status.wifiBackhaul ? (
+            <>
+              Wi-Fi backhaul: {status.wifiBackhaul.band} link to{' '}
+              <span className="font-mono">{status.wifiBackhaul.ap}</span>
+              {status.uplink === 'bridged' && ' · in use'}
+              {status.uplink === 'cabled' && ' · not in use yet: a cable to the main router is (or was just) connected'}
+            </>
+          ) : status.uplink === 'connecting' ? (
+            'Wi-Fi backhaul: connecting…'
+          ) : (
+            'Wi-Fi backhaul: not connected'
+          )}
+        </p>
+      )}
       {up && (
         <div className="mt-4 rounded-lg bg-background/60 p-3">
           <MeshMap nodes={status?.nodes ?? []} role={role} />
@@ -235,7 +347,15 @@ function Row({ label, help, children }: { label: string; help?: string; children
   )
 }
 
-function Segmented<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: [T, string][] }) {
+function Segmented<T extends string>({
+  value,
+  onChange,
+  options,
+}: {
+  value: T
+  onChange: (v: T) => void
+  options: [T, string][]
+}) {
   return (
     <div className="inline-flex rounded-md border border-input bg-card p-0.5" role="radiogroup">
       {options.map(([v, label]) => (

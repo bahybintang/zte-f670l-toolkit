@@ -44,6 +44,10 @@ pub struct Settings {
     pub steer_rssi: i32,
     /// Passphrase of the hidden node-to-node network; generated once.
     pub backhaul_key: String,
+    /// Agent with a Wi-Fi backhaul: the main router's 5 GHz network to join
+    /// directly (instead of WPS pairing). The password is never returned.
+    pub uplink_ssid: String,
+    pub uplink_password: String,
 }
 
 impl Default for Settings {
@@ -59,6 +63,8 @@ impl Default for Settings {
             roam_rssi_5: -75,
             steer_rssi: -54,
             backhaul_key: String::new(),
+            uplink_ssid: String::new(),
+            uplink_password: String::new(),
         }
     }
 }
@@ -89,6 +95,15 @@ impl Settings {
         }
         if !plain(&self.password) {
             return Err("Mesh Wi-Fi password: no spaces or accented characters".into());
+        }
+        if !self.uplink_ssid.is_empty() {
+            let text = |s: &str| s.chars().all(|c| c.is_ascii() && !c.is_ascii_control());
+            if self.uplink_ssid.len() > 32 || !text(&self.uplink_ssid) {
+                return Err("Main router's Wi-Fi name: up to 32 characters, no accented characters".into());
+            }
+            if !(8..=63).contains(&self.uplink_password.len()) || !text(&self.uplink_password) {
+                return Err("Main router's Wi-Fi password: 8–63 characters, no accented characters".into());
+            }
         }
         let limits = [
             ("2.4 GHz roaming threshold", self.roam_rssi_24),
@@ -265,6 +280,10 @@ pub async fn stop() {
     for f in BOUND {
         let _ = crate::exec::run_raw("umount", &[&format!("{WLAN}/{f}")], T).await;
     }
+    crate::backhaul::stop().await;
+    if let Ok(mut o) = ONBOARDING.lock() {
+        *o = Onboarding { controller: None, configured: false };
+    }
 }
 
 /// Generate the config into tmpfs, bind it over /wlan and start the daemons.
@@ -303,6 +322,7 @@ pub async fn start(s: &Settings) -> Result<(), String> {
     std::fs::create_dir_all(format!("{RUN_DIR}/bin")).map_err(|e| e.to_string())?;
     write_bytes(&format!("{RUN_DIR}/wappfix.so"), WAPPFIX_SO, 0o600)?;
     write_bytes(&format!("{RUN_DIR}/bin/wifi_config_save"), WIFI_CONFIG_SAVE.as_bytes(), 0o700)?;
+    start_backhaul(s).await;
     let role = if s.role == Role::Controller { "0" } else { "1" };
     // Detached via `sh -c '… &'` so init reaps them; arguments are fixed strings.
     // wapp logs the Wi-Fi passphrases it receives, so its output is discarded;
@@ -312,8 +332,10 @@ pub async fn start(s: &Settings) -> Result<(), String> {
         (format!("p1905_managerd -r{role}"), format!("{RUN_DIR}/p1905.log")),
         ("mapd".to_string(), format!("{RUN_DIR}/mapd.log")),
     ];
+    // Append mode, so `trim_logs` can empty a log: without O_APPEND the daemon
+    // keeps writing at its old offset and the file never shrinks.
     for (c, log) in &cmds {
-        sh(&format!("cd {RUN_DIR} && umask 077 && {c} >{log} 2>&1 </dev/null &")).await?;
+        sh(&format!("cd {RUN_DIR} && umask 077 && : >{log} && {c} >>{log} 2>&1 </dev/null &")).await?;
         tokio::time::sleep(std::time::Duration::from_secs(4)).await;
     }
     let down: Vec<&str> = running().await.into_iter().filter(|(_, up)| !up).map(|(d, _)| d).collect();
@@ -322,6 +344,15 @@ pub async fn start(s: &Settings) -> Result<(), String> {
         return Err(format!("{} exited right after start", down.join(", ")));
     }
     Ok(())
+}
+
+/// The Wi-Fi backhaul supervisor, for an agent without a cable to the controller.
+async fn start_backhaul(s: &Settings) {
+    if s.role == Role::Agent && s.backhaul == Backhaul::Wifi {
+        let uplink = (!s.uplink_ssid.is_empty())
+            .then(|| crate::backhaul::Uplink { ssid: s.uplink_ssid.clone(), password: s.uplink_password.clone() });
+        crate::backhaul::start(uplink).await;
+    }
 }
 
 fn write_bytes(path: &str, body: &[u8], mode: u32) -> Result<(), String> {
@@ -354,12 +385,15 @@ pub fn trim_logs() {
 /// next dump's header has arrived after it, and return that one.
 pub async fn topology(role: Role) -> String {
     let log = format!("{RUN_DIR}/p1905.log");
-    let before = std::fs::metadata(&log).map(|m| m.len()).unwrap_or(0);
+    let mut before = std::fs::metadata(&log).map(|m| m.len()).unwrap_or(0);
     let ctrl = if role == Role::Controller { "controller" } else { "agent" };
     for _ in 0..6 {
         let _ = crate::exec::run_raw("1905ctrl", &[ctrl, "dump_topology_info"], T).await;
         tokio::time::sleep(std::time::Duration::from_millis(300)).await;
         let all = std::fs::read(&log).unwrap_or_default();
+        if (all.len() as u64) < before {
+            before = 0; // emptied by trim_logs meanwhile
+        }
         let new = String::from_utf8_lossy(all.get(before as usize..).unwrap_or(&[])).into_owned();
         if let Some(dump) = first_complete_dump(&strip_ansi(&new)) {
             return dump;
@@ -392,6 +426,20 @@ pub fn first_complete_dump(log: &str) -> Option<String> {
 pub struct Onboarding {
     pub controller: Option<String>,
     pub configured: bool,
+}
+
+/// What onboarding has shown so far: `trim_logs` drops the lines it came from.
+static ONBOARDING: std::sync::Mutex<Onboarding> =
+    std::sync::Mutex::new(Onboarding { controller: None, configured: false });
+
+fn onboarding_so_far(log: &str) -> Onboarding {
+    let now = onboarding(log);
+    let Ok(mut seen) = ONBOARDING.lock() else { return now };
+    if now.controller.is_some() {
+        seen.controller = now.controller;
+    }
+    seen.configured |= now.configured;
+    seen.clone()
 }
 
 pub fn onboarding(log: &str) -> Onboarding {
@@ -506,7 +554,10 @@ use serde_json::{json, Value};
 static LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
 
 pub fn routes() -> Router<std::sync::Arc<crate::state::App>> {
-    Router::new().route("/mesh", get(read).post(write)).route("/mesh/status", get(status))
+    Router::new()
+        .route("/mesh", get(read).post(write))
+        .route("/mesh/status", get(status))
+        .route("/mesh/pair", axum::routing::post(pair))
 }
 
 /// Settings as the page sees them: the passphrases are reported only as set/unset.
@@ -515,7 +566,9 @@ fn public(s: &Settings) -> Value {
     if let Some(o) = v.as_object_mut() {
         o.remove("password");
         o.remove("backhaulKey");
+        o.remove("uplinkPassword");
         o.insert("passwordSet".into(), json!(!s.password.is_empty()));
+        o.insert("uplinkPasswordSet".into(), json!(!s.uplink_password.is_empty()));
     }
     v
 }
@@ -526,12 +579,22 @@ async fn status_value(role: Role) -> Value {
     let all = procs.values().all(|v| v == true);
     let topo = if all { topology(role).await } else { String::new() };
     let log = std::fs::read(format!("{RUN_DIR}/p1905.log")).map(|b| strip_ansi(&String::from_utf8_lossy(&b))).unwrap_or_default();
-    let agent = (all && role == Role::Agent).then(|| onboarding(&log));
+    let agent = (all && role == Role::Agent).then(|| onboarding_so_far(&log));
+    let wifi_backhaul = if all && role == Role::Agent { crate::backhaul::backhaul_link().await } else { None };
     let mut nodes = parse_nodes(&topo);
     for n in &mut nodes {
         n.name = crate::meshid::lookup(&n.almac).map(|i| i.label());
     }
-    json!({ "running": all, "daemons": procs, "nodes": nodes, "topology": topo, "agent": agent })
+    json!({
+        "uplink": match crate::backhaul::state() {
+            crate::backhaul::State::Off => "off",
+            crate::backhaul::State::Connecting => "connecting",
+            crate::backhaul::State::Cabled => "cabled",
+            crate::backhaul::State::Bridged => "bridged",
+        },
+        "running": all, "daemons": procs, "nodes": nodes, "topology": topo, "agent": agent,
+        "wifiBackhaul": wifi_backhaul.map(|(st, ap)| json!({ "station": st, "band": if st == "apcli1" { "5 GHz" } else { "2.4 GHz" }, "ap": ap })),
+    })
 }
 
 async fn read(State(app): S) -> R {
@@ -563,6 +626,9 @@ async fn write(State(app): S, Json(mut s): Json<Settings>) -> R {
     if s.password.is_empty() {
         s.password = old.password.clone();
     }
+    if s.uplink_password.is_empty() && s.uplink_ssid == old.uplink_ssid {
+        s.uplink_password = old.uplink_password.clone();
+    }
     s.backhaul_key = if old.backhaul_key.is_empty() { new_key()? } else { old.backhaul_key.clone() };
     s.validate()?;
     s.save(&app.dir)?;
@@ -571,13 +637,41 @@ async fn write(State(app): S, Json(mut s): Json<Settings>) -> R {
         if s.role == Role::Controller {
             "EasyMesh is running. Other EasyMesh devices can join now."
         } else {
-            "EasyMesh agent started. It joins the controller on the cabled LAN port within a minute."
+            if s.backhaul == Backhaul::Ethernet {
+                "EasyMesh agent started. It joins the controller on the cabled LAN port within a minute."
+            } else {
+                if s.uplink_ssid.is_empty() {
+                    "EasyMesh agent started. Use “Pair over Wi-Fi” while the main router is adding a satellite."
+                } else {
+                    "EasyMesh agent started. It connects to the main router's Wi-Fi within a minute; unplug any cable between them."
+                }
+            }
         }
     } else {
         stop().await;
         "EasyMesh is off."
     };
+    crate::languard::sync(&app).await;
     Ok(Json(json!({ "ok": true, "message": message, "settings": public(&s), "status": status_value(s.role).await })))
+}
+
+/// Start a Wi-Fi backhaul pairing attempt in the background.
+async fn pair(State(app): S) -> R {
+    let s = Settings::load(&app.dir);
+    if !(s.enabled && s.role == Role::Agent && s.backhaul == Backhaul::Wifi) {
+        return Err("Pairing over Wi-Fi needs EasyMesh on, role Agent and connection Wi-Fi.".into());
+    }
+    if !running().await.iter().all(|(_, up)| *up) {
+        return Err("EasyMesh is not running; apply the settings first.".into());
+    }
+    static PAIRING: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+    if !PAIRING.swap(true, std::sync::atomic::Ordering::SeqCst) {
+        tokio::spawn(async {
+            crate::backhaul::pair_over_wifi().await;
+            PAIRING.store(false, std::sync::atomic::Ordering::SeqCst);
+        });
+    }
+    Ok(Json(json!({ "ok": true, "message": "Pairing for up to 10 minutes. Put the main router in “Add satellite” (or press its WPS button) now." })))
 }
 
 /// At boot: start the mesh if it was left on.
@@ -589,7 +683,10 @@ pub async fn resume_on_boot(dir: std::path::PathBuf) {
     tokio::time::sleep(BOOT_DELAY).await;
     let _g = LOCK.lock().await;
     if running().await.iter().all(|(_, up)| *up) {
-        return; // already up (adminui restarted while the mesh ran)
+        // Already up: adminui restarted while the mesh ran. The daemons carry
+        // on, but the backhaul supervisor lived in the old process.
+        start_backhaul(&s).await;
+        return;
     }
     if let Err(e) = start(&s).await {
         eprintln!("mesh: start at boot failed: {e}");
@@ -655,6 +752,13 @@ mod tests {
         let w = wapp_5g("# x\ninterface=wlan0\nosu_interface=wlan1\nicon_path=/wlan/\n");
         assert_eq!(w, "# x\ninterface=wlan4\nosu_interface=wlan5\nicon_path=/wlan/\n");
         assert_eq!(wapp_list("/var/mesh"), "conf_list=/wlan/wapp_ap_wlan0.conf;/var/mesh/wapp_ap_wlan4.conf\n");
+    }
+
+    #[test]
+    fn uplink_password_is_checked_only_when_used() {
+        assert!(Settings { uplink_ssid: "Main 5G".into(), uplink_password: "long enough".into(), ..settings() }.validate().is_ok());
+        assert!(Settings { uplink_ssid: "Main".into(), uplink_password: "short".into(), ..settings() }.validate().is_err());
+        assert!(Settings { uplink_ssid: "Main".into(), uplink_password: "lösung123".into(), ..settings() }.validate().is_err());
     }
 
     #[test]

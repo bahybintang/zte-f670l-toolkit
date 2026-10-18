@@ -45,6 +45,37 @@ public in the ASUS GPL tree (`RMerl/asuswrt-merlin.ng`, `release/src/router/wapp
    running `wifi_config_save <if> <Key> <Value>`, which this firmware lacks. The shim applies them
    with `iwpriv <if> set Key=Value` and never logs values. It is put first on wapp's `PATH`.
 
+## Wi-Fi backhaul (server/src/backhaul.rs)
+
+An agent too far from the controller for a cable joins the controller's 5 GHz network with its
+station interface (`apcli1`; `apcli0` is 2.4 GHz) and bridges it into br0. Four firmware traits
+decide how (all verified 2026-10-17/18):
+
+- **ZTE's bridge-port table** (`/proc/net/brport`) is filled for eth0-3 and wlan0-7 only. An
+  unregistered station forwards nothing (permissions 0), and `brctl delif` of one **hangs the
+  kernel until the hardware watchdog reboots the router**. Register first:
+  `brctl setbrport br0 apcli1 13 1` and `brctl setpermits br0 13 ffffffff` (apcli0 = 12).
+- **The Wi-Fi hardware-forwarding switch** (`/proc/wifi_hdswitch/on`, 1 by default; it sets
+  `g_hdfwswitch` in `mt7603e_ap.ko`). While on, the drivers pass received frames to
+  `wifihdswitchhandler[idx](skb, idmdev[idx])`, which files every frame under the radio's first
+  AP: the station's traffic enters br0 as **wlan0**, bridged or not. The bridge then learns the
+  controller's side behind wlan0 and sends replies out of the 2.4 GHz AP, and a station associated
+  next to a cable makes a loop. adminui writes 0 while the backhaul runs (frames then arrive on
+  apcli1; FDB and two-way traffic verified) and 1 once the stations are off.
+- **Kernel loop detection** (`/proc/net/loopback/test`, probes with ethertype 0xFFFA; the
+  `LoopbackGlobalConf` setting does not reach it) shuts a LAN port for 300 s when its probe comes
+  back. The dmesg line `Dev_name=[wlan0]  bIfName=[eth0]` is that detector catching a probe.
+- **No STP on br0.** So the station is never up alongside a cable to the controller: on a new LAN
+  link, a loop-shut port or the controller's MAC behind a LAN port, the station is switched off;
+  it reconnects only after the controller has been absent from the LAN ports for 120 s (judged
+  while the station is off, because a loop-shut port hides the cable).
+
+Testing without unplugging: `siswitch -spen 3 0` disables LAN4 in the switch (`-spen 3 1`
+restores it). `ifconfig eth0 down` does not: the switch keeps delivering frames on eth0.
+
+The firmware's DHCP server also ignores `DHCPSHostCfg.ServerEnable=0`; `server/src/languard.rs`
+blocks DHCP (and, for a mesh agent, DHCPv6 and router advertisements) on br0 with firewall rules.
+
 ## Things that looked like the cause and were not
 
 - "The 2.4 GHz driver has no MAP": `iwpriv wlan0 set MapEnable=1` fails, but the driver answers
@@ -55,6 +86,7 @@ public in the ASUS GPL tree (`RMerl/asuswrt-merlin.ng`, `release/src/router/wapp
 ## Safety notes
 
 - `wapp`'s own output contains the received Wi-Fi passphrase; adminui sends it to `/dev/null`.
-  `p1905.log` / `mapd.log` (0600, capped at 256 KiB) carry no key material.
+  `p1905.log` / `mapd.log` (0600, capped at 256 KiB, opened in append mode so the cap can
+  shrink them) carry no key material.
 - Debugging: `LD_PRELOAD` a `setvbuf(stdout, _IOLBF)` constructor to get live logs, and
   `wappctrl <if> wapp wdev_list` to see wapp's devices (dev_type 0 = not populated).

@@ -9,9 +9,11 @@ mod api;
 mod apply;
 mod assets;
 mod auth;
+mod backhaul;
 mod db;
 mod exec;
 mod hooks;
+mod languard;
 mod oss;
 mod runtime;
 mod schema;
@@ -63,7 +65,7 @@ fn parse_args() -> Args {
 }
 
 /// The LAN bridge address: read from `ip -4 addr show br0`, falling back to 192.168.1.1.
-fn lan_ip() -> IpAddr {
+pub(crate) fn lan_ip() -> IpAddr {
     let out = std::process::Command::new("ip").args(["-4", "-o", "addr", "show", "br0"]).output();
     if let Ok(o) = out {
         let s = String::from_utf8_lossy(&o.stdout);
@@ -218,6 +220,7 @@ fn serve(args: Args) {
         apply::resume_on_boot(app.clone()).await;
         tokio::spawn(mesh::resume_on_boot(app.dir.clone()));
         meshid::spawn_listener("br0");
+        tokio::spawn(languard::run(app.clone()));
         let s = app.clone();
         tokio::spawn(async move {
             let mut iv = tokio::time::interval(status::SAMPLE_EVERY);
