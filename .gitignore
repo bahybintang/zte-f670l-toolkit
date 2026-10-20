@@ -1,0 +1,19 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Device data, secrets, firmware images, pulled binaries — never commit.
+# (configs embed Wi-Fi/telnet passwords; firmware image is 26 MB.)
+backup/
+*.cfg
+*.xml
+# keep nothing device-specific at the repo root
+
+# Local-only investigation material (tool repos + decoded configs with secrets)
+debug/
+
+# adminui build outputs
+adminui/server/target/
+adminui/web/node_modules/
+adminui/web/dist/

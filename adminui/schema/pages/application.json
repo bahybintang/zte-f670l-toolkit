@@ -1,0 +1,3482 @@
+{
+  "pages": [
+    {
+      "id": "app-ddns",
+      "title": "Dynamic DNS",
+      "group": "application",
+      "order": 10,
+      "icon": "globe",
+      "description": "Keep a DNS name pointed at the WAN address.",
+      "stock": {
+        "menu": "ssmDDNS",
+        "page": "app_ddns_conf_t.gch",
+        "handler": [
+          "ddns_gch.gch",
+          "ddns_client_gch.gch",
+          "ddns_service_gch.gch",
+          "ddns_hostname_gch.gch",
+          "app_ddns_conf_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "client",
+          "title": "Client",
+          "table": "DDNSClient",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Enable DDNS",
+              "type": "bool"
+            },
+            {
+              "dm": "Service",
+              "label": "Provider",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "dipc",
+                  "label": "DIPC"
+                },
+                {
+                  "value": "phddns",
+                  "label": "Oray (phddns)"
+                },
+                {
+                  "value": "dyndns",
+                  "label": "DynDNS"
+                },
+                {
+                  "value": "DtDNS",
+                  "label": "DtDNS"
+                },
+                {
+                  "value": "No-IP",
+                  "label": "No-IP"
+                }
+              ],
+              "help": "Must match the name of a provider in the list below."
+            },
+            {
+              "dm": "Interface",
+              "label": "WAN connection",
+              "type": "string",
+              "help": "WAN connection whose address is published."
+            },
+            {
+              "dm": "Username",
+              "label": "Username",
+              "type": "string"
+            },
+            {
+              "dm": "Password",
+              "label": "Password",
+              "type": "password"
+            },
+            {
+              "dm": "DomainName",
+              "label": "Domain",
+              "type": "string",
+              "showIf": {
+                "dm": "Service",
+                "in": [
+                  "dipc",
+                  "dyndns",
+                  "phddns"
+                ]
+              }
+            },
+            {
+              "dm": "HostNumber",
+              "label": "Host count",
+              "type": "int",
+              "readonly": true,
+              "advanced": true
+            },
+            {
+              "dm": "Status",
+              "label": "Status",
+              "type": "string",
+              "readonly": true,
+              "advanced": true
+            },
+            {
+              "dm": "LastError",
+              "label": "Last error",
+              "type": "string",
+              "readonly": true,
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "providers",
+          "title": "Providers",
+          "table": "DDNSService",
+          "mode": "list",
+          "rowLabel": "{Name}",
+          "addable": false,
+          "deletable": false,
+          "fields": [
+            {
+              "dm": "Name",
+              "label": "Provider",
+              "type": "string",
+              "readonly": true,
+              "column": true
+            },
+            {
+              "dm": "Server",
+              "label": "Server",
+              "type": "string",
+              "column": true
+            },
+            {
+              "dm": "ServerPort",
+              "label": "Port",
+              "type": "int",
+              "column": true,
+              "min": 1,
+              "max": 65535
+            },
+            {
+              "dm": "UpdateInterval",
+              "label": "Update interval",
+              "type": "int",
+              "unit": "s",
+              "advanced": true,
+              "min": 0
+            },
+            {
+              "dm": "RetryInterval",
+              "label": "Retry interval",
+              "type": "int",
+              "unit": "s",
+              "advanced": true,
+              "min": 0
+            },
+            {
+              "dm": "MaxRetries",
+              "label": "Max retries",
+              "type": "int",
+              "advanced": true,
+              "min": 0
+            },
+            {
+              "dm": "Request",
+              "label": "Request path",
+              "type": "string",
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "hostname",
+          "title": "Host",
+          "table": "DDNSHostname",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Name",
+              "label": "Host name",
+              "type": "string"
+            }
+          ]
+        }
+      ],
+      "notes": "Stock JS has no field validation (pageCheckValue returns true). The provider list in the JS has 5 names (dipc, phddns, dyndns, DtDNS, No-IP) but this DB holds only 2 DDNSService rows; stock writes Server/ServerPort into the DDNSService row whose index matches the chosen name (IFservice_INDEX). Stock reads the password base64-encoded (strencode) and treats \"AA==\" as empty. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [Service]: Must equal the Name of a row in the provider table below. | [Interface]: ViewName of a WAN connection, e.g. IGD.WD1.WCD1.WCIP1. Stock fills this from the routed-WAN list."
+    },
+    {
+      "id": "app-alg",
+      "title": "Application gateways (ALG)",
+      "group": "application",
+      "order": 20,
+      "icon": "shield",
+      "description": "NAT helpers for protocols that carry addresses inside the payload.",
+      "stock": {
+        "menu": "ssmFwAlg",
+        "page": "sec_fw_alg_t.gch",
+        "handler": [
+          "fw_alg_gch.gch",
+          "sec_fw_alg_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "alg",
+          "title": "ALG",
+          "table": "FWALG",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "IsSIPAlg",
+              "label": "SIP",
+              "type": "bool"
+            },
+            {
+              "dm": "IsH323Alg",
+              "label": "H.323",
+              "type": "bool"
+            },
+            {
+              "dm": "IsRTSPAlg",
+              "label": "RTSP",
+              "type": "bool"
+            },
+            {
+              "dm": "IsPPTPAlg",
+              "label": "PPTP",
+              "type": "bool"
+            },
+            {
+              "dm": "IsL2TPAlg",
+              "label": "L2TP",
+              "type": "bool"
+            },
+            {
+              "dm": "IsIPSECAlg",
+              "label": "IPsec",
+              "type": "bool"
+            },
+            {
+              "dm": "IsFTPAlg",
+              "label": "FTP",
+              "type": "bool"
+            },
+            {
+              "dm": "IsTFTPAlg",
+              "label": "TFTP",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "IsSNMPAlg",
+              "label": "SNMP",
+              "type": "bool",
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_FWALG_ID -> table FWALG (1 row). Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [IsTFTPAlg]: Hidden on the stock page. | [IsSNMPAlg]: Not on the stock page."
+    },
+    {
+      "id": "app-dmz",
+      "title": "DMZ host",
+      "group": "application",
+      "order": 30,
+      "icon": "server",
+      "description": "Forward all unsolicited inbound traffic on a WAN connection to one LAN host.",
+      "stock": {
+        "menu": "ssmDMZHost",
+        "page": "app_dmz_conf_t.gch",
+        "handler": [
+          "fw_dmz_gch.gch",
+          "app_dmz_conf_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "confirm",
+      "sections": [
+        {
+          "id": "dmz",
+          "title": "DMZ",
+          "table": "FWDMZ",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Enable DMZ",
+              "type": "bool"
+            },
+            {
+              "dm": "WANCViewName",
+              "label": "WAN connection",
+              "type": "string",
+              "required": true,
+              "help": "WAN connection whose inbound traffic goes to the DMZ host."
+            },
+            {
+              "dm": "WANCName",
+              "label": "WAN connection name",
+              "type": "string",
+              "advanced": true,
+              "help": "Name of the selected WAN connection."
+            },
+            {
+              "dm": "MacEnable",
+              "label": "Select host by MAC address",
+              "type": "bool"
+            },
+            {
+              "dm": "InternalHost",
+              "label": "DMZ host IP address",
+              "type": "ipv4",
+              "showIf": {
+                "dm": "MacEnable",
+                "in": [
+                  "0"
+                ]
+              },
+              "help": "Not 0.0.0.0, 127.0.0.1 or 255.255.255.255."
+            },
+            {
+              "dm": "InternalMacHost",
+              "label": "DMZ host MAC address",
+              "type": "mac",
+              "showIf": {
+                "dm": "MacEnable",
+                "in": [
+                  "1"
+                ]
+              },
+              "help": "Not 00:00:00:00:00:00 or ff:ff:ff:ff:ff:ff."
+            },
+            {
+              "dm": "DevUniqueNum",
+              "label": "Device number",
+              "type": "int",
+              "readonly": true,
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_FWDMZ_ID -> FWDMZ (1 row). Stock rejects a missing WAN, invalid/zero/loopback/broadcast IP, and all-zero/broadcast MAC. Stock menu right=3 (admin and user). Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [WANCViewName]: ViewName of a WAN connection, e.g. IGD.WD1.WCD1.WCIP1. Stock fills this from the routed-WAN list. | [WANCName]: Display name of the WAN connection; stock copies the selected option text here."
+    },
+    {
+      "id": "app-port-forwarding",
+      "title": "Port forwarding",
+      "group": "application",
+      "order": 40,
+      "icon": "arrow-right-left",
+      "description": "Map WAN ports to a host on the LAN.",
+      "stock": {
+        "menu": "ssmPForward",
+        "page": "app_virtual_conf_t.gch",
+        "handler": [
+          "fw_pm_gch.gch",
+          "app_virtual_conf_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "rules",
+          "title": "Rules",
+          "table": "FWPM",
+          "mode": "list",
+          "rowLabel": "{Name}",
+          "addable": true,
+          "deletable": true,
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Enable",
+              "type": "bool",
+              "column": true
+            },
+            {
+              "dm": "Name",
+              "label": "Name",
+              "type": "string",
+              "min": 1,
+              "max": 32,
+              "required": true,
+              "column": true,
+              "pattern": "^[\\x01-\\xFF]*$"
+            },
+            {
+              "dm": "Protocol",
+              "label": "Protocol",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "TCP"
+                },
+                {
+                  "value": "1",
+                  "label": "UDP"
+                },
+                {
+                  "value": "2",
+                  "label": "TCP and UDP"
+                }
+              ],
+              "column": true
+            },
+            {
+              "dm": "WANCViewName",
+              "label": "WAN connection",
+              "type": "string",
+              "required": true,
+              "column": true,
+              "help": "WAN connection the rule listens on."
+            },
+            {
+              "dm": "MinRemoteHost",
+              "label": "Remote host start IP",
+              "type": "ipv4",
+              "help": "0.0.0.0 = any remote host."
+            },
+            {
+              "dm": "MaxRemoteHost",
+              "label": "Remote host end IP",
+              "type": "ipv4",
+              "help": "0.0.0.0 = any remote host."
+            },
+            {
+              "dm": "MinExtPort",
+              "label": "WAN start port",
+              "type": "int",
+              "required": true,
+              "column": true,
+              "min": 1,
+              "max": 65535
+            },
+            {
+              "dm": "MaxExtPort",
+              "label": "WAN end port",
+              "type": "int",
+              "required": true,
+              "column": true,
+              "min": 1,
+              "max": 65535
+            },
+            {
+              "dm": "MacEnable",
+              "label": "Select host by MAC address",
+              "type": "bool"
+            },
+            {
+              "dm": "InternalHost",
+              "label": "LAN host IP address",
+              "type": "ipv4",
+              "column": true,
+              "showIf": {
+                "dm": "MacEnable",
+                "in": [
+                  "0"
+                ]
+              }
+            },
+            {
+              "dm": "InternalMacHost",
+              "label": "LAN host MAC address",
+              "type": "mac",
+              "showIf": {
+                "dm": "MacEnable",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "MinIntPort",
+              "label": "LAN port",
+              "type": "int",
+              "required": true,
+              "column": true,
+              "min": 1,
+              "max": 65535
+            },
+            {
+              "dm": "MaxIntPort",
+              "label": "LAN end port",
+              "type": "int",
+              "advanced": true,
+              "help": "Normally the same as the LAN port.",
+              "min": 1,
+              "max": 65535
+            },
+            {
+              "dm": "Description",
+              "label": "Description",
+              "type": "string",
+              "advanced": true
+            },
+            {
+              "dm": "LeaseDuration",
+              "label": "Lease duration",
+              "type": "int",
+              "unit": "s",
+              "advanced": true,
+              "min": 0
+            },
+            {
+              "dm": "PortMappCreator",
+              "label": "Created by",
+              "type": "string",
+              "readonly": true,
+              "advanced": true
+            },
+            {
+              "dm": "WANCName",
+              "label": "WAN connection name",
+              "type": "string",
+              "readonly": true,
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_FWPM_ID -> FWPM. The table has 0 rows in the current DB, so the DM names come from the handler PARA list (fw_pm_gch.gch), not from the XML; verify with `sidbg 1 DB pti FWPM`. ViewName is assigned by the firmware on add. Stock JS: name 1-32 printable, ports 1-65535, WAN start<=end, remote start<=end, empty remote IP stored as 0.0.0.0, LAN IP not 0.0.0.0, duplicate checks across rows. No row limit in the JS; pv.txt gives view FWPM Max 1024 (generic). Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [WANCViewName]: ViewName of a WAN connection, e.g. IGD.WD1.WCD1.WCIP1. Stock fills this from the routed-WAN list. | [MaxIntPort]: Stock always writes the same value as LAN port."
+    },
+    {
+      "id": "app-upnp",
+      "title": "UPnP",
+      "group": "application",
+      "order": 50,
+      "icon": "network",
+      "description": "Let LAN devices open ports automatically (UPnP IGD).",
+      "stock": {
+        "menu": "ssmUPnP",
+        "page": "app_upnp_conf_t.gch",
+        "handler": [
+          "upnp_config_gch.gch",
+          "app_upnp_conf_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "upnp",
+          "title": "UPnP",
+          "table": "UPnPCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "EnableUPnPIGD",
+              "label": "Enable UPnP",
+              "type": "bool"
+            },
+            {
+              "dm": "ADPeriod",
+              "label": "Advertisement period",
+              "type": "int",
+              "unit": "s",
+              "advanced": true,
+              "min": 1
+            },
+            {
+              "dm": "TTL",
+              "label": "Advertisement TTL",
+              "type": "int",
+              "advanced": true,
+              "min": 1
+            },
+            {
+              "dm": "WanName",
+              "label": "WAN connection",
+              "type": "string",
+              "advanced": true,
+              "help": "WAN connection that UPnP opens ports on."
+            },
+            {
+              "dm": "LanName",
+              "label": "LAN",
+              "type": "string",
+              "readonly": true,
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_UPNPCONFIG_ID -> UPnPCfg. Stock page shows only the enable box. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [WanName]: ViewName of a WAN connection, e.g. IGD.WD1.WCD1.WCIP1. Stock fills this from the routed-WAN list."
+    },
+    {
+      "id": "voip-sip",
+      "title": "VoIP: SIP server",
+      "group": "application",
+      "order": 100,
+      "icon": "phone",
+      "description": "SIP registrar, proxy and registration timers.",
+      "stock": {
+        "menu": "ssmSIPPro",
+        "page": "app_voip_sippro_t.gch",
+        "handler": [
+          "voip_sippro.gch",
+          "app_voip_VoiceProfile_gch.gch",
+          "voip_sip_gch.gch",
+          "voip_sip_server_gch.gch",
+          "app_voip_sippro_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "profile",
+          "title": "Profile",
+          "table": "VoIPVoiceProfile",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Enable VoIP",
+              "type": "bool",
+              "on": "2",
+              "off": "1"
+            },
+            {
+              "dm": "ServerType",
+              "label": "SIP mode",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "Softswitch SIP"
+                },
+                {
+                  "value": "0",
+                  "label": "IMS SIP"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "servers",
+          "title": "Servers",
+          "table": "VoIPSIPServer",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "RegistrarServer1",
+              "label": "Primary registrar",
+              "type": "string",
+              "min": 1,
+              "max": 63,
+              "required": true,
+              "help": "IPv4, IPv6 or domain name."
+            },
+            {
+              "dm": "ProxyServer1",
+              "label": "Primary proxy",
+              "type": "string",
+              "min": 1,
+              "max": 63,
+              "required": true
+            },
+            {
+              "dm": "OutboundProxy1",
+              "label": "Primary outbound proxy",
+              "type": "string",
+              "min": 1,
+              "max": 63,
+              "required": true
+            },
+            {
+              "dm": "ProxyServerPort1",
+              "label": "Primary proxy port",
+              "type": "int",
+              "required": true,
+              "min": 0,
+              "max": 65535
+            },
+            {
+              "dm": "RegistrarServer2",
+              "label": "Secondary registrar",
+              "type": "string",
+              "min": 1,
+              "max": 63,
+              "required": true
+            },
+            {
+              "dm": "ProxyServer2",
+              "label": "Secondary proxy",
+              "type": "string",
+              "min": 1,
+              "max": 63,
+              "required": true
+            },
+            {
+              "dm": "OutboundProxy2",
+              "label": "Secondary outbound proxy",
+              "type": "string",
+              "min": 1,
+              "max": 63,
+              "required": true
+            },
+            {
+              "dm": "ProxyServerPort2",
+              "label": "Secondary proxy port",
+              "type": "int",
+              "required": true,
+              "min": 0,
+              "max": 65535
+            },
+            {
+              "dm": "RegistrarServerPort1",
+              "label": "Primary registrar port",
+              "type": "int",
+              "advanced": true,
+              "min": 0,
+              "max": 65535
+            },
+            {
+              "dm": "RegistrarServerPort2",
+              "label": "Secondary registrar port",
+              "type": "int",
+              "advanced": true,
+              "min": 0,
+              "max": 65535
+            },
+            {
+              "dm": "OutboundProxyPort1",
+              "label": "Primary outbound proxy port",
+              "type": "int",
+              "advanced": true,
+              "min": 0,
+              "max": 65535
+            },
+            {
+              "dm": "OutboundProxyPort2",
+              "label": "Secondary outbound proxy port",
+              "type": "int",
+              "advanced": true,
+              "min": 0,
+              "max": 65535
+            },
+            {
+              "dm": "PublishServer",
+              "label": "Publish server",
+              "type": "string",
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "sip",
+          "title": "Registration",
+          "table": "VoIPSIP",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "UserAgentPort",
+              "label": "Local SIP port",
+              "type": "int",
+              "required": true,
+              "min": 0,
+              "max": 65535
+            },
+            {
+              "dm": "RegisterExpires",
+              "label": "Registration expiry",
+              "type": "int",
+              "unit": "s",
+              "required": true,
+              "min": 1,
+              "max": 4294967295
+            },
+            {
+              "dm": "RegisterRetryInterval",
+              "label": "Registration retry interval",
+              "type": "int",
+              "unit": "s",
+              "required": true,
+              "min": 1,
+              "max": 4294967295
+            },
+            {
+              "dm": "DeRegister",
+              "label": "Unregister on reboot",
+              "type": "bool"
+            },
+            {
+              "dm": "LinkTest",
+              "label": "Link test (keep-alive)",
+              "type": "bool",
+              "on": "2",
+              "off": "0"
+            },
+            {
+              "dm": "LinkTestInterval",
+              "label": "Link test interval",
+              "type": "int",
+              "unit": "s",
+              "showIf": {
+                "dm": "LinkTest",
+                "in": [
+                  "2"
+                ]
+              },
+              "min": 1,
+              "max": 4294967295
+            },
+            {
+              "dm": "Escaped",
+              "label": "Escape # as %23",
+              "type": "bool"
+            },
+            {
+              "dm": "Timer",
+              "label": "Session timer",
+              "type": "bool"
+            },
+            {
+              "dm": "InviteExpires",
+              "label": "Session update period",
+              "type": "int",
+              "unit": "s",
+              "showIf": {
+                "dm": "Timer",
+                "in": [
+                  "1"
+                ]
+              },
+              "help": "In seconds.",
+              "min": 0
+            },
+            {
+              "dm": "EventSubscription",
+              "label": "Event subscription",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Disabled"
+                },
+                {
+                  "value": "1",
+                  "label": "Enabled"
+                },
+                {
+                  "value": "2",
+                  "label": "Follow core network"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "notes": "Stock checks: ports 0-65535; servers 1-63 chars, IPv4/IPv6/domain; expiry and intervals 1-4294967295. The stock JS hides EventSubscription for CountryCode 208 and disables it for 210. Shown by the stock menu only while the VoIP protocol is SIP (VOIPExt.ProtocolSet=4, the current setting; dmenu_func.gch). VoIPPortCfg reports 1 FXS port, so every per-line table has 1 row. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [RegistrarServerPort1]: Not on the stock page. | [RegistrarServerPort2]: Not on the stock page. | [OutboundProxyPort1]: Not on the stock page. | [OutboundProxyPort2]: Not on the stock page. | [InviteExpires]: Stored in seconds; the stock page shows and edits minutes (value / 60)."
+    },
+    {
+      "id": "voip-accounts",
+      "title": "VoIP: SIP account",
+      "group": "application",
+      "order": 110,
+      "icon": "user",
+      "description": "The SIP credentials of the phone line.",
+      "stock": {
+        "menu": "ssmSIPAcc",
+        "page": "app_sipline_t.gch",
+        "handler": [
+          "app_sipline_t.gch",
+          "common_gch.gch",
+          "app_sipline_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "line",
+          "title": "Line",
+          "table": "VoIPVPLine",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Enable line",
+              "type": "bool",
+              "on": "2",
+              "off": "1"
+            },
+            {
+              "dm": "TermID",
+              "label": "Terminal ID",
+              "type": "int",
+              "readonly": true,
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "account",
+          "title": "Account",
+          "table": "VoIPSIPLine",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "AuthUserName",
+              "label": "SIP account",
+              "type": "string",
+              "min": 0,
+              "max": 127,
+              "pattern": "^[\\x01-\\xFF]*$"
+            },
+            {
+              "dm": "AuthPassword",
+              "label": "Password",
+              "type": "password",
+              "min": 0,
+              "max": 63,
+              "pattern": "^[\\x01-\\xFF]*$"
+            },
+            {
+              "dm": "DigestUserName",
+              "label": "Authentication user name",
+              "type": "string",
+              "min": 0,
+              "max": 127,
+              "pattern": "^[\\x01-\\xFF]*$"
+            },
+            {
+              "dm": "DisplayName",
+              "label": "Display name",
+              "type": "string",
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "status",
+          "title": "Registration",
+          "table": "",
+          "mode": "readonly",
+          "source": "runtime:voip_line_status",
+          "fields": [
+            {
+              "dm": "line",
+              "label": "Line",
+              "readonly": true
+            },
+            {
+              "dm": "number",
+              "label": "Number",
+              "readonly": true
+            },
+            {
+              "dm": "enabled",
+              "label": "Enabled",
+              "readonly": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_VOIPSIPLINE_ID -> VoIPSIPLine (row n = line n), OBJ_VOIPVPLINE_ID -> VoIPVPLine. Stock masks AuthPassword with asterisks on read. RegStatus/DNSStatus are OBJ parameters with no DB column (runtime). Shown by the stock menu only while the VoIP protocol is SIP (VOIPExt.ProtocolSet=4, the current setting; dmenu_func.gch). VoIPPortCfg reports 1 FXS port, so every per-line table has 1 row. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [DisplayName]: Not on the stock page."
+    },
+    {
+      "id": "voip-timers",
+      "title": "VoIP: call timers",
+      "group": "application",
+      "order": 120,
+      "icon": "timer",
+      "description": "Dialling, ringing and hook-flash timers.",
+      "stock": {
+        "menu": "ssmBasicCon",
+        "page": "app_voip_BasicControl_t.gch",
+        "handler": [
+          "app_voip_Dtimer_gch.gch",
+          "app_voip_vpCallTimer_gch.gch",
+          "app_voip_SLCTime_gch.gch",
+          "app_voip_BasicControl_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "dial",
+          "title": "Dialling",
+          "table": "VoIPDMTimerCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "ShortTimer",
+              "label": "Short inter-digit timer",
+              "type": "int",
+              "unit": "10 ms",
+              "help": "In units of 10 ms (100 = 1 second).",
+              "min": 0,
+              "max": 4294967200
+            },
+            {
+              "dm": "LongTimer",
+              "label": "Long inter-digit timer",
+              "type": "int",
+              "unit": "10 ms",
+              "help": "In units of 10 ms (100 = 1 second).",
+              "min": 0,
+              "max": 4294967200
+            },
+            {
+              "dm": "StartTimer",
+              "label": "Off-hook no-dial timer",
+              "type": "int",
+              "unit": "10 ms",
+              "help": "In units of 10 ms; 1000–2000 = 10–20 seconds.",
+              "min": 1000,
+              "max": 2000
+            }
+          ]
+        },
+        {
+          "id": "call",
+          "title": "Call",
+          "table": "VoIPVPCallTimer",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "AlertingTimer",
+              "label": "No-answer timeout",
+              "type": "int",
+              "unit": "10 ms",
+              "help": "In units of 10 ms (100 = 1 second).",
+              "min": 100,
+              "max": 4294967200
+            },
+            {
+              "dm": "HaulToneTimer",
+              "label": "Off-hook warning tone timeout",
+              "type": "int",
+              "unit": "10 ms",
+              "min": 100,
+              "max": 4294967200
+            },
+            {
+              "dm": "BusyToneTimer",
+              "label": "Busy tone timeout",
+              "type": "int",
+              "unit": "10 ms",
+              "min": 100,
+              "max": 4294967200
+            },
+            {
+              "dm": "CfnrTimer",
+              "label": "Call-forward no-reply timer",
+              "type": "int",
+              "unit": "10 ms",
+              "advanced": true,
+              "min": 0
+            },
+            {
+              "dm": "CallWaitingTimer",
+              "label": "Call waiting timer",
+              "type": "int",
+              "unit": "10 ms",
+              "advanced": true,
+              "min": 0
+            },
+            {
+              "dm": "ProceedingTimer",
+              "label": "Proceeding timer",
+              "type": "int",
+              "unit": "10 ms",
+              "advanced": true,
+              "min": 0
+            },
+            {
+              "dm": "DhlTimer",
+              "label": "Delayed hotline timer",
+              "type": "int",
+              "unit": "10 ms",
+              "advanced": true,
+              "min": 0
+            },
+            {
+              "dm": "CallerTimer",
+              "label": "Caller timer",
+              "type": "int",
+              "unit": "10 ms",
+              "advanced": true,
+              "min": 0
+            },
+            {
+              "dm": "VoiceMessageTimer",
+              "label": "Voice message timer",
+              "type": "int",
+              "unit": "10 ms",
+              "advanced": true,
+              "min": 0
+            }
+          ]
+        },
+        {
+          "id": "flash",
+          "title": "Hook flash",
+          "table": "VoIPSLCTIMECfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "FlashLowMinTime",
+              "label": "Minimum hook-flash time",
+              "type": "int",
+              "unit": "10 ms",
+              "help": "In units of 10 ms; 3–30 = 30–300 ms.",
+              "min": 3,
+              "max": 30
+            },
+            {
+              "dm": "HookLowTime",
+              "label": "Maximum hook-flash time",
+              "type": "int",
+              "unit": "10 ms",
+              "help": "In units of 10 ms; 20–255 = 200–2550 ms.",
+              "min": 20,
+              "max": 255
+            }
+          ]
+        }
+      ],
+      "notes": "Stock stores the six visible timers in 10 ms units and edits them in whole seconds (x100). The hook-flash pair is OBJ_VOIPSLCTIME_ID FlashLowMin/HookLow (stock edits ms, writes ms/10); the DB columns are FlashLowMinTime/HookLowTime, mapped by name similarity: verify before enabling writes. The other CallTimer fields are in the handler PARA but not on the stock page. Shown by the stock menu only while the VoIP protocol is SIP (VOIPExt.ProtocolSet=4, the current setting; dmenu_func.gch). VoIPPortCfg reports 1 FXS port, so every per-line table has 1 row. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [ShortTimer]: Stock shows seconds (value / 100). | [LongTimer]: Stock shows seconds (value / 100). | [StartTimer]: Stock range 10-20 s. | [AlertingTimer]: Stock shows seconds (value / 100). | [FlashLowMinTime]: Stock range 30-300 ms in 10 ms steps. | [HookLowTime]: Stock range 200-2550 ms in 10 ms steps."
+    },
+    {
+      "id": "voip-services",
+      "title": "VoIP: calling features",
+      "group": "application",
+      "order": 130,
+      "icon": "phone-forwarded",
+      "description": "Call forwarding, hotline, waiting, hold and caller-ID features.",
+      "stock": {
+        "menu": "ssmSuppService",
+        "page": "app_voip_service_t.gch",
+        "handler": [
+          "voip_service.gch",
+          "voip_vpcallfeature_gch.gch",
+          "voip_vpPhyInterface_gch.gch",
+          "app_voip_service_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "features",
+          "title": "Features",
+          "table": "VOIPVPCallFeature",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "CallForwardUnconditionalEnable",
+              "label": "Forward all calls",
+              "type": "bool"
+            },
+            {
+              "dm": "CallForwardUnconditionalNumber",
+              "label": "Forward all calls to",
+              "type": "string",
+              "showIf": {
+                "dm": "CallForwardUnconditionalEnable",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "CallForwardOnBusyEnable",
+              "label": "Forward when busy",
+              "type": "bool"
+            },
+            {
+              "dm": "CallForwardOnBusyNumber",
+              "label": "Forward when busy to",
+              "type": "string",
+              "showIf": {
+                "dm": "CallForwardOnBusyEnable",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "CallForwardOnNoAnswerEnable",
+              "label": "Forward on no answer",
+              "type": "bool"
+            },
+            {
+              "dm": "CallForwardOnNoAnswerNumber",
+              "label": "Forward on no answer to",
+              "type": "string",
+              "showIf": {
+                "dm": "CallForwardOnNoAnswerEnable",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "HotLine",
+              "label": "Hotline",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Off"
+                },
+                {
+                  "value": "1",
+                  "label": "Immediate"
+                },
+                {
+                  "value": "2",
+                  "label": "Delayed"
+                }
+              ]
+            },
+            {
+              "dm": "HLNumber",
+              "label": "Hotline number",
+              "type": "string",
+              "showIf": {
+                "dm": "HotLine",
+                "in": [
+                  "1",
+                  "2"
+                ]
+              }
+            },
+            {
+              "dm": "AnonymousCallBlockEnable",
+              "label": "Reject anonymous calls",
+              "type": "bool"
+            },
+            {
+              "dm": "DoNotDisturbEnable",
+              "label": "Do not disturb",
+              "type": "bool"
+            },
+            {
+              "dm": "3WayTalking",
+              "label": "Three-way calling",
+              "type": "bool"
+            },
+            {
+              "dm": "ConfUri",
+              "label": "Conference URI",
+              "type": "string"
+            },
+            {
+              "dm": "CallWaitingEnable",
+              "label": "Call waiting",
+              "type": "bool"
+            },
+            {
+              "dm": "CidDisplayEnable",
+              "label": "Show caller ID",
+              "type": "bool"
+            },
+            {
+              "dm": "CallerIDEnable",
+              "label": "Hide my number (CLIR)",
+              "type": "bool",
+              "on": "0",
+              "off": "1",
+              "help": "When on, your number is withheld from the person you call."
+            },
+            {
+              "dm": "AntiPole",
+              "label": "Polarity reversal",
+              "type": "bool"
+            },
+            {
+              "dm": "CallHoldFlag",
+              "label": "Call hold",
+              "type": "bool"
+            },
+            {
+              "dm": "CallTransfer",
+              "label": "Call transfer",
+              "type": "bool"
+            },
+            {
+              "dm": "MCIDEnable",
+              "label": "Malicious call identification",
+              "type": "bool"
+            },
+            {
+              "dm": "CallerIDNameEnable",
+              "label": "Send caller name",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "MWIEnable",
+              "label": "Message waiting indicator",
+              "type": "bool",
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "port",
+          "title": "Phone port",
+          "table": "VOIPPhyInterface",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "UnregisterBusyTone",
+              "label": "Busy tone when unregistered",
+              "type": "bool",
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_VOIPVPCALLFEATURE_ID -> VOIPVPCallFeature (also present: VOIPPhyCallFeature, not used by this page). The forward-to inputs are enabled only when their checkbox is on; the stock JS has no number-format check. Shown by the stock menu only while the VoIP protocol is SIP (VOIPExt.ProtocolSet=4, the current setting; dmenu_func.gch). VoIPPortCfg reports 1 FXS port, so every per-line table has 1 row. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [CallerIDEnable]: Stock checkbox is inverted: checked writes 0."
+    },
+    {
+      "id": "voip-digitmap",
+      "title": "VoIP: digit map",
+      "group": "application",
+      "order": 140,
+      "icon": "hash",
+      "description": "Dial plans that decide when a dialled number is complete.",
+      "stock": {
+        "menu": "ssmDigitMap",
+        "page": "app_voip_sipdigitmap_t.gch",
+        "handler": [
+          "voip_digitalmap.gch",
+          "app_voip_sipdigitmap_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "maps",
+          "title": "Digit maps",
+          "table": "VoIPVoiceProfile",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "DigitMap",
+              "label": "General digit map",
+              "type": "text",
+              "min": 1,
+              "max": 4096,
+              "required": true
+            },
+            {
+              "dm": "ExactDigitMapEnable",
+              "label": "Enable special digit map",
+              "type": "bool"
+            },
+            {
+              "dm": "ExactDigitMap",
+              "label": "Special digit map",
+              "type": "text",
+              "min": 0,
+              "max": 127,
+              "showIf": {
+                "dm": "ExactDigitMapEnable",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "DigitMapEnable",
+              "label": "Digit map enabled",
+              "type": "bool",
+              "advanced": true
+            }
+          ]
+        },
+        {
+          "id": "pbx",
+          "title": "PBX prefix",
+          "table": "VoIPVPLine",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "PBXPrefixEnable",
+              "label": "Enable PBX outside-line prefix",
+              "type": "bool"
+            },
+            {
+              "dm": "PBXPrefix",
+              "label": "PBX outside-line prefix",
+              "type": "string",
+              "pattern": "^[0-9]$",
+              "showIf": {
+                "dm": "PBXPrefixEnable",
+                "in": [
+                  "1"
+                ]
+              }
+            }
+          ]
+        }
+      ],
+      "notes": "Stock disables the general digit map for CountryCode 208. Shown by the stock menu only while the VoIP protocol is SIP (VOIPExt.ProtocolSet=4, the current setting; dmenu_func.gch). VoIPPortCfg reports 1 FXS port, so every per-line table has 1 row. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified."
+    },
+    {
+      "id": "voip-qos",
+      "title": "VoIP: QoS marking",
+      "group": "application",
+      "order": 150,
+      "icon": "gauge",
+      "description": "DSCP and 802.1p marks for SIP signalling and RTP media.",
+      "stock": {
+        "menu": "ssmSIPQos",
+        "page": "app_voip_sipqos_t.gch",
+        "handler": [
+          "voip_sipqos_gch.gch",
+          "voip_sip_qos_gch.gch",
+          "voip_rtp_qos_gch.gch",
+          "app_voip_sipqos_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "signal",
+          "title": "Signalling",
+          "table": "VoIPSIP",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "DSCPMark",
+              "label": "SIP DSCP",
+              "type": "int",
+              "min": 0,
+              "max": 63
+            },
+            {
+              "dm": "EthernetPriorityMark",
+              "label": "SIP 802.1p priority",
+              "type": "int",
+              "help": "-1 = do not modify.",
+              "min": -1,
+              "max": 7
+            }
+          ]
+        },
+        {
+          "id": "media",
+          "title": "Media",
+          "table": "VoIPRTPCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "DSCPMark",
+              "label": "RTP DSCP",
+              "type": "int",
+              "min": 0,
+              "max": 63
+            },
+            {
+              "dm": "EthernetPriorityMark",
+              "label": "RTP 802.1p priority",
+              "type": "int",
+              "help": "-1 = do not modify.",
+              "min": -1,
+              "max": 7
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_VOIPSIP_QOS_ID DSCPMark/EthernetPriorityMark -> VoIPSIP. OBJ_VOIPRTP_QOS_ID RTPDSCPMark/RTPEthernetPriorityMark have no DB column of that name; mapped to VoIPRTPCfg DSCPMark/EthernetPriorityMark (inferred, verify). Stock selects offer DSCP 0-63 and 802.1p -1 (no change) or 0-7. Shown by the stock menu only while the VoIP protocol is SIP (VOIPExt.ProtocolSet=4, the current setting; dmenu_func.gch). VoIPPortCfg reports 1 FXS port, so every per-line table has 1 row. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified."
+    },
+    {
+      "id": "voip-media",
+      "title": "VoIP: codecs",
+      "group": "application",
+      "order": 160,
+      "icon": "audio-lines",
+      "description": "Codec enable, priority and silence suppression.",
+      "stock": {
+        "menu": "ssmMedia",
+        "page": "app_voip_sipmed_t.gch",
+        "handler": [
+          "voip_linevmedai_gch.gch",
+          "app_voip_sipmed_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "nego",
+          "title": "Negotiation",
+          "table": "VoIPVPCodec",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "NegoLocPri",
+              "label": "Codec negotiation",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Remote priority"
+                },
+                {
+                  "value": "1",
+                  "label": "Local priority"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "codecs",
+          "title": "Codecs",
+          "table": "VoIPVMediaCfg",
+          "mode": "list",
+          "rowLabel": "Codec {n}",
+          "addable": false,
+          "deletable": false,
+          "fields": [
+            {
+              "dm": "MediaVCodec",
+              "label": "Codec",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "G.711 u-law"
+                },
+                {
+                  "value": "2",
+                  "label": "G.723"
+                },
+                {
+                  "value": "4",
+                  "label": "G.711 A-law"
+                },
+                {
+                  "value": "8",
+                  "label": "G.729"
+                },
+                {
+                  "value": "16",
+                  "label": "G.722"
+                },
+                {
+                  "value": "32",
+                  "label": "G.726"
+                }
+              ],
+              "readonly": true,
+              "column": true
+            },
+            {
+              "dm": "MediaVEnable",
+              "label": "Enabled",
+              "type": "bool",
+              "column": true
+            },
+            {
+              "dm": "MediaVPri",
+              "label": "Priority",
+              "type": "int",
+              "required": true,
+              "column": true,
+              "min": 1,
+              "max": 16
+            },
+            {
+              "dm": "MediaSSuprs",
+              "label": "VAD",
+              "type": "bool",
+              "column": true,
+              "help": "Silence suppression."
+            },
+            {
+              "dm": "MediaVPT",
+              "label": "Packet time",
+              "type": "int",
+              "unit": "ms",
+              "advanced": true,
+              "min": 0
+            }
+          ]
+        },
+        {
+          "id": "line",
+          "title": "Line",
+          "table": "VoIPHomeLine",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "DigitCache",
+              "label": "Digit cache",
+              "type": "bool",
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "VoIPVMediaCfg has 4 rows (one per codec, child of VL1.LC). Stock priority check 1-16. Shown by the stock menu only while the VoIP protocol is SIP (VOIPExt.ProtocolSet=4, the current setting; dmenu_func.gch). VoIPPortCfg reports 1 FXS port, so every per-line table has 1 row. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified."
+    },
+    {
+      "id": "voip-advanced",
+      "title": "VoIP: fax, DTMF and voice",
+      "group": "application",
+      "order": 170,
+      "icon": "sliders-horizontal",
+      "description": "Fax mode, DTMF transport, RTP ports, jitter buffer and line gain.",
+      "stock": {
+        "menu": "ssmAdvanced",
+        "page": "app_voip_sipadv_t.gch",
+        "handler": [
+          "voip_adv.gch",
+          "voip_vpdtmf_gch.gch",
+          "v_rtpadv_gch.gch",
+          "voip_voiceproc_gch.gch",
+          "voip_rtp_gch.gch",
+          "voip_rtpred_gch.gch",
+          "voip_faxmodemrptctrl_gch.gch",
+          "voip_faxt38_gch.gch",
+          "voip_vpcodec_gch.gch",
+          "voip_fix_gch.gch",
+          "app_voip_sipadv_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "t38",
+          "title": "T.38",
+          "table": "VoIPFaxT38Cfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Enable T.38 fax",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "id": "codec",
+          "title": "Fax SDP",
+          "table": "VoIPVPCodec",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "AT38Fax",
+              "label": "Send a=fax for T.38",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "id": "faxctl",
+          "title": "Fax and modem control",
+          "table": "VoIPFaxModemRptCtrlCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "MGInteract",
+              "label": "Fax and modem control",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Automatic switch"
+                },
+                {
+                  "value": "2",
+                  "label": "Controlled by softswitch"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "dtmf",
+          "title": "DTMF",
+          "table": "VoIPVPDTMF",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "DTMFMethod",
+              "label": "DTMF mode",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "RFC 2833"
+                },
+                {
+                  "value": "2",
+                  "label": "In-band"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "rtp",
+          "title": "RTP",
+          "table": "VoIPRTPCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "LocalPortMin",
+              "label": "RTP start port",
+              "type": "int",
+              "min": 0,
+              "max": 65535
+            },
+            {
+              "dm": "TelephoneEventPT",
+              "label": "RFC 2833 payload type",
+              "type": "int",
+              "min": 96,
+              "max": 127
+            }
+          ]
+        },
+        {
+          "id": "jitter",
+          "title": "Jitter buffer",
+          "table": "VoIPRTPADVCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "JitMode",
+              "label": "Jitter buffer",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Fixed"
+                },
+                {
+                  "value": "1",
+                  "label": "Adaptive"
+                }
+              ]
+            },
+            {
+              "dm": "FixedJitLen",
+              "label": "Fixed size",
+              "type": "int",
+              "unit": "ms",
+              "showIf": {
+                "dm": "JitMode",
+                "in": [
+                  "0"
+                ]
+              },
+              "min": 0,
+              "max": 200
+            },
+            {
+              "dm": "AdaptJitMin",
+              "label": "Adaptive minimum",
+              "type": "int",
+              "unit": "ms",
+              "showIf": {
+                "dm": "JitMode",
+                "in": [
+                  "1"
+                ]
+              },
+              "min": 0,
+              "max": 200
+            },
+            {
+              "dm": "AdaptJitMax",
+              "label": "Adaptive maximum",
+              "type": "int",
+              "unit": "ms",
+              "showIf": {
+                "dm": "JitMode",
+                "in": [
+                  "1"
+                ]
+              },
+              "min": 0,
+              "max": 200
+            },
+            {
+              "dm": "711NRedundance",
+              "label": "G.711 redundancy",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "None"
+                },
+                {
+                  "value": "1",
+                  "label": "1 packet"
+                },
+                {
+                  "value": "2",
+                  "label": "2 packets"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "voice",
+          "title": "Voice processing",
+          "table": "VoIPVoiceProcCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "EchoCancellationEnable",
+              "label": "Echo cancellation",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Disabled"
+                },
+                {
+                  "value": "1",
+                  "label": "Enabled"
+                }
+              ]
+            },
+            {
+              "dm": "TransmitGain",
+              "label": "Transmit gain",
+              "type": "int",
+              "unit": "0.1 dB +14 dB offset",
+              "help": "In 0.1 dB steps from −14 dB: 0 = −14 dB, 140 = 0 dB, 200 = +6 dB.",
+              "min": 0,
+              "max": 200
+            },
+            {
+              "dm": "ReceiveGain",
+              "label": "Receive gain",
+              "type": "int",
+              "unit": "0.1 dB +14 dB offset",
+              "help": "In 0.1 dB steps from −14 dB: 0 = −14 dB, 140 = 0 dB, 200 = +6 dB.",
+              "min": 0,
+              "max": 200
+            }
+          ]
+        },
+        {
+          "id": "port",
+          "title": "Phone port",
+          "table": "VOIPPhyInterface",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "AntiPoleProCancel",
+              "label": "Cancel polarity-reversal processing",
+              "type": "bool"
+            }
+          ]
+        }
+      ],
+      "notes": "Stock checks: RFC 2833 PT 96-127, jitter 0-200 ms (min <= max), gains -14..+6 dB. voip_fix_gch.gch writes AntiPoleProCancel (VOIPPhyInterface). Handler also reads VoIPRTPREDCfg and more VoIPVPCodec fields that the page does not show. Shown by the stock menu only while the VoIP protocol is SIP (VOIPExt.ProtocolSet=4, the current setting; dmenu_func.gch). VoIPPortCfg reports 1 FXS port, so every per-line table has 1 row. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [TransmitGain]: Stored as (dB + 14) x 10; stock range -14..+6 dB = 0..200. | [ReceiveGain]: Stored as (dB + 14) x 10; stock range -14..+6 dB = 0..200."
+    },
+    {
+      "id": "voip-callerid",
+      "title": "VoIP: caller ID",
+      "group": "application",
+      "order": 180,
+      "icon": "contact",
+      "description": "How the caller number is sent to the phone and taken from SIP.",
+      "stock": {
+        "menu": "ssmCId",
+        "page": "app_voip_cid_t.gch",
+        "handler": [
+          "pon_voip_cid_sip_gch.gch",
+          "pon_app_voip_cid_gch.gch",
+          "app_voip_cid_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "cid",
+          "title": "Caller ID",
+          "table": "VOIPCIDCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "CIDMode",
+              "label": "Caller ID signalling",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "FSK"
+                },
+                {
+                  "value": "2",
+                  "label": "DTMF"
+                },
+                {
+                  "value": "3",
+                  "label": "FSK and DTMF"
+                }
+              ]
+            },
+            {
+              "dm": "TimeEnable",
+              "label": "Send date and time",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Disabled"
+                },
+                {
+                  "value": "1",
+                  "label": "Enabled"
+                },
+                {
+                  "value": "2",
+                  "label": "Automatic"
+                }
+              ],
+              "showIf": {
+                "dm": "CIDMode",
+                "in": [
+                  "1",
+                  "3"
+                ]
+              }
+            },
+            {
+              "dm": "CallerNameAsCIDNumber",
+              "label": "Use preferred user name as caller number",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "id": "sip",
+          "title": "SIP source",
+          "table": "VoIPSIP",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "PAssertedID",
+              "label": "Caller number source",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "From header only"
+                },
+                {
+                  "value": "1",
+                  "label": "Prefer P-Asserted-Identity"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_VOIPDTMF_ID (pon_app_voip_cid_gch.gch) -> VOIPCIDCfg. Stock disables the date/time select when CIDMode=2 (DTMF). The SIP-only rows appear only when the protocol is SIP. Shown by the stock menu only while the VoIP protocol is SIP (VOIPExt.ProtocolSet=4, the current setting; dmenu_func.gch). VoIPPortCfg reports 1 FXS port, so every per-line table has 1 row. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified."
+    },
+    {
+      "id": "voip-line-interface",
+      "title": "VoIP: line interface",
+      "group": "application",
+      "order": 190,
+      "icon": "cable",
+      "description": "Ringing voltage, loop current and open-circuit voltage of the phone port.",
+      "stock": {
+        "menu": "ssmSlc",
+        "page": "app_voip_sipslc_t.gch",
+        "handler": [
+          "app_voip_sipslc_gch.gch",
+          "app_voip_sipslc_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "slc",
+          "title": "Line interface",
+          "table": "VoIPSLCINFCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "RingVoltage",
+              "label": "Ringing voltage",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "55",
+                  "label": "55 V"
+                },
+                {
+                  "value": "65",
+                  "label": "65 V"
+                },
+                {
+                  "value": "70",
+                  "label": "70 V"
+                },
+                {
+                  "value": "75",
+                  "label": "75 V"
+                },
+                {
+                  "value": "85",
+                  "label": "85 V"
+                }
+              ]
+            },
+            {
+              "dm": "PortCurrent",
+              "label": "Loop current",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "20",
+                  "label": "20 mA"
+                },
+                {
+                  "value": "24",
+                  "label": "24 mA"
+                },
+                {
+                  "value": "28",
+                  "label": "28 mA"
+                },
+                {
+                  "value": "32",
+                  "label": "32 mA"
+                }
+              ]
+            },
+            {
+              "dm": "PortVoltage",
+              "label": "Open-circuit voltage",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "48",
+                  "label": "48 V"
+                },
+                {
+                  "value": "52",
+                  "label": "52 V"
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_PONVOIPSLCCFG_ID -> VoIPSLCINFCfg. Shown by the stock menu only while the VoIP protocol is SIP (VOIPExt.ProtocolSet=4, the current setting; dmenu_func.gch). VoIPPortCfg reports 1 FXS port, so every per-line table has 1 row. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified."
+    },
+    {
+      "id": "voip-register",
+      "title": "VoIP: register / unregister",
+      "group": "application",
+      "order": 195,
+      "icon": "refresh-cw",
+      "description": "Force the phone line to register or unregister now.",
+      "stock": {
+        "menu": "ssmLogout",
+        "page": "pon_voip_siprenew_t.gch",
+        "handler": [
+          "pon_voip_renew_gch.gch",
+          "pon_voip_siprenew_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "live",
+      "danger": "none",
+      "sections": [],
+      "actions": [
+        {
+          "id": "voip-register",
+          "label": "Register now",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Stock writes OBJ_PON_VOIPLOGOUT_ID {LineNumber, LogState} with set_inst and then undoDBSave (not persisted). LineNumber = line index or 255 for the whole device; LogState 0 = register, 1 = unregister, 2 = power reset (whole device only). Needs a cspd message, not a DB write; no sidbg equivalent known."
+        },
+        {
+          "id": "voip-unregister",
+          "label": "Unregister now",
+          "danger": "confirm",
+          "kind": "builtin",
+          "note": "Stock writes OBJ_PON_VOIPLOGOUT_ID {LineNumber, LogState} with set_inst and then undoDBSave (not persisted). LineNumber = line index or 255 for the whole device; LogState 0 = register, 1 = unregister, 2 = power reset (whole device only). Needs a cspd message, not a DB write; no sidbg equivalent known."
+        },
+        {
+          "id": "voip-reset",
+          "label": "Reset VoIP (whole device)",
+          "danger": "confirm",
+          "kind": "builtin",
+          "note": "Stock writes OBJ_PON_VOIPLOGOUT_ID {LineNumber, LogState} with set_inst and then undoDBSave (not persisted). LineNumber = line index or 255 for the whole device; LogState 0 = register, 1 = unregister, 2 = power reset (whole device only). Needs a cspd message, not a DB write; no sidbg equivalent known."
+        }
+      ],
+      "notes": "Shown by the stock menu only while the VoIP protocol is SIP (VOIPExt.ProtocolSet=4, the current setting; dmenu_func.gch). VoIPPortCfg reports 1 FXS port, so every per-line table has 1 row."
+    },
+    {
+      "id": "voip-h248-basic",
+      "title": "VoIP: H.248 controller",
+      "group": "application",
+      "order": 200,
+      "icon": "phone",
+      "description": "Media gateway controller addresses and MID.",
+      "stock": {
+        "menu": "ssmH248Basic",
+        "page": "app_voip_h248basic_t.gch",
+        "handler": [
+          "voip_h248main_gch.gch",
+          "app_voip_h248basic_js.gch"
+        ]
+      },
+      "applicable": false,
+      "applicableNote": "This page applies only when the VoIP protocol is set to H.248.",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "mgc",
+          "title": "Controller",
+          "table": "VoIPH248MainCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "LocalPort",
+              "label": "Local port",
+              "type": "int",
+              "min": 0,
+              "max": 65535
+            },
+            {
+              "dm": "MGCAddr1",
+              "label": "Primary MGC",
+              "type": "string",
+              "min": 0,
+              "max": 63
+            },
+            {
+              "dm": "MGCPort1",
+              "label": "Primary MGC port",
+              "type": "int",
+              "min": 0,
+              "max": 65535
+            },
+            {
+              "dm": "MGCAddr2",
+              "label": "Secondary MGC",
+              "type": "string",
+              "min": 0,
+              "max": 63
+            },
+            {
+              "dm": "MGCPort2",
+              "label": "Secondary MGC port",
+              "type": "int",
+              "min": 0,
+              "max": 65535
+            },
+            {
+              "dm": "MGMIDType",
+              "label": "MID type",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "IPv4"
+                },
+                {
+                  "value": "2",
+                  "label": "Domain name"
+                },
+                {
+                  "value": "4",
+                  "label": "Device name"
+                }
+              ]
+            },
+            {
+              "dm": "MGMID",
+              "label": "MID",
+              "type": "string",
+              "min": 0,
+              "max": 64
+            }
+          ]
+        }
+      ],
+      "notes": "Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [applicableNote]: H.248 page: the stock menu hides it while VOIPExt.ProtocolSet=4 (SIP), which is the current setting. It applies only after switching the VoIP protocol to H.248."
+    },
+    {
+      "id": "voip-h248-auth",
+      "title": "VoIP: H.248 authentication",
+      "group": "application",
+      "order": 210,
+      "icon": "key",
+      "description": "Gateway authentication towards the controller.",
+      "stock": {
+        "menu": "ssmH248Auth",
+        "page": "app_voip_h248auth_t.gch",
+        "handler": [
+          "voip_h248main_gch.gch",
+          "app_voip_h248auth_js.gch"
+        ]
+      },
+      "applicable": false,
+      "applicableNote": "This page applies only when the VoIP protocol is set to H.248.",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "auth",
+          "title": "Authentication",
+          "table": "VoIPH248MainCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "AuthenticationMethID",
+              "label": "Authentication",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "None"
+                },
+                {
+                  "value": "1",
+                  "label": "MAC"
+                },
+                {
+                  "value": "100",
+                  "label": "MD5"
+                }
+              ]
+            },
+            {
+              "dm": "MD5AuthMGIDType",
+              "label": "MID source",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "MAC"
+                },
+                {
+                  "value": "1",
+                  "label": "IP"
+                },
+                {
+                  "value": "2",
+                  "label": "Manual"
+                }
+              ],
+              "showIf": {
+                "dm": "AuthenticationMethID",
+                "in": [
+                  "100"
+                ]
+              }
+            },
+            {
+              "dm": "MD5AuthMGID",
+              "label": "MID",
+              "type": "string",
+              "min": 0,
+              "max": 63,
+              "showIf": {
+                "dm": "AuthenticationMethID",
+                "in": [
+                  "100"
+                ]
+              }
+            },
+            {
+              "dm": "InitPublicKey",
+              "label": "Key (KI)",
+              "type": "password",
+              "min": 0,
+              "max": 63,
+              "showIf": {
+                "dm": "AuthenticationMethID",
+                "in": [
+                  "100"
+                ]
+              }
+            },
+            {
+              "dm": "DhPara_P",
+              "label": "DH parameter P",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "1"
+                },
+                {
+                  "value": "2",
+                  "label": "2"
+                }
+              ],
+              "advanced": true
+            },
+            {
+              "dm": "DhPara_G",
+              "label": "DH parameter G",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "0"
+                },
+                {
+                  "value": "1",
+                  "label": "1"
+                },
+                {
+                  "value": "2",
+                  "label": "2"
+                },
+                {
+                  "value": "3",
+                  "label": "3"
+                },
+                {
+                  "value": "4",
+                  "label": "4"
+                }
+              ],
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [applicableNote]: H.248 page: the stock menu hides it while VOIPExt.ProtocolSet=4 (SIP), which is the current setting. It applies only after switching the VoIP protocol to H.248."
+    },
+    {
+      "id": "voip-h248-endpoint",
+      "title": "VoIP: H.248 terminations",
+      "group": "application",
+      "order": 220,
+      "icon": "list",
+      "description": "Physical and ephemeral termination IDs.",
+      "stock": {
+        "menu": "ssmH248EndPoint",
+        "page": "app_voip_h248endpoint_t.gch",
+        "handler": [
+          "voip_h248endpoint_gch.gch",
+          "app_voip_h248endpoint_js.gch"
+        ]
+      },
+      "applicable": false,
+      "applicableNote": "This page applies only when the VoIP protocol is set to H.248.",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "tid",
+          "title": "Terminations",
+          "table": "VoIPH248MainCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "PhysicalTermIDConfigMethod",
+              "label": "Physical termination setting",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "By group"
+                },
+                {
+                  "value": "1",
+                  "label": "One by one"
+                }
+              ]
+            },
+            {
+              "dm": "PhysicalTermIDPrefix",
+              "label": "Physical TID prefix",
+              "type": "string"
+            },
+            {
+              "dm": "PhysicalTermIDAddLen",
+              "label": "Physical TID extension length",
+              "type": "int",
+              "min": 0
+            },
+            {
+              "dm": "PhysicalTermIDStart",
+              "label": "Physical TID start value",
+              "type": "int",
+              "min": 0
+            },
+            {
+              "dm": "EphemeralTermIDPrefix",
+              "label": "Ephemeral TID prefix",
+              "type": "string"
+            },
+            {
+              "dm": "EphemeralTermIDAddLen",
+              "label": "Ephemeral TID extension length",
+              "type": "int",
+              "min": 0
+            },
+            {
+              "dm": "EphemeralTermIDStart",
+              "label": "Ephemeral TID start value",
+              "type": "int",
+              "min": 0
+            }
+          ]
+        },
+        {
+          "id": "line",
+          "title": "Line termination",
+          "table": "VoIPH248LineCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "PhysicalTermID",
+              "label": "Physical TID",
+              "type": "string"
+            }
+          ]
+        },
+        {
+          "id": "enable",
+          "title": "Line",
+          "table": "VoIPVPLine",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Enable phone",
+              "type": "bool",
+              "on": "2",
+              "off": "1"
+            }
+          ]
+        }
+      ],
+      "notes": "Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [applicableNote]: H.248 page: the stock menu hides it while VOIPExt.ProtocolSet=4 (SIP), which is the current setting. It applies only after switching the VoIP protocol to H.248. | [Enable]: Stock values assumed equal to the SIP page (2/1); verify."
+    },
+    {
+      "id": "voip-h248-qos",
+      "title": "VoIP: H.248 QoS marking",
+      "group": "application",
+      "order": 230,
+      "icon": "gauge",
+      "description": "DSCP and 802.1p marks for H.248 signalling and RTP.",
+      "stock": {
+        "menu": "ssmH248Qos",
+        "page": "voip_h248qos_t.gch",
+        "handler": [
+          "voip_h248qos_gch.gch",
+          "voip_h248main_qos_gch.gch",
+          "voip_rtp_qos_gch.gch"
+        ]
+      },
+      "applicable": false,
+      "applicableNote": "This page applies only when the VoIP protocol is set to H.248.",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "signal",
+          "title": "Signalling",
+          "table": "VoIPH248MainCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "DSCPMark",
+              "label": "H.248 DSCP",
+              "type": "int",
+              "min": 0,
+              "max": 63
+            },
+            {
+              "dm": "EthernetPriorityMark",
+              "label": "H.248 802.1p priority",
+              "type": "int",
+              "help": "-1 = do not modify.",
+              "min": -1,
+              "max": 7
+            }
+          ]
+        },
+        {
+          "id": "media",
+          "title": "Media",
+          "table": "VoIPRTPCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "DSCPMark",
+              "label": "RTP DSCP",
+              "type": "int",
+              "min": 0,
+              "max": 63
+            },
+            {
+              "dm": "EthernetPriorityMark",
+              "label": "RTP 802.1p priority",
+              "type": "int",
+              "help": "-1 = do not modify.",
+              "min": -1,
+              "max": 7
+            }
+          ]
+        }
+      ],
+      "notes": "RTP mapping inferred as on voip-qos. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [applicableNote]: H.248 page: the stock menu hides it while VOIPExt.ProtocolSet=4 (SIP), which is the current setting. It applies only after switching the VoIP protocol to H.248."
+    },
+    {
+      "id": "voip-h248-services",
+      "title": "VoIP: H.248 services",
+      "group": "application",
+      "order": 240,
+      "icon": "settings",
+      "description": "Heartbeat, RTP link detection and digit-map timers.",
+      "stock": {
+        "menu": "ssmH248Servs",
+        "page": "app_voip_h248_servs_t.gch",
+        "handler": [
+          "voip_h248_servs.gch",
+          "voip_h248main_gch.gch",
+          "voip_h248sub_gch.gch",
+          "app_voip_h248_servs_js.gch"
+        ]
+      },
+      "applicable": false,
+      "applicableNote": "This page applies only when the VoIP protocol is set to H.248.",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "heartbeat",
+          "title": "Heartbeat",
+          "table": "VoIPH248MainCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "HeartBeatMessageType",
+              "label": "Link test",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Off"
+                },
+                {
+                  "value": "1",
+                  "label": "ServiceChange"
+                },
+                {
+                  "value": "2",
+                  "label": "Notify"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "sub",
+          "title": "Services",
+          "table": "VoIPH248SubCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "RtpProtectType",
+              "label": "RTP link detection",
+              "type": "bool"
+            },
+            {
+              "dm": "DigitMapShortMatch",
+              "label": "Number matching",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Intelligent"
+                },
+                {
+                  "value": "1",
+                  "label": "Longest match"
+                },
+                {
+                  "value": "2",
+                  "label": "Shortest match"
+                }
+              ]
+            },
+            {
+              "dm": "DigitMapLongTimer",
+              "label": "Digit map L timer",
+              "type": "int",
+              "unit": "10 ms",
+              "min": 200,
+              "max": 6000
+            },
+            {
+              "dm": "DigitMapShortTimer",
+              "label": "Digit map S timer",
+              "type": "int",
+              "unit": "10 ms",
+              "min": 200,
+              "max": 6000
+            },
+            {
+              "dm": "DigitMapStartTimer",
+              "label": "Digit map T timer",
+              "type": "int",
+              "unit": "10 ms",
+              "min": 1000,
+              "max": 2000
+            },
+            {
+              "dm": "DigitMapZTimer",
+              "label": "Digit map Z timer",
+              "type": "int",
+              "unit": "10 ms",
+              "min": 200,
+              "max": 6000
+            }
+          ]
+        }
+      ],
+      "notes": "Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [applicableNote]: H.248 page: the stock menu hides it while VOIPExt.ProtocolSet=4 (SIP), which is the current setting. It applies only after switching the VoIP protocol to H.248."
+    },
+    {
+      "id": "voip-h248-deregister",
+      "title": "VoIP: H.248 register / unregister",
+      "group": "application",
+      "order": 250,
+      "icon": "refresh-cw",
+      "description": "Force H.248 registration or deregistration now.",
+      "stock": {
+        "menu": "ssmDeregister",
+        "page": "pon_voip_renew_t.gch",
+        "handler": [
+          "pon_voip_renew_gch.gch",
+          "pon_voip_renew_js.gch"
+        ]
+      },
+      "applicable": false,
+      "applicableNote": "This page applies only when the VoIP protocol is set to H.248.",
+      "apply": "live",
+      "danger": "none",
+      "sections": [],
+      "actions": [
+        {
+          "id": "voip-register",
+          "label": "Register now",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "Stock writes OBJ_PON_VOIPLOGOUT_ID {LineNumber, LogState} with set_inst and then undoDBSave (not persisted). LineNumber = line index or 255 for the whole device; LogState 0 = register, 1 = unregister, 2 = power reset (whole device only). Needs a cspd message, not a DB write; no sidbg equivalent known."
+        },
+        {
+          "id": "voip-unregister",
+          "label": "Unregister now",
+          "danger": "confirm",
+          "kind": "builtin",
+          "note": "Stock writes OBJ_PON_VOIPLOGOUT_ID {LineNumber, LogState} with set_inst and then undoDBSave (not persisted). LineNumber = line index or 255 for the whole device; LogState 0 = register, 1 = unregister, 2 = power reset (whole device only). Needs a cspd message, not a DB write; no sidbg equivalent known."
+        }
+      ],
+      "notes": "Same mechanism as voip-register. UI-text notes moved here: [applicableNote]: H.248 page: the stock menu hides it while VOIPExt.ProtocolSet=4 (SIP), which is the current setting. It applies only after switching the VoIP protocol to H.248."
+    },
+    {
+      "id": "igmp-snooping",
+      "title": "IGMP snooping",
+      "group": "application",
+      "order": 300,
+      "icon": "radio",
+      "description": "Forward IPv4 multicast only to LAN ports that joined the group.",
+      "stock": {
+        "menu": "ssmIGMPSnoop",
+        "page": "app_igmp_snoop_t.gch",
+        "handler": [
+          "igmp_snoop_gch.gch",
+          "app_igmp_snoop_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "snoop",
+          "title": "IGMP snooping",
+          "table": "LAND",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "IGMPSNPEnable",
+              "label": "Enable IGMP snooping",
+              "type": "bool"
+            },
+            {
+              "dm": "IfMtoU",
+              "label": "Multicast to unicast",
+              "type": "bool",
+              "advanced": true,
+              "help": "Normally turned on together with IGMP snooping."
+            },
+            {
+              "dm": "GrpTimeout",
+              "label": "Group aging time",
+              "type": "int",
+              "unit": "s",
+              "min": 1,
+              "max": 604800
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_IGMPSNOOPING_ID {Enable, MtoU, GrpTimeout} has no table of its own; mapped to LAND row 0 IGMPSNPEnable / IfMtoU / GrpTimeout by name (verify). LAND also holds the LAN IP; this page writes only the three fields above. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [IfMtoU]: Stock writes the same value as the enable box."
+    },
+    {
+      "id": "igmp-proxy",
+      "title": "IGMP proxy",
+      "group": "application",
+      "order": 310,
+      "icon": "radio-tower",
+      "description": "Join multicast groups upstream on behalf of LAN clients (IPTV).",
+      "stock": {
+        "menu": "ssmIGMPProxy",
+        "page": "app_igmp_conf_t.gch",
+        "handler": [
+          "igmp_proxy_gch.gch",
+          "app_igmp_conf_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "proxy",
+          "title": "IGMP proxy",
+          "table": "IGMPProxy",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Enable IGMP proxy",
+              "type": "bool"
+            },
+            {
+              "dm": "WanCID",
+              "label": "Upstream WAN connection",
+              "type": "string",
+              "showIf": {
+                "dm": "Enable",
+                "in": [
+                  "1"
+                ]
+              },
+              "help": "WAN connection that carries the multicast (IPTV) traffic."
+            },
+            {
+              "dm": "IgmpVersion",
+              "label": "IGMP version",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "1",
+                  "label": "IGMPv1"
+                },
+                {
+                  "value": "2",
+                  "label": "IGMPv2"
+                },
+                {
+                  "value": "3",
+                  "label": "IGMPv3"
+                }
+              ],
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "Stock: OBJ_IGMPPROXYC_ID ProxyEnable (-> IGMPProxy.Enable) and OBJ_IGMPPROXY_ID {WanType=2, WanCID} (multi-instance; table IGMPWan, 0 rows now). Whether WanCID lives in IGMPProxy.WanCID or in an IGMPWan row is unverified; stock requires a WAN when enabled. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [WanCID]: ViewName of a WAN connection, e.g. IGD.WD1.WCD1.WCIP1. Stock fills this from the routed-WAN list. | [IgmpVersion]: Not on the stock page; values assumed."
+    },
+    {
+      "id": "mld-snooping",
+      "title": "MLD snooping",
+      "group": "application",
+      "order": 320,
+      "icon": "radio",
+      "description": "Forward IPv6 multicast only to LAN ports that joined the group.",
+      "stock": {
+        "menu": "ssmMLDSnoop",
+        "page": "app_mld_snoop_t.gch",
+        "handler": [
+          "mld_snoop_gch.gch",
+          "app_mld_snoop_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "snoop",
+          "title": "MLD snooping",
+          "table": "LAND",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "MLDSNPEnable",
+              "label": "Enable MLD snooping",
+              "type": "bool"
+            },
+            {
+              "dm": "IfMLDMtoU",
+              "label": "MLD snooping enhancement (multicast to unicast)",
+              "type": "bool",
+              "showIf": {
+                "dm": "MLDSNPEnable",
+                "in": [
+                  "1"
+                ]
+              }
+            },
+            {
+              "dm": "GrpTimeout",
+              "label": "Group aging time",
+              "type": "int",
+              "unit": "s",
+              "help": "Shared with IGMP snooping.",
+              "min": 1,
+              "max": 604800
+            },
+            {
+              "dm": "GrpMLDTimeout",
+              "label": "MLD group aging time",
+              "type": "int",
+              "unit": "s",
+              "advanced": true,
+              "min": 1,
+              "max": 604800
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_MLDSNOOPING_ID {MldEnable, MldMtoU} -> LAND MLDSNPEnable / IfMLDMtoU (by name). The stock page writes the aging time through OBJ_IGMPSNOOPING_ID, i.e. the same GrpTimeout as IGMP. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [GrpMLDTimeout]: Not written by the stock page."
+    },
+    {
+      "id": "mld-proxy",
+      "title": "MLD proxy",
+      "group": "application",
+      "order": 330,
+      "icon": "radio-tower",
+      "description": "IPv6 multicast proxy towards one WAN connection.",
+      "stock": {
+        "menu": "ssmMLDProxy",
+        "page": "app_mld_conf_t.gch",
+        "handler": [
+          "mld_proxy_gch.gch",
+          "IPv6_wan_query.gch",
+          "app_mld_conf_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "proxy",
+          "title": "MLD proxy",
+          "table": "MLDProxyCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Enable MLD proxy",
+              "type": "bool"
+            }
+          ]
+        },
+        {
+          "id": "wan",
+          "title": "Upstream",
+          "table": "MLDWan",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "WanCID",
+              "label": "Upstream WAN connection",
+              "type": "string",
+              "help": "WAN connection that carries the IPv6 multicast traffic."
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_MLDPROXY_ID {Enable, WanCID}. MLDProxyCfg also has a WanCID column (numeric in this DB) and MLDWan has WanCID/WanType; which one the OBJ writes is unverified. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [WanCID]: ViewName of a WAN connection, e.g. IGD.WD1.WCD1.WCIP1. Stock fills this from the routed-WAN list."
+    },
+    {
+      "id": "usb-ftp-download",
+      "title": "USB: FTP download",
+      "group": "application",
+      "order": 400,
+      "icon": "download",
+      "description": "Download a file from an FTP server to the USB disk.",
+      "stock": {
+        "menu": "ssmUSBStor",
+        "page": "app_ftp_client_t.gch",
+        "handler": [
+          "ftpclient_gch.gch",
+          "app_ftp_client_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "live",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "job",
+          "title": "Download",
+          "table": "",
+          "mode": "single",
+          "source": "runtime:ftp_client",
+          "fields": [
+            {
+              "dm": "ServerUrl",
+              "label": "Server (domain or IP)",
+              "type": "string",
+              "min": 1,
+              "max": 64,
+              "required": true,
+              "pattern": "^[\\x01-\\xFF]*$"
+            },
+            {
+              "dm": "ServerPort",
+              "label": "Port",
+              "type": "int",
+              "required": true,
+              "min": 1,
+              "max": 65535
+            },
+            {
+              "dm": "UserName",
+              "label": "User name",
+              "type": "string",
+              "min": 1,
+              "max": 64,
+              "pattern": "^[\\x01-\\xFF]*$"
+            },
+            {
+              "dm": "UserPass",
+              "label": "Password",
+              "type": "password",
+              "min": 0,
+              "max": 64,
+              "pattern": "^[\\x01-\\xFF]*$"
+            },
+            {
+              "dm": "DownloadFilePath",
+              "label": "Remote file path",
+              "type": "string",
+              "min": 1,
+              "max": 256,
+              "required": true,
+              "pattern": "^/[^\":*?<>|]*[^/\":*?<>|]$",
+              "help": "Starts with /, does not end with /."
+            },
+            {
+              "dm": "SaveAsPath",
+              "label": "Save to (USB folder)",
+              "type": "string",
+              "min": 1,
+              "max": 256,
+              "required": true
+            },
+            {
+              "dm": "DownloadState",
+              "label": "Status",
+              "type": "enum",
+              "options": [
+                {
+                  "value": "0",
+                  "label": "Download succeeded"
+                },
+                {
+                  "value": "1",
+                  "label": "Wrong user name or password"
+                },
+                {
+                  "value": "2",
+                  "label": "File server not available"
+                },
+                {
+                  "value": "3",
+                  "label": "File does not exist"
+                },
+                {
+                  "value": "5",
+                  "label": "Cannot connect to the remote host"
+                },
+                {
+                  "value": "6",
+                  "label": "File server unreachable"
+                },
+                {
+                  "value": "7",
+                  "label": "File write error"
+                },
+                {
+                  "value": "8",
+                  "label": "Download timed out"
+                },
+                {
+                  "value": "9",
+                  "label": "Download failed"
+                },
+                {
+                  "value": "10",
+                  "label": "Downloading"
+                },
+                {
+                  "value": "11",
+                  "label": "File already exists"
+                },
+                {
+                  "value": "12",
+                  "label": "Download cancelled"
+                }
+              ],
+              "readonly": true
+            }
+          ]
+        }
+      ],
+      "actions": [
+        {
+          "id": "ftp-download-start",
+          "label": "Start download",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "OBJ_FTPCLIENT_ID is not a DB table (handler calls undoDBSave). Stock writes {ServerUrl, ServerPort, UserName, UserPass, DownloadFilePath, SaveAsPath, DownloadCtl} with set_inst: DownloadCtl 0 = start, 1 = cancel, 2 = overwrite an existing file (after state 11). Anonymous login fills UserName \"Anonymous\"."
+        },
+        {
+          "id": "ftp-download-cancel",
+          "label": "Cancel download",
+          "danger": "none",
+          "kind": "builtin",
+          "note": "OBJ_FTPCLIENT_ID is not a DB table (handler calls undoDBSave). Stock writes {ServerUrl, ServerPort, UserName, UserPass, DownloadFilePath, SaveAsPath, DownloadCtl} with set_inst: DownloadCtl 0 = start, 1 = cancel, 2 = overwrite an existing file (after state 11). Anonymous login fills UserName \"Anonymous\"."
+        }
+      ],
+      "notes": "OBJ_FTPCLIENT_ID is not a DB table (handler calls undoDBSave). Stock writes {ServerUrl, ServerPort, UserName, UserPass, DownloadFilePath, SaveAsPath, DownloadCtl} with set_inst: DownloadCtl 0 = start, 1 = cancel, 2 = overwrite an existing file (after state 11). Anonymous login fills UserName \"Anonymous\". Menu right=3 (admin and user)."
+    },
+    {
+      "id": "usb-iptv",
+      "title": "IPTV multicast VLAN",
+      "group": "application",
+      "order": 410,
+      "icon": "tv",
+      "description": "Public multicast VLAN per WAN connection.",
+      "stock": {
+        "menu": "ssmIPTV",
+        "page": "app_iptv_t.gch",
+        "handler": [
+          "app_iptv_gch.gch",
+          "app_iptv_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "Meant for an Ethernet uplink; may not apply on this fiber router.",
+      "apply": "reboot",
+      "danger": "commit-confirm",
+      "sections": [
+        {
+          "id": "wans",
+          "title": "WAN connections",
+          "table": "WANC",
+          "mode": "list",
+          "rowLabel": "{WANCName}",
+          "addable": false,
+          "deletable": false,
+          "fields": [
+            {
+              "dm": "WANCName",
+              "label": "Connection",
+              "type": "string",
+              "readonly": true,
+              "column": true
+            },
+            {
+              "dm": "MCVLANID",
+              "label": "Multicast VLAN",
+              "type": "int",
+              "column": true,
+              "help": "-1 or empty = no multicast VLAN.",
+              "min": -1,
+              "max": 4094
+            }
+          ]
+        }
+      ],
+      "notes": "Stock edits MCVlANID (OBJ spelling) of each WAN connection; DB column is WANC.MCVLANID. Range 0-4094, empty stored as -1. Stock also writes IsADSL=0. WANC is the WAN table, hence commit-confirm. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [applicableNote]: dmenu upMode=2 for this entry and the handler uses the Ethernet-WAN objects (OBJ_ETHWANCIP_ID / PPP / BRIDGE); it may be hidden on a PON uplink. | [MCVLANID]: -1 = none (stock: empty)."
+    },
+    {
+      "id": "dms",
+      "title": "Media server (DLNA)",
+      "group": "application",
+      "order": 420,
+      "icon": "film",
+      "description": "Share media from the USB disk with DLNA players.",
+      "stock": {
+        "menu": "ssmDms",
+        "page": "app_dms_t.gch",
+        "handler": [
+          "dms_cfg_gch.gch",
+          "app_dms_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "dms",
+          "title": "DMS",
+          "table": "DMSCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "Enable",
+              "label": "Enabled",
+              "type": "bool",
+              "readonly": true
+            },
+            {
+              "dm": "DmsName",
+              "label": "Server name",
+              "type": "string",
+              "min": 1,
+              "max": 128,
+              "required": true,
+              "pattern": "^[\\x01-\\xFF]*$"
+            },
+            {
+              "dm": "RescanTime",
+              "label": "Media scan",
+              "type": "int",
+              "unit": "min",
+              "help": "-1 = disabled, 0 = automatic, 1-1440 = rescan every N minutes.",
+              "min": -1,
+              "max": 1440
+            },
+            {
+              "dm": "ContentList",
+              "label": "Media folders",
+              "type": "string",
+              "advanced": true,
+              "help": "Up to 4 folders on the USB disk."
+            },
+            {
+              "dm": "PathRoot",
+              "label": "Root path",
+              "type": "string",
+              "readonly": true,
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_DMS_ID -> DMSCfg. Each media path 0-255 printable chars. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [Enable]: Read-only on the stock page. | [ContentList]: Up to 4 folders, each \"/mnt<path>\" followed by \"|\"; \"/mnt/\" when none."
+    },
+    {
+      "id": "dns-domain",
+      "title": "LAN domain name",
+      "group": "application",
+      "order": 430,
+      "icon": "at-sign",
+      "description": "Domain suffix the router hands to LAN hosts.",
+      "stock": {
+        "menu": "ssmDomain",
+        "page": "app_dev_domain_t.gch",
+        "handler": [
+          "dns_gch.gch",
+          "app_dev_domain_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "dns",
+          "title": "Domain",
+          "table": "DNSSettings",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "DomainName",
+              "label": "Domain name",
+              "type": "string",
+              "min": 0,
+              "max": 64,
+              "pattern": "^[A-Za-z0-9.-]*$"
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_DNS_ID -> DNSSettings. Handler PARA also lists DnsPMAPIEnabled (DB: DnsCMAPIEnabled) and the DNS server addresses, which this page does not show. Pattern approximates stock checkDomainName (0-64). Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified."
+    },
+    {
+      "id": "dns-hosts",
+      "title": "Hosts",
+      "group": "application",
+      "order": 440,
+      "icon": "book-open",
+      "description": "Static host-name to IP entries served by the router DNS.",
+      "stock": {
+        "menu": "ssmHosts",
+        "page": "app_dev_name_t.gch",
+        "handler": [
+          "devname_gch.gch",
+          "dns_host_gch.gch",
+          "dns_dhcphost_gch.gch",
+          "app_dev_name_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "static",
+          "title": "Static hosts",
+          "table": "DNSHostsList",
+          "mode": "list",
+          "rowLabel": "{HostName}",
+          "addable": true,
+          "deletable": true,
+          "fields": [
+            {
+              "dm": "HostName",
+              "label": "Host name",
+              "type": "string",
+              "min": 1,
+              "max": 256,
+              "required": true,
+              "column": true
+            },
+            {
+              "dm": "IPAddress",
+              "label": "IP address",
+              "type": "ipv4",
+              "required": true,
+              "column": true
+            }
+          ]
+        },
+        {
+          "id": "dhcp",
+          "title": "Learned from DHCP",
+          "table": "",
+          "mode": "readonly",
+          "source": "runtime:dhcp_dns_hosts",
+          "fields": [
+            {
+              "dm": "HostName",
+              "label": "Host name",
+              "type": "string",
+              "column": true
+            },
+            {
+              "dm": "IPAddress",
+              "label": "IP address",
+              "type": "string",
+              "column": true
+            },
+            {
+              "dm": "MacAddr",
+              "label": "MAC address",
+              "type": "string",
+              "column": true
+            },
+            {
+              "dm": "LeaseTime",
+              "label": "Lease time",
+              "type": "string",
+              "column": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_DNSHOST_ID {HostName, IPAddress}; table DNSHostsList inferred by name and has 0 rows, so DM names come from the handler, verify with `sidbg 1 DB pti DNSHostsList`. OBJ_DNSDHCPHOST_ID rows are DHCP-learned and not editable (stock disables their buttons). Stock rejects duplicate names (error 127). Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified."
+    },
+    {
+      "id": "samba",
+      "title": "File sharing (Samba)",
+      "group": "application",
+      "order": 450,
+      "icon": "folder",
+      "description": "Share the USB disk with LAN computers over SMB.",
+      "stock": {
+        "menu": "ssmSamba",
+        "page": "app_samba_cfg_t.gch",
+        "handler": [
+          "samba_cfg_gch.gch",
+          "app_samba_cfg_js.gch"
+        ]
+      },
+      "applicable": true,
+      "applicableNote": "",
+      "apply": "reboot",
+      "danger": "none",
+      "sections": [
+        {
+          "id": "smb",
+          "title": "Samba",
+          "table": "SambaCfg",
+          "mode": "single",
+          "row": 0,
+          "fields": [
+            {
+              "dm": "EnableSmb",
+              "label": "Enable Samba server",
+              "type": "bool"
+            },
+            {
+              "dm": "AutoRun",
+              "label": "Start Samba automatically",
+              "type": "bool"
+            },
+            {
+              "dm": "NetbiosName",
+              "label": "Host name",
+              "type": "string",
+              "min": 1,
+              "max": 15,
+              "required": true,
+              "pattern": "^[A-Za-z0-9-]+$",
+              "help": "1–15 characters: letters, digits and hyphens."
+            },
+            {
+              "dm": "EnableSmbLan",
+              "label": "Allow LAN access",
+              "type": "bool"
+            },
+            {
+              "dm": "WorkGroup",
+              "label": "Workgroup",
+              "type": "string",
+              "advanced": true
+            },
+            {
+              "dm": "MaxConn",
+              "label": "Max connections",
+              "type": "int",
+              "advanced": true,
+              "min": 1
+            },
+            {
+              "dm": "GuestOk",
+              "label": "Allow guest access",
+              "type": "bool",
+              "advanced": true
+            },
+            {
+              "dm": "EnableSmbWan",
+              "label": "Allow WAN access",
+              "type": "bool",
+              "advanced": true
+            }
+          ]
+        }
+      ],
+      "notes": "OBJ_SAMBACFG_ID -> SambaCfg. Handler PARA has PassWord, which is not a SambaCfg column (SambaUser holds Username/Password). Menu right=3. Stock applies through cspd set_inst (module notified live). A sidbg DB set+save does not notify the module, so assume the change needs a reboot until verified. UI-text notes moved here: [NetbiosName]: Stock label says 2-15 characters; JS accepts 1-15 host-name characters. | [EnableSmbWan]: Not on the stock page."
+    }
+  ]
+}

@@ -1,0 +1,909 @@
+//! Live apply through the firmware's own change notification: OSS event
+//! 0x2401 sent to the manager module that owns a DB view, exactly as webd's
+//! `pm_<x>_set_config` does after its DB write. No vendor library and no
+//! shared memory: the view struct is rebuilt from `/etc/db_tbl_def.xml` and
+//! the row values `sidbg` reads back. See notes/oss-protocol.md §2, §3, §8.
+//!
+//! Guard: a view is only sent when its computed length equals the length the
+//! DB itself reports for that view (`sidbg 1 DB pv`). A mismatch means the
+//! layout rule does not hold for that table, and nothing is sent.
+
+use crate::db::Row;
+use std::time::Duration;
+use tokio::net::UnixDatagram;
+
+pub const TBL_DEF: &str = "/etc/db_tbl_def.xml";
+const EVENT_SET: u32 = 0x2401;
+const SYN_REQ: u32 = 0x20000;
+const ASYN_REQ: u32 = 0x10000;
+const VIEW_MAGIC: u32 = 0x0102_0304;
+const SLOT_HDR: usize = 0x1c;
+/// The DM that names a row of a multi-instance view (libdb dbViewCommOp).
+const VIEW_NAME_DM: &str = "ViewName";
+const REPLY_MAX: u16 = 2048;
+const REPLY_TIMEOUT: Duration = Duration::from_secs(8);
+
+/// A view whose manager takes a 0x2401 config notify. From libpmapi's
+/// `pm_<x>_set_config` (notes/pm-targets.json).
+pub struct Target {
+    pub table: &'static str,
+    pub view: u32,
+    pub module: u32,
+    pub subid: u32,
+    /// The view name webd passes for a single-row view.
+    pub identity: &'static str,
+}
+
+pub const TARGETS: &[Target] = &[
+    Target { table: "SNTP", view: 250, module: 0x1010d, subid: 0x80001, identity: "IGD" },
+    Target { table: "ARPDETECTConfig", view: 258, module: 0x101a6, subid: 0xe401, identity: "IGD" },
+    Target { table: "IGMPProxy", view: 230, module: 0x10112, subid: 0xc0001, identity: "IGD" },
+    Target { table: "MLDProxyCfg", view: 295, module: 0x1013a, subid: 0x280001, identity: "IGD" },
+    Target { table: "DNSSettings", view: 177, module: 0x10116, subid: 0x120001, identity: "IGD" },
+    Target { table: "FWALG", view: 237, module: 0x10102, subid: 0xb0002, identity: "IGD" },
+    Target { table: "RIPConf", view: 263, module: 0x10127, subid: 0x220001, identity: "IGD" },
+    // Multi-instance views: identity comes from each row's ViewName.
+    Target { table: "DDNSService", view: 261, module: 0x10114, subid: 0xd0002, identity: "" },
+    Target { table: "DNSHostsList", view: 179, module: 0x10116, subid: 0x120002, identity: "" },
+    Target { table: "FWURL", view: 240, module: 0x10102, subid: 0xb000c, identity: "" },
+    Target { table: "LoopbackEthConf", view: 191, module: 0x10140, subid: 0x340002, identity: "" },
+    Target { table: "MLDWan", view: 294, module: 0x1013a, subid: 0x280001, identity: "" },
+    Target { table: "PortControl", view: 186, module: 0x10102, subid: 0xb0015, identity: "" },
+    Target { table: "PrefixCfg", view: 160, module: 0x10134, subid: 0x290004, identity: "" },
+    Target { table: "QOSRule", view: 284, module: 0x10103, subid: 0x70002, identity: "" },
+    Target { table: "QOSType", view: 285, module: 0x10103, subid: 0x70002, identity: "" },
+    Target { table: "RIPIf", view: 264, module: 0x10127, subid: 0x220001, identity: "" },
+    Target { table: "RaCfg", view: 311, module: 0x610101, subid: 0x300001, identity: "" },
+    Target { table: "TUNNEL46CFG", view: 11, module: 0x1013b, subid: 0x310001, identity: "" },
+    Target { table: "VLANBIND", view: 228, module: 0x101a3, subid: 0x480000, identity: "" },
+    Target { table: "WLANBANDSTEERING", view: 382, module: 0x11201, subid: 0x10018, identity: "" },
+    Target { table: "WLANROAMING", view: 381, module: 0x11201, subid: 0x10013, identity: "" },
+    Target { table: "WLANWMM", view: 203, module: 0x11201, subid: 0x10007, identity: "" },
+    Target { table: "WLANWEP", view: 204, module: 0x11201, subid: 0x10002, identity: "" },
+    Target { table: "WLANWPS", view: 234, module: 0x11201, subid: 0x10004, identity: "" },
+    Target { table: "QOSBasic", view: 277, module: 0x10103, subid: 0x70001, identity: "IGD" },
+    Target { table: "QOSQueue", view: 282, module: 0x10103, subid: 0x70004, identity: "" },
+    Target { table: "L3ForwardingRT", view: 7, module: 0x1010e, subid: 0x90001, identity: "" },
+    Target { table: "DDNSClient", view: 260, module: 0x10114, subid: 0xd0001, identity: "" },
+    Target { table: "DHCPSHostCfg", view: 172, module: 0x620101, subid: 0x150002, identity: "" },
+    Target { table: "FWBase", view: 185, module: 0x10102, subid: 0xb0004, identity: "IGD" },
+    Target { table: "FWLevel", view: 236, module: 0x10102, subid: 0xb0006, identity: "IGD" },
+    Target { table: "SambaCfg", view: 144, module: 0x11401, subid: 0x260001, identity: "IGD" },
+    Target { table: "DHCPSPool", view: 173, module: 0x620101, subid: 0x150003, identity: "" },
+    Target { table: "DHCPSBind", view: 174, module: 0x620101, subid: 0x150001, identity: "" },
+    Target { table: "LAND", view: 5, module: 0x1010b, subid: 0xa0001, identity: "" },
+    Target { table: "DevAuthInfo", view: 29, module: 0x10111, subid: 0x110005, identity: "" },
+    Target { table: "Log", view: 289, module: 0x10118, subid: 0x160001, identity: "IGD" },
+    Target { table: "QOSPolicer", view: 290, module: 0x10103, subid: 0x70003, identity: "" },
+    Target { table: "TelnetCfg", view: 180, module: 0x3d0101, subid: 0x200001, identity: "IGD" },
+    Target { table: "TelnetUser", view: 336, module: 0x3d0101, subid: 0x200002, identity: "" },
+    Target { table: "DHCPCComm", view: 4, module: 0x10c01, subid: 0x9206, identity: "IGD" },
+    Target { table: "WANC", view: 17, module: 0x10137, subid: 0x50005, identity: "" },
+    Target { table: "WANCIP", view: 18, module: 0x10122, subid: 0x4a0001, identity: "" },
+    Target { table: "WANCPPP", view: 20, module: 0x10122, subid: 0x4a0001, identity: "" },
+];
+
+pub fn target(table: &str) -> Option<&'static Target> {
+    TARGETS.iter().find(|t| t.table == table)
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum Kind {
+    Str(usize),
+    Int32,
+    Dword,
+    Enum,
+    Bool,
+    Mac,
+    Ip,
+    Ipv6,
+}
+
+/// DB type name -> (type code, value encoding). Codes from cspd's type-name
+/// table. IP is a host-order u32 (libcommfun `IPToStr` prints v>>24 first),
+/// IPV6 the 16 address bytes in network order (`IPv6ToStr`). BUF16 is
+/// pointer-backed in the DB and is not supported.
+fn kind(t: &str) -> Option<(u16, Kind)> {
+    if let Some(n) = t.strip_prefix("STR") {
+        let n: usize = n.parse().ok()?;
+        let code = [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096].iter().position(|&x| x == n)?;
+        return Some((code as u16, Kind::Str(n)));
+    }
+    Some(match t {
+        "INT32" => (10, Kind::Int32),
+        "DWORD" => (11, Kind::Dword),
+        "ENUM" => (12, Kind::Enum),
+        "BOOL" => (13, Kind::Bool),
+        "IP" => (14, Kind::Ip),
+        "IPV6" => (15, Kind::Ipv6),
+        "MAC" => (16, Kind::Mac),
+        _ => return None,
+    })
+}
+
+fn slot_len(k: Kind) -> usize {
+    match k {
+        Kind::Str(n) => 32 + n,
+        Kind::Mac => 36,
+        Kind::Ipv6 => 44,
+        _ => 32,
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct Dm {
+    pub name: String,
+    pub ty: String,
+    /// The DMDEF's macroNeed (empty when unconditional). A gated DM is in the
+    /// running view only when its macro is enabled on this build (ENABLED_MACROS).
+    pub macro_need: String,
+}
+
+/// The `<DMDEF>`s of one table, in definition order.
+pub fn table_dms(xml: &str, table: &str) -> Option<Vec<Dm>> {
+    let start = xml.find(&format!("<Tbl name=\"{table}\""))?;
+    let body = &xml[start..];
+    let end = body.find("</TblDef>")?;
+    let re = regex_lite::Regex::new(r#"<DMDEF\s+name="([^"]+)"[^>]*?\stype="([^"]+)"[^>]*?macroNeed="([^"]*)""#).ok()?;
+    Some(
+        re.captures_iter(&body[..end])
+            .map(|c| Dm { name: c[1].to_string(), ty: c[2].to_string(), macro_need: c[3].to_string() })
+            .collect(),
+    )
+}
+
+/// Build macros enabled on this firmware (solved from every table's view
+/// length against db_tbl_def.xml, 2026-10-13). A macro-gated DM is in the
+/// running view only when its macroNeed is one of these.
+const ENABLED_MACROS: &[&str] = &[
+    "CONFIG_CTCC_SMART", "CONFIG_ZXICUS_ADEV_INFO", "CONFIG_ZXICUS_DHCPS_OPT125_E8",
+    "CONFIG_ZXICUS_DNSSL", "CONFIG_ZXICUS_E8", "CONFIG_ZXICUS_IPV6", "CONFIG_ZXICUS_MULTI_E8",
+    "CONFIG_ZXICUS_QOS_QC_OUTDEV", "CONFIG_ZXICUS_QOS_QC_TCREMARK", "CONFIG_ZXIC_YUEME3",
+    "CONFIG_ZXIC_WLAN_WPS", "CONFIG_ZXICUS_IGMPSNOOPING", "CONFIG_ZXICUS_MLDSNOOPING",
+    "CONFIG_ZXICUS_AUTOIP",
+];
+
+fn dm_in_build(d: &Dm) -> bool {
+    if d.macro_need.is_empty() || ENABLED_MACROS.contains(&d.macro_need.as_str()) {
+        return true;
+    }
+    // Runtime override for RE probing: ADMINUI_MACROS=comma,sep,list
+    std::env::var("ADMINUI_MACROS").ok().is_some_and(|v| v.split(',').any(|m| m == d.macro_need))
+}
+
+/// Pick the DM layout whose view length matches the DB's. Preferred: the DMs
+/// compiled into this build (macroNeed empty or enabled). Fallbacks, both still
+/// length-checked: every DMDEF, or only the unconditional ones. Returns None
+/// when none matches, so the caller falls back to reboot.
+pub fn layout_for<'a>(dms: &'a [Dm], expect_len: usize) -> Option<Vec<&'a Dm>> {
+    let built: Vec<&Dm> = dms.iter().filter(|d| dm_in_build(d)).collect();
+    if view_len(&built) == Some(expect_len) {
+        return Some(built);
+    }
+    let all: Vec<&Dm> = dms.iter().collect();
+    if view_len(&all) == Some(expect_len) {
+        return Some(all);
+    }
+    let ungated: Vec<&Dm> = dms.iter().filter(|d| d.macro_need.is_empty()).collect();
+    (view_len(&ungated) == Some(expect_len)).then_some(ungated)
+}
+
+/// Total view length for a DM list, or None if a type is unsupported.
+fn view_len(dms: &[&Dm]) -> Option<usize> {
+    let mut n = 8;
+    for d in dms {
+        n += slot_len(kind(&d.ty)?.1);
+    }
+    Some(n)
+}
+
+/// The DB's own length for a view id, from `sidbg 1 DB pv` (ID, Dsc, RDsc, Len, Max).
+pub fn pv_len(pv: &str, view: u32) -> Option<usize> {
+    pv.lines().find_map(|l| {
+        let c: Vec<&str> = l.split_whitespace().collect();
+        (c.len() >= 4 && c[0].parse::<u32>().ok()? == view).then(|| c[3].parse().ok()).flatten()
+    })
+}
+
+fn put_u32(b: &mut Vec<u8>, v: u32) {
+    b.extend_from_slice(&v.to_le_bytes());
+}
+
+fn encode_value(k: Kind, v: &str, out: &mut [u8]) -> Result<(), String> {
+    let num = |v: &str| -> Result<u32, String> {
+        let v = v.trim();
+        if v.is_empty() {
+            return Ok(0);
+        }
+        v.parse::<u32>().or_else(|_| v.parse::<i32>().map(|x| x as u32)).map_err(|_| format!("not a number: {v:?}"))
+    };
+    match k {
+        Kind::Str(n) => {
+            if v.len() >= n {
+                return Err(format!("value longer than {} bytes", n - 1));
+            }
+            out[..v.len()].copy_from_slice(v.as_bytes());
+        }
+        Kind::Int32 | Kind::Dword | Kind::Enum => out[..4].copy_from_slice(&num(v)?.to_le_bytes()),
+        Kind::Bool => out[..4].copy_from_slice(&((num(v)? != 0) as u32).to_le_bytes()),
+        Kind::Ip => {
+            let a: u32 = if v.trim().is_empty() {
+                0
+            } else {
+                v.trim().parse::<std::net::Ipv4Addr>().map_err(|_| format!("not an IPv4 address: {v:?}"))?.into()
+            };
+            out[..4].copy_from_slice(&a.to_le_bytes());
+        }
+        Kind::Ipv6 => {
+            if !v.trim().is_empty() {
+                let a: std::net::Ipv6Addr = v.trim().parse().map_err(|_| format!("not an IPv6 address: {v:?}"))?;
+                out[..16].copy_from_slice(&a.octets());
+            }
+        }
+        Kind::Mac => {
+            let p: Vec<u8> = v.split(':').filter_map(|x| u8::from_str_radix(x, 16).ok()).collect();
+            if p.len() != 6 {
+                return Err(format!("not a MAC address: {v:?}"));
+            }
+            out[..6].copy_from_slice(&p);
+        }
+    }
+    Ok(())
+}
+
+/// Build the view struct (8-byte header + one slot per DM) from a row.
+/// `changed` marks the DMs this apply wrote, as webd's setters do.
+pub fn build_view(dms: &[&Dm], row: &Row, changed: &[&str], expect_len: usize) -> Result<Vec<u8>, String> {
+    let mut kinds = Vec::with_capacity(dms.len());
+    for d in dms {
+        let k = kind(&d.ty).ok_or_else(|| format!("{}: type {} not supported for live apply", d.name, d.ty))?;
+        kinds.push(k);
+    }
+    let total = 8 + kinds.iter().map(|&(_, k)| slot_len(k)).sum::<usize>();
+    if total != expect_len {
+        return Err(format!("view layout mismatch: computed {total} bytes, DB says {expect_len}"));
+    }
+    let mut b = Vec::with_capacity(total);
+    put_u32(&mut b, total as u32);
+    put_u32(&mut b, VIEW_MAGIC);
+    for (d, (code, k)) in dms.iter().zip(kinds) {
+        let mut slot = vec![0u8; slot_len(k)];
+        slot[0..2].copy_from_slice(&code.to_le_bytes());
+        if changed.contains(&d.name.as_str()) {
+            slot[2..4].copy_from_slice(&1u16.to_le_bytes());
+        }
+        // dbViewGetName: the view-name DM also carries its own name at +4.
+        if d.name == VIEW_NAME_DM {
+            let n = &d.name.as_bytes()[..d.name.len().min(15)];
+            slot[4..4 + n.len()].copy_from_slice(n);
+        }
+        let v = row.get(&d.name).unwrap_or("");
+        encode_value(k, v, &mut slot[SLOT_HDR..]).map_err(|e| format!("{}: {e}", d.name))?;
+        b.extend_from_slice(&slot);
+    }
+    Ok(b)
+}
+
+/// Application message: sub id, view name (32, NUL-padded), data length, data.
+pub fn mm_msg(subid: u32, identity: &str, view: &[u8]) -> Vec<u8> {
+    let mut m = Vec::with_capacity(0x28 + view.len());
+    put_u32(&mut m, subid);
+    let mut name = [0u8; 32];
+    name[..identity.len().min(31)].copy_from_slice(&identity.as_bytes()[..identity.len().min(31)]);
+    m.extend_from_slice(&name);
+    put_u32(&mut m, view.len() as u32);
+    m.extend_from_slice(view);
+    m
+}
+
+/// 32-byte OSS header + payload (notes §2.2; 0x0E/0x10 corrected in §8).
+pub fn datagram(sender: u32, receiver: u32, seq: u16, payload: &[u8]) -> Vec<u8> {
+    let mut d = vec![0u8; 32];
+    d[0..4].copy_from_slice(&sender.to_le_bytes());
+    d[4..8].copy_from_slice(&receiver.to_le_bytes());
+    d[8..12].copy_from_slice(&(EVENT_SET | SYN_REQ).to_le_bytes());
+    d[12..14].copy_from_slice(&(payload.len() as u16).to_le_bytes());
+    // 0x0E: largest reply we accept (the module refuses to reply if its answer
+    // is longer); 0x10: the same, as the expected reply length. 0x16: request
+    // counter, echoed at reply offset 6.
+    d[14..16].copy_from_slice(&REPLY_MAX.to_le_bytes());
+    d[16..18].copy_from_slice(&REPLY_MAX.to_le_bytes());
+    d[22..24].copy_from_slice(&seq.to_le_bytes());
+    d.extend_from_slice(payload);
+    d
+}
+
+/// Module result from a reply datagram: event echo, length, seq, then iRet.
+pub fn parse_reply(r: &[u8], seq: u16) -> Result<i32, String> {
+    if r.len() < 12 {
+        return Err(format!("short reply ({} bytes)", r.len()));
+    }
+    let ev = u16::from_le_bytes([r[0], r[1]]);
+    let rs = u16::from_le_bytes([r[6], r[7]]);
+    if ev as u32 != EVENT_SET || rs != seq {
+        return Err(format!("unexpected reply event {ev:#x} seq {rs}"));
+    }
+    Ok(i32::from_le_bytes([r[8], r[9], r[10], r[11]]))
+}
+
+/// A process's inbound socket is named after the receiver's subsystem byte
+/// (cspd hosts subsystem 0x01; other daemons have their own, e.g. 0x42).
+pub fn request_sock(module: u32) -> String {
+    format!("/var/tmp/0X{:08X}", (module >> 16) & 0xff)
+}
+
+/// Our reply address: subsystem 0x03 (not cspd's 0x01, so the module replies
+/// over the socket), an AA/MM nobody has bound.
+fn free_sender() -> Result<(u32, String), String> {
+    for aa in 0x02u32..0x20 {
+        let path = format!("/var/tmp/0X0000{:02X}{:02X}", 0x03, aa);
+        if !std::path::Path::new(&path).exists() {
+            return Ok(((0x03 << 16) | (aa << 8) | 0x01, path));
+        }
+    }
+    Err("no free OSS reply address".into())
+}
+
+pub async fn send(t: &Target, payload: &[u8]) -> Result<i32, String> {
+    let (sender, path) = free_sender()?;
+    let sock = UnixDatagram::bind(&path).map_err(|e| format!("bind {path}: {e}"))?;
+    // cspd runs as user csp; it must be able to write its reply to our socket.
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o777));
+    }
+    let seq: u16 = 1;
+    let r = async {
+        sock.send_to(&datagram(sender, t.module, seq, payload), request_sock(t.module)).await.map_err(|e| format!("send: {e}"))?;
+        let mut buf = vec![0u8; REPLY_MAX as usize + 8];
+        let n = tokio::time::timeout(REPLY_TIMEOUT, sock.recv(&mut buf))
+            .await
+            .map_err(|_| "no reply from the manager".to_string())?
+            .map_err(|e| format!("recv: {e}"))?;
+        parse_reply(&buf[..n], seq)
+    }
+    .await;
+    let _ = std::fs::remove_file(&path);
+    r
+}
+
+// --- Firewall rule lists (MacFilter, FWSC, FWDMZ, FWIP, FWPM) ---------------
+//
+// These do not take a 0x2401 view notify; their rules live in dedicated views
+// and the firewall rebuilds iptables from a register event. The stock path is
+// `plib_fw_schudle_register_api(event, struct428)` = `SSEND(event, struct, 428,
+// 5000, reply, &seq, receiver=0x10102)` (libplib `plib_fw_schudle_register_api`
+// @0x22150). The firewall module is hosted in cspd (subsystem 0x01), so the
+// request socket is cspd's, exactly like the 0x2401 targets. 0x9704 deletes the
+// old rule, 0x9703 adds the current DB rule. The firewall re-reads the rule's
+// fields from the DB by ViewName; the struct carries the identity, the per-table
+// type constant at +36, and the event at +156. See notes/oss-protocol.md §9.
+
+/// The firewall module id (`plib_fw_schudle_register_api` receiver).
+pub const FW_MODULE: u32 = 0x10102;
+const FW_DEL: u32 = 0x9704;
+const FW_ADD: u32 = 0x9703;
+
+/// Per firewall rule-list table: the type constant copied to struct +36 (read
+/// from each pm setter's literal pool), and the DM names whose values go to the
+/// interface slots +76/+112. The firewall re-reads the match fields from the DB
+/// by ViewName, so only the identity, interfaces and Enable travel in the struct.
+pub struct FwTable {
+    pub type_const: u32,
+    /// DM for the IN/primary connection view name (struct +76); "" if none.
+    pub inc_dm: &'static str,
+    /// DM for the OUT/secondary connection view name (struct +112); "" if none.
+    pub out_dm: &'static str,
+}
+
+pub fn fw_table(table: &str) -> Option<FwTable> {
+    Some(match table {
+        // type consts from each pm_*set literal pool; inc/out DMs from db_tbl_def.
+        "FWIP" => FwTable { type_const: 0x000b_0008, inc_dm: "INCViewName", out_dm: "OUTCViewName" },
+        "FWSC" => FwTable { type_const: 0x000b_000e, inc_dm: "INCViewName", out_dm: "" },
+        "FWDMZ" => FwTable { type_const: 0x000b_0003, inc_dm: "WANCViewName", out_dm: "" },
+        "FWPM" => FwTable { type_const: 0x000b_000a, inc_dm: "WANCViewName", out_dm: "" },
+        "MacFilter" => FwTable { type_const: 0x000b_0011, inc_dm: "", out_dm: "" },
+        _ => return None,
+    })
+}
+
+/// Whether `table` is a firewall rule list applied via the register event.
+pub fn is_fw_rule_table(table: &str) -> bool {
+    fw_table(table).is_some()
+}
+
+/// Resolve a connection ViewName (an `OBJ_WANLAN_ID` member) to its interface
+/// Name, as the stock OBJ layer does: a LAN bridge (LAND, e.g. IGD.LD1 -> br0)
+/// or a WAN connection (WANC, its runtime device name). A firewall rule needs
+/// the resolved Name in the DB to be scoped to that interface; without it the
+/// rule matches on any interface.
+pub async fn resolve_conn_name(db: &crate::db::Db, view: &str) -> Option<String> {
+    for table in ["LAND", "WANC"] {
+        if let Ok(t) = db.read(table).await {
+            if let Some(name) = t
+                .rows
+                .iter()
+                .find(|r| r.get(VIEW_NAME_DM) == Some(view))
+                .and_then(|r| r.get("Name"))
+                .filter(|n| !n.is_empty())
+            {
+                return Some(name.to_string());
+            }
+        }
+    }
+    None
+}
+
+/// The 428-byte firewall rule-register struct. `pm_fwset_ip` copies these from
+/// the getFwipParam view (1480 bytes, 20 §8 slots): ViewName (slot0) -> +0,
+/// INCViewName (slot5) -> +76, OUTCViewName (slot7) -> +112, Enable (slot2, one
+/// byte) -> +148, the type constant -> +36, the event -> +156. The trailing
+/// region it copies into +160/+164 is past the last slot, i.e. zero — the
+/// firewall re-reads the match fields (IP/port/protocol/target) from the DB by
+/// ViewName, so the struct carries only the identity, interfaces, and enable.
+/// All name fields are strncpy'd (≤34 bytes + NUL within their slot).
+pub fn fw_struct(view_name: &str, inc_view: &str, out_view: &str, enable: bool, type_const: u32, event: u16) -> Vec<u8> {
+    let mut s = vec![0u8; 428];
+    let put = |s: &mut [u8], at: usize, v: &str| {
+        let b = v.as_bytes();
+        let n = b.len().min(34);
+        s[at..at + n].copy_from_slice(&b[..n]);
+    };
+    put(&mut s, 0, view_name);
+    s[36..40].copy_from_slice(&type_const.to_le_bytes());
+    put(&mut s, 76, inc_view);
+    put(&mut s, 112, out_view);
+    s[148] = enable as u8;
+    s[156..158].copy_from_slice(&event.to_le_bytes());
+    s
+}
+
+/// OSS datagram with an explicit event (the 0x2401 path hardcodes EVENT_SET;
+/// the firewall register uses 0x9703/0x9704). Sync flag set as the stock path.
+pub fn datagram_ev(sender: u32, receiver: u32, event: u32, seq: u16, payload: &[u8]) -> Vec<u8> {
+    let mut d = vec![0u8; 32];
+    d[0..4].copy_from_slice(&sender.to_le_bytes());
+    d[4..8].copy_from_slice(&receiver.to_le_bytes());
+    d[8..12].copy_from_slice(&(event | SYN_REQ).to_le_bytes());
+    d[12..14].copy_from_slice(&(payload.len() as u16).to_le_bytes());
+    d[14..16].copy_from_slice(&REPLY_MAX.to_le_bytes());
+    d[16..18].copy_from_slice(&REPLY_MAX.to_le_bytes());
+    d[22..24].copy_from_slice(&seq.to_le_bytes());
+    d.extend_from_slice(payload);
+    d
+}
+
+/// Send a raw payload to `module` under `event`; return the manager's iRet
+/// (reply: [0:2] event echo, [6:8] seq, [8:12] iRet).
+pub async fn send_raw(module: u32, event: u32, payload: &[u8]) -> Result<i32, String> {
+    let (sender, path) = free_sender()?;
+    let sock = UnixDatagram::bind(&path).map_err(|e| format!("bind {path}: {e}"))?;
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o777));
+    }
+    let seq: u16 = 1;
+    let r = async {
+        sock.send_to(&datagram_ev(sender, module, event, seq, payload), request_sock(module))
+            .await
+            .map_err(|e| format!("send: {e}"))?;
+        let mut buf = vec![0u8; REPLY_MAX as usize + 8];
+        let n = tokio::time::timeout(REPLY_TIMEOUT, sock.recv(&mut buf))
+            .await
+            .map_err(|_| "no reply from the manager".to_string())?
+            .map_err(|e| format!("recv: {e}"))?;
+        if n < 12 {
+            return Err(format!("short reply ({n} bytes)"));
+        }
+        let rs = u16::from_le_bytes([buf[6], buf[7]]);
+        if rs != seq {
+            return Err(format!("reply seq {rs} != {seq}"));
+        }
+        Ok(i32::from_le_bytes([buf[8], buf[9], buf[10], buf[11]]))
+    }
+    .await;
+    let _ = std::fs::remove_file(&path);
+    r
+}
+
+/// Send `event` to `module` asynchronously (ASEND: no sync flag, no reply).
+pub async fn send_async(module: u32, event: u32, payload: &[u8]) -> Result<(), String> {
+    let (sender, path) = free_sender()?;
+    let sock = UnixDatagram::bind(&path).map_err(|e| format!("bind {path}: {e}"))?;
+    let mut d = datagram_ev(sender, module, event, 1, payload);
+    // liboss ASEND @0x4b58 writes event | ASYN_REQ at +8 (SSEND uses SYN_REQ).
+    d[8..12].copy_from_slice(&(event | ASYN_REQ).to_le_bytes());
+    let r = sock.send_to(&d, request_sock(module)).await.map(|_| ()).map_err(|e| format!("send: {e}"));
+    let _ = std::fs::remove_file(&path);
+    r
+}
+
+// --- PON link events (test harness for a unit with no fiber) -----------------
+//
+// eoam, on EPON link up/down, ASENDs EV_XPON_LINK_UP 0xa455 / EV_XPON_LINK_DOWN
+// 0xa456 with no data to XPON_PID 0x10136 (cspd `si_xpon_link_event`, which
+// marks IGD.WD1 up/down via plib_ifs_set_phylink_dev_* and broadcasts
+// EV_ETH_LINKUP 0xa401 / EV_ETH_LINKDOWN 0xa402). eoam @0x51540. See notes §11.
+
+pub const XPON_MODULE: u32 = 0x10136;
+pub const XPON_LINK_UP: u32 = 0xa455;
+pub const XPON_LINK_DOWN: u32 = 0xa456;
+
+/// Tell cspd the PON link went up or down, exactly as eoam does.
+pub async fn pon_link(up: bool) -> Result<(), String> {
+    send_async(XPON_MODULE, if up { XPON_LINK_UP } else { XPON_LINK_DOWN }, &[]).await
+}
+
+/// The multi-WCD manager (e8_multiwcd_mgr.c) and the events si_xpon_link_event
+/// forwards to it. Its handler (@0x61df8, table @0x2686bc) marks every WANCD
+/// available and writes Status Up on 0xa401 without checking the PON, which
+/// skips the GetPonMode gate in the xpon handler.
+pub const MULTIWCD_MODULE: u32 = 0x101a7;
+pub const ETH_LINK_UP: u32 = 0xa401;
+pub const ETH_LINK_DOWN: u32 = 0xa402;
+
+/// The multi-WCD manager's other up/down pair: on 0xa60c its up handler also
+/// calls plib_ifs_register_netif for every MultiWancd row (0xa401 does not).
+pub const WCD_NETIF_UP: u32 = 0xa60c;
+
+/// Ask the multi-WCD manager to register the WAN netifs (event 0xa60c).
+pub async fn wcd_netif_up() -> Result<(), String> {
+    send_async(MULTIWCD_MODULE, WCD_NETIF_UP, &[]).await
+}
+
+/// Send EV_ETH_LINKUP / EV_ETH_LINKDOWN straight to the multi-WCD manager.
+pub async fn eth_link(up: bool) -> Result<(), String> {
+    send_async(MULTIWCD_MODULE, if up { ETH_LINK_UP } else { ETH_LINK_DOWN }, &[]).await
+}
+
+/// Re-register a firewall rule row: delete (0x9704) then add (0x9703), so the
+/// firewall rebuilds it from the DB with no reboot. Reads the row's identity and
+/// interface fields (the firewall re-reads the match fields from the DB itself).
+/// Returns (del, add) iRet; 0 = accepted.
+pub async fn fw_register(db: &crate::db::Db, table: &str, row_no: u32) -> Result<(i32, i32), String> {
+    let cfg = fw_table(table).ok_or_else(|| format!("{table} is not a firewall rule table"))?;
+    let t = db.read(table).await?;
+    let row = t.row(row_no).ok_or_else(|| format!("{table} has no row {row_no}"))?;
+    let view_name = row.get(VIEW_NAME_DM).unwrap_or("");
+    if view_name.is_empty() {
+        return Err(format!("{table} row {row_no} has no {VIEW_NAME_DM}"));
+    }
+    let inc = if cfg.inc_dm.is_empty() { "" } else { row.get(cfg.inc_dm).unwrap_or("") };
+    let out = if cfg.out_dm.is_empty() { "" } else { row.get(cfg.out_dm).unwrap_or("") };
+    let enable = row.get("Enable").map(|v| v != "0").unwrap_or(true);
+    let del = send_raw(FW_MODULE, FW_DEL, &fw_struct(view_name, inc, out, enable, cfg.type_const, FW_DEL as u16)).await?;
+    let add = send_raw(FW_MODULE, FW_ADD, &fw_struct(view_name, inc, out, enable, cfg.type_const, FW_ADD as u16)).await?;
+    Ok((del, add))
+}
+
+/// Remove a firewall rule from iptables after its DB row is deleted. The
+/// identity and interface fields are captured from the row before deletion.
+pub async fn fw_delete(table: &str, view_name: &str, inc: &str, out: &str) -> Result<i32, String> {
+    let cfg = fw_table(table).ok_or_else(|| format!("{table} is not a firewall rule table"))?;
+    send_raw(FW_MODULE, FW_DEL, &fw_struct(view_name, inc, out, false, cfg.type_const, FW_DEL as u16)).await
+}
+
+/// Rebuild one row of `table`'s view from the DB and notify its manager.
+/// `changed` names the DMs this apply wrote. A multi-instance row is named by
+/// its own ViewName (e.g. IGD.RIPIf2), which is also the identity webd sends.
+/// Returns the manager's iRet (0 = applied).
+/// Probe an arbitrary (module, subid) with a table's view, for mapping which
+/// manager owns a view. Returns the reply iRet, or an error.
+pub async fn probe(db: &crate::db::Db, table: &str, row_no: u32, module: u32, subid: u32) -> Result<i32, String> {
+    let t = Target { table: "", view: view_of(db, table).await?, module, subid, identity: "" };
+    send_view(db, &t, table, row_no, &[]).await
+}
+
+async fn view_of(db: &crate::db::Db, table: &str) -> Result<u32, String> {
+    // The table's view id: look it up by its VIEWFUNC szDsc in pv.
+    let xml = tokio::fs::read_to_string(TBL_DEF).await.map_err(|e| format!("{TBL_DEF}: {e}"))?;
+    let start = xml.find(&format!("<Tbl name=\"{table}\"")).ok_or_else(|| format!("{table} not in db_tbl_def"))?;
+    let body = &xml[start..xml[start..].find("</Tbl>").map(|e| start + e).unwrap_or(xml.len())];
+    let dsc = regex_lite::Regex::new(r#"szDsc="([^"]*)""#)
+        .ok()
+        .and_then(|re| re.captures(body).map(|c| c[1].to_string()))
+        .unwrap_or_else(|| table.to_string());
+    let pv = db.exec.run("sidbg", &["1", "DB", "pv"], Duration::from_secs(10)).await?;
+    pv.stdout
+        .lines()
+        .find_map(|l| {
+            let c: Vec<&str> = l.split_whitespace().collect();
+            (c.len() >= 2 && c[1] == dsc).then(|| c[0].parse().ok()).flatten()
+        })
+        .ok_or_else(|| format!("no view for dsc {dsc}"))
+}
+
+async fn send_view(db: &crate::db::Db, t: &Target, table: &str, row_no: u32, changed: &[&str]) -> Result<i32, String> {
+    let (identity, view) = row_view(db, t, table, row_no, changed).await?;
+    send(t, &mm_msg(t.subid, &identity, &view)).await
+}
+
+/// Rebuild one row's view struct from the DB, length-checked against the DB's
+/// own view length. Returns the identity (the row's ViewName, or the target's
+/// fixed identity for a single-row view) and the struct.
+async fn row_view(db: &crate::db::Db, t: &Target, table: &str, row_no: u32, changed: &[&str]) -> Result<(String, Vec<u8>), String> {
+    let xml = tokio::fs::read_to_string(TBL_DEF).await.map_err(|e| format!("{TBL_DEF}: {e}"))?;
+    let all_dms = table_dms(&xml, table).ok_or_else(|| format!("{table} not in {TBL_DEF}"))?;
+    let pv = db.exec.run("sidbg", &["1", "DB", "pv"], Duration::from_secs(10)).await?;
+    let len = pv_len(&pv.stdout, t.view).ok_or_else(|| format!("view {} not listed by the DB", t.view))?;
+    let dms = layout_for(&all_dms, len).ok_or_else(|| format!("{table}: view layout does not match the DB length {len}"))?;
+    let rows = db.read_fresh(table).await?;
+    let row = rows.row(row_no).ok_or_else(|| format!("{table} has no row {row_no}"))?;
+    let identity = if dms.iter().any(|d| d.name == VIEW_NAME_DM) {
+        row.get(VIEW_NAME_DM).filter(|v| !v.is_empty() && v.len() < 32).ok_or_else(|| format!("{table} row {row_no} has no view name"))?
+    } else {
+        t.identity
+    };
+    Ok((identity.to_string(), build_view(&dms, row, changed, len)?))
+}
+
+// --- WAN manual connect / disconnect ------------------------------------------
+//
+// The stock buttons are `dev_action CmdId=cmd_{ppp,dhcp}{connect,disconnect}`;
+// webd's dispatch table (httpd @0xb1738) maps them to libpmapi
+// `pm_wanc_{ppp,ip}_manual_{connect,disconnect}`, which are plain
+// `pm_send_msg_2mm(module, event, subid=0, identity=<WAN ViewName>, data, len)`:
+//
+//   ppp connect     0x10109 / 0x2801, data = WANCPPP view (zxicDbGetView 20) in a 0x708 buffer
+//   ppp disconnect  0x10109 / 0x2802, same data
+//   ip  connect     0x10c01 / 0x2801, no data  (DHCP renew)
+//   ip  disconnect  0x10c01 / 0x2802, no data  (DHCP release)
+//
+// Same message format as the 0x2401 notify, only the event differs. See
+// notes/oss-protocol.md §10.
+
+/// PPP connection manager (pm_wanc_ppp_manual_*).
+pub const PPP_MODULE: u32 = 0x10109;
+/// IPoE / DHCP client manager (pm_wanc_ip_manual_*; also the DHCPCComm target).
+pub const IPC_MODULE: u32 = 0x10c01;
+pub const WAN_CONNECT: u32 = 0x2801;
+pub const WAN_DISCONNECT: u32 = 0x2802;
+/// The stock PPP path always ships its full 0x708-byte view buffer.
+const PPP_VIEW_BUF: usize = 0x708;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum WanCmd {
+    PppConnect,
+    PppDisconnect,
+    DhcpRenew,
+    DhcpRelease,
+}
+
+impl WanCmd {
+    pub fn parse(s: &str) -> Option<Self> {
+        Some(match s {
+            "ppp-connect" => Self::PppConnect,
+            "ppp-disconnect" => Self::PppDisconnect,
+            "dhcp-renew" => Self::DhcpRenew,
+            "dhcp-release" => Self::DhcpRelease,
+            _ => return None,
+        })
+    }
+
+    pub fn is_ppp(self) -> bool {
+        matches!(self, Self::PppConnect | Self::PppDisconnect)
+    }
+
+    /// (module, event) the stock pm_wanc_*_manual_* sends.
+    pub fn route(self) -> (u32, u32) {
+        match self {
+            Self::PppConnect => (PPP_MODULE, WAN_CONNECT),
+            Self::PppDisconnect => (PPP_MODULE, WAN_DISCONNECT),
+            Self::DhcpRenew => (IPC_MODULE, WAN_CONNECT),
+            Self::DhcpRelease => (IPC_MODULE, WAN_DISCONNECT),
+        }
+    }
+}
+
+/// Payload for a WAN manual command: the IPoE path carries only the identity;
+/// the PPP path carries the WANCPPP view, zero-padded to the stock buffer size.
+pub fn wan_payload(identity: &str, ppp_view: Option<&[u8]>) -> Result<Vec<u8>, String> {
+    if identity.is_empty() || identity.len() > 31 {
+        return Err(format!("bad WAN connection name {identity:?}"));
+    }
+    Ok(match ppp_view {
+        None => mm_msg(0, identity, &[]),
+        Some(v) => {
+            if v.len() > PPP_VIEW_BUF {
+                return Err(format!("WANCPPP view is {} bytes, more than the {PPP_VIEW_BUF}-byte stock buffer", v.len()));
+            }
+            let mut buf = v.to_vec();
+            buf.resize(PPP_VIEW_BUF, 0);
+            mm_msg(0, identity, &buf)
+        }
+    })
+}
+
+/// Send a WAN manual command for the connection named `view` (its ViewName,
+/// e.g. IGD.WD1.WCD2.WCPPP1). Returns the manager's iRet (0 = accepted).
+pub async fn wan_manual(db: &crate::db::Db, cmd: WanCmd, view: &str) -> Result<i32, String> {
+    let (module, event) = cmd.route();
+    let payload = if cmd.is_ppp() {
+        let t = target("WANCPPP").ok_or("no WANCPPP view target")?;
+        let rows = db.read_fresh("WANCPPP").await?;
+        let row = rows
+            .rows
+            .iter()
+            .find(|r| r.get(VIEW_NAME_DM) == Some(view))
+            .ok_or_else(|| format!("no PPPoE connection {view}"))?;
+        let (identity, v) = row_view(db, t, "WANCPPP", row.no, &[]).await?;
+        wan_payload(&identity, Some(&v))?
+    } else {
+        wan_payload(view, None)?
+    };
+    send_raw(module, event, &payload).await
+}
+
+pub async fn reapply(db: &crate::db::Db, table: &str, row_no: u32, changed: &[&str]) -> Result<i32, String> {
+    let t = target(table).ok_or_else(|| format!("{table} has no live-apply target"))?;
+    send_view(db, t, table, row_no, changed).await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const XML: &str = r#"<Tbl name="SNTP" RowCount="-1"><TblDef>
+ <DMDEF name="Enable" dmId="0" type="BOOL" bKey="0" macroNeed=""/>
+ <DMDEF name="NtpServer1" dmId="0" type="STR64" bKey="0" macroNeed=""/>
+ <DMDEF name="NtpServer2" dmId="0" type="STR64" bKey="0" macroNeed=""/>
+ <DMDEF name="NtpServer3" dmId="0" type="STR64" bKey="0" macroNeed=""/>
+ <DMDEF name="NtpServer4" dmId="0" type="STR64" bKey="0" macroNeed=""/>
+ <DMDEF name="NtpServer5" dmId="0" type="STR64" bKey="0" macroNeed=""/>
+ <DMDEF name="LocalTimeZone" dmId="0" type="STR16" bKey="0" macroNeed=""/>
+ <DMDEF name="LocalTimeZoneName" dmId="0" type="STR64" bKey="0" macroNeed=""/>
+ <DMDEF name="DaylightSavingsUsed" dmId="0" type="BOOL" bKey="0" macroNeed=""/>
+ <DMDEF name="DaylightSavingsStart" dmId="0" type="STR64" bKey="0" macroNeed=""/>
+ <DMDEF name="DaylightSavingsEnd" dmId="0" type="STR64" bKey="0" macroNeed=""/>
+ <DMDEF name="PollTimeInterval" dmId="0" type="DWORD" bKey="0" macroNeed=""/>
+ <DMDEF name="isSynchronized" dmId="0" type="BOOL" bKey="0" macroNeed=""/>
+ <DMDEF name="SupportAccessRefuse" dmId="0" type="BOOL" bKey="0" macroNeed=""/>
+ <DMDEF name="Dscp" dmId="0" type="INT32" bKey="0" macroNeed=""/>
+ <DMDEF name="QueueNum" dmId="0" type="INT32" bKey="0" macroNeed=""/>
+ <DMDEF name="iZoneIndex" dmId="0" type="INT32" bKey="0" macroNeed=""/>
+ <DMDEF name="sPosixTimeZoneName" dmId="0" type="STR64" bKey="0" macroNeed=""/>
+ <DMDEF name="NTPServerType" dmId="0" type="INT32" bKey="0" macroNeed=""/>
+</TblDef></Tbl>"#;
+
+    fn row(f: &[(&str, &str)]) -> Row {
+        Row { no: 0, fields: f.iter().map(|(a, b)| (a.to_string(), b.to_string())).collect() }
+    }
+
+    #[test]
+    fn sntp_view_matches_firmware_offsets() {
+        let dms = table_dms(XML, "SNTP").unwrap();
+        assert_eq!(dms.len(), 19);
+        let lay = layout_for(&dms, 0x4b8).unwrap();
+        let r = row(&[("NtpServer1", "pool.example"), ("PollTimeInterval", "86401"), ("Dscp", "-1"), ("Enable", "1")]);
+        let v = build_view(&lay, &r, &["PollTimeInterval"], 0x4b8).unwrap();
+        assert_eq!(v.len(), 0x4b8);
+        assert_eq!(&v[4..8], &VIEW_MAGIC.to_le_bytes());
+        // pm_sntp_get_config view offsets (+8 header): Enable 0, NtpServer1 32, Poll 880, Dscp 976.
+        let at = |o: usize| 8 + o;
+        assert_eq!(u16::from_le_bytes([v[at(0)], v[at(0) + 1]]), 13);
+        assert_eq!(v[at(0) + 0x1c], 1);
+        assert_eq!(&v[at(32) + 0x1c..at(32) + 0x1c + 12], b"pool.example");
+        assert_eq!(u16::from_le_bytes([v[at(880)], v[at(880) + 1]]), 11);
+        assert_eq!(u16::from_le_bytes([v[at(880) + 2], v[at(880) + 3]]), 1, "changed flag");
+        assert_eq!(&v[at(880) + 0x1c..at(880) + 0x20], &86401u32.to_le_bytes());
+        assert_eq!(&v[at(976) + 0x1c..at(976) + 0x20], &(-1i32).to_le_bytes());
+        assert_eq!(mm_msg(0x80001, "IGD", &v).len(), 0x4e0);
+    }
+
+    #[test]
+    fn ip_encodings() {
+        let mut b = [0u8; 16];
+        encode_value(Kind::Ip, "192.0.2.10", &mut b).unwrap();
+        assert_eq!(&b[..4], &[10, 2, 0, 192]);
+        let mut b = [0u8; 16];
+        encode_value(Kind::Ipv6, "2001:db8::1", &mut b).unwrap();
+        assert_eq!(b, [0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]);
+        assert!(encode_value(Kind::Ip, "300.1.1.1", &mut [0u8; 4]).is_err());
+        let mut z = [9u8; 4];
+        encode_value(Kind::Ip, "", &mut z).unwrap();
+        assert_eq!(z, [0; 4]);
+    }
+
+    #[test]
+    fn view_name_slot() {
+        let x = r#"<Tbl name="RIPIf"><TblDef>
+ <DMDEF name="ViewName" dmId="0" type="STR32" bKey="1" macroNeed=""/>
+ <DMDEF name="Enable" dmId="0" type="BOOL" bKey="0" macroNeed=""/>
+</TblDef></Tbl>"#;
+        let dms = table_dms(x, "RIPIf").unwrap();
+        let lay: Vec<&Dm> = dms.iter().collect();
+        let v = build_view(&lay, &row(&[("ViewName", "IGD.RIPIf2"), ("Enable", "1")]), &[], 8 + 64 + 32).unwrap();
+        assert_eq!(u16::from_le_bytes([v[8], v[9]]), 2, "STR32 code");
+        assert_eq!(&v[8 + 4..8 + 12], b"ViewName");
+        assert_eq!(&v[8 + 0x1c..8 + 0x1c + 10], b"IGD.RIPIf2");
+    }
+
+    #[test]
+    fn fw_struct_offsets() {
+        // The firewall register struct: 428 bytes, ViewName at +0 (≤34 + NUL),
+        // type constant at +36, event halfword at +156 (pm_fwset_ip @0x5bfc8..).
+        let s = fw_struct("TestBlk1", "IGD.LD1", "", true, 0x000b_0008, FW_ADD as u16);
+        assert_eq!(s.len(), 428);
+        assert_eq!(&s[..8], b"TestBlk1");
+        assert_eq!(s[8], 0, "name NUL-terminated within the slot");
+        assert_eq!(u32::from_le_bytes([s[36], s[37], s[38], s[39]]), 0x000b_0008);
+        assert_eq!(&s[76..83], b"IGD.LD1", "INCViewName at +76");
+        assert_eq!(s[112], 0, "empty OUTCViewName at +112");
+        assert_eq!(s[148], 1, "Enable byte at +148");
+        assert_eq!(u16::from_le_bytes([s[156], s[157]]), 0x9703);
+        assert_eq!(fw_table("FWIP").unwrap().type_const, 0x000b_0008);
+        assert_eq!(fw_table("MacFilter").unwrap().type_const, 0x000b_0011);
+        assert!(fw_table("Nope").is_none());
+        assert!(is_fw_rule_table("FWDMZ"));
+    }
+
+    #[test]
+    fn fw_datagram_event() {
+        // datagram_ev carries the given event (sync flag set), not 0x2401.
+        let d = datagram_ev(0x0003_aa01, FW_MODULE, FW_DEL, 1, &[0u8; 428]);
+        assert_eq!(u32::from_le_bytes([d[4], d[5], d[6], d[7]]), FW_MODULE);
+        assert_eq!(u32::from_le_bytes([d[8], d[9], d[10], d[11]]), FW_DEL | SYN_REQ);
+        assert_eq!(u16::from_le_bytes([d[12], d[13]]), 428);
+    }
+
+    #[test]
+    fn wan_manual_messages() {
+        // pm_wanc_ip_manual_*: subid 0, identity, no data -> 40-byte message.
+        let ip = wan_payload("IGD.WD1.WCD1.WCIP1", None).unwrap();
+        assert_eq!(ip.len(), 0x28);
+        assert_eq!(&ip[0..4], &0u32.to_le_bytes());
+        assert_eq!(&ip[4..22], b"IGD.WD1.WCD1.WCIP1");
+        assert_eq!(&ip[36..40], &0u32.to_le_bytes());
+        // pm_wanc_ppp_manual_*: the view padded to the 0x708 stock buffer.
+        let ppp = wan_payload("IGD.WD1.WCD2.WCPPP1", Some(&[7u8; 100])).unwrap();
+        assert_eq!(ppp.len(), 0x28 + 0x708);
+        assert_eq!(&ppp[36..40], &0x708u32.to_le_bytes());
+        assert_eq!(ppp[0x28 + 99], 7);
+        assert_eq!(ppp[0x28 + 100], 0);
+        assert!(wan_payload("", None).is_err());
+        assert!(wan_payload("x", Some(&[0u8; 0x709])).is_err());
+        assert_eq!(WanCmd::parse("dhcp-renew").unwrap().route(), (IPC_MODULE, WAN_CONNECT));
+        assert_eq!(WanCmd::parse("ppp-disconnect").unwrap().route(), (PPP_MODULE, WAN_DISCONNECT));
+        assert!(WanCmd::parse("nope").is_none());
+    }
+
+    #[test]
+    fn length_guard_refuses_mismatch() {
+        let dms = table_dms(XML, "SNTP").unwrap();
+        assert!(layout_for(&dms, 0x4b0).is_none());
+        let lay: Vec<&Dm> = dms.iter().collect();
+        assert!(build_view(&lay, &row(&[]), &[], 0x4b0).is_err());
+    }
+
+    #[test]
+    fn layout_drops_macro_gated_dms_to_match_db() {
+        let x = r#"<Tbl name="T"><TblDef>
+ <DMDEF name="A" type="DWORD" macroNeed=""/>
+ <DMDEF name="B" type="DWORD" macroNeed="CONFIG_X"/>
+ <DMDEF name="C" type="BOOL" macroNeed=""/>
+</TblDef></Tbl>"#;
+        let dms = table_dms(x, "T").unwrap();
+        // All three = 8 + 96; without the gated B = 8 + 64.
+        assert_eq!(layout_for(&dms, 8 + 96).unwrap().len(), 3);
+        assert_eq!(layout_for(&dms, 8 + 64).unwrap().len(), 2);
+        assert!(layout_for(&dms, 8 + 50).is_none());
+    }
+
+    #[test]
+    fn pv_and_reply() {
+        let pv = "ID\tDsc\t\t\tRDsc\t\tLen\t\tMax\n250\tSNTP\t\tIGD\t\t1208\t\t0\n";
+        assert_eq!(pv_len(pv, 250), Some(1208));
+        assert_eq!(pv_len(pv, 251), None);
+        let mut r = vec![0x01, 0x24, 0, 0, 8, 0, 1, 0];
+        r.extend_from_slice(&0i32.to_le_bytes());
+        assert_eq!(parse_reply(&r, 1), Ok(0));
+        assert!(parse_reply(&r, 2).is_err());
+        let d = datagram(0x30201, 0x1010d, 1, &[0; 0x4e0]);
+        assert_eq!(d.len(), 32 + 0x4e0);
+        assert_eq!(&d[8..12], &0x22401u32.to_le_bytes());
+        assert_eq!(d[6], 0x01);
+        assert_eq!(request_sock(0x1010d), "/var/tmp/0X00000001");
+        assert_eq!(request_sock(0x420201), "/var/tmp/0X00000042");
+    }
+}
